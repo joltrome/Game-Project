@@ -23,6 +23,7 @@ Codex authentication mode, model identity, remaining subscription allowance, and
 | 2026-07-27 19:48:01 JST | Build VM-0.1.2 grounded precision and mirrored tests | Unknown | Not exposed | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Local Godot controller edit, test authoring, and headless validation. |
 | 2026-07-27 20:59:25 JST | Build VM-0.2.0-A compact arena minimum loop | Unknown | GPT-5 family; exact variant not exposed | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Local Godot scene/script work, automated checks, and headless scene launch only. |
 | 2026-07-27 21:45:54 JST | Build VM-0.2.1-A landed-can persistence experiment | Unknown | GPT-5 family; exact variant not exposed | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Local Git, Godot implementation, automated checks, and headless scene launch only. |
+| 2026-07-27 22:24:39 JST | Build VM-0.2.1-A-R1 solid landed-platform correction | Unknown | GPT-5 family; exact variant not exposed | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Local Godot collision-state correction, automated physics checks, and headless scene launch only. |
 
 ## Paid API session fields
 

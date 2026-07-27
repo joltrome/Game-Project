@@ -127,6 +127,7 @@ func _test_immediate_collision_death() -> void:
 		0.0,
 		arena.floor_y,
 		arena.landed_lifetime,
+		arena.despawn_warning_duration,
 		arena.product_size,
 		arena.landed_product_size
 	)

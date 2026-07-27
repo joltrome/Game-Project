@@ -11,11 +11,11 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 ## Current state
 
-**Build:** VM-0.2.1-A
+**Build:** VM-0.2.1-A-R1
 **Phase:** Prototype A — compact arena  
 **Prototype A gameplay evidence:** One limited informal observation
 
-The default scene is the compact-arena prototype using the locked VM-0.1.2 `CharacterBody2D` player. Build VM-0.2.1-A adds one experiment to the VM-0.2.0-A readability baseline: a falling can becomes a lethal 72×48 px obstacle for six seconds after reaching the floor. New drops may occur while a can remains, with at most two landed cans and at least 256 px between their centers. The movement laboratory remains available at `scenes/main.tscn`. Persistence and its starting values require manual evaluation and are not the final difficulty baseline.
+The default scene is the compact-arena prototype using the locked VM-0.1.2 `CharacterBody2D` player. In Build VM-0.2.1-A-R1, a can is lethal only while falling. Valid floor contact deterministically turns it into a non-lethal solid 72×48 px platform for six seconds, with an explicit one-second despawn warning. New drops may occur while a platform remains, with at most two landed cans and at least 256 px between their centers. The movement laboratory remains available at `scenes/main.tscn`. This terrain experiment requires manual evaluation and is not a validated difficulty result.
 
 ## Open locally
 
@@ -33,7 +33,7 @@ The default scene is the compact-arena prototype using the locked VM-0.1.2 `Char
 
 ## Next validation task
 
-Play Build VM-0.2.1-A without changing parameters. Check whether landed cans make jumping strategically useful, remain clearly jumpable, preserve reachable routes, and disappear at a readable time. Also verify that every warning still identifies its eventual lane and that restart clears all cans. Record observations before tuning or adding content.
+Play Build VM-0.2.1-A-R1 without changing parameters. Check whether the lethal-to-solid transition is immediately understandable, whether standing and jumping on cans feels stable, whether landed platforms create useful routes rather than block them, and whether the amber `DESPAWN` warning is readable. Also verify that every pre-drop warning still identifies its eventual lane and that restart clears all cans. Record observations before tuning or adding content.
 
 ## Automated movement test
 

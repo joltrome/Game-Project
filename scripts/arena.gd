@@ -5,7 +5,7 @@ signal telegraph_started(lane_index: int, duration: float)
 signal product_dropped(lane_index: int, fall_speed: float)
 signal player_died
 
-const BUILD_ID := "VM-0.2.1-A"
+const BUILD_ID := "VM-0.2.1-A-R1"
 const FALLING_PRODUCT_SCENE := preload("res://scenes/hazards/falling_product.tscn")
 const PLAYER_COLLISION_WIDTH := 32.0
 
@@ -23,6 +23,7 @@ const PLAYER_COLLISION_WIDTH := 32.0
 @export_category("Landed Can Experiment")
 @export var landed_product_size: Vector2 = Vector2(72.0, 48.0)
 @export var landed_lifetime: float = 6.0
+@export var despawn_warning_duration: float = 1.0
 @export_range(1, 2, 1) var maximum_landed_cans: int = 2
 @export var minimum_landed_spacing: float = 256.0
 @export var jump_clearance_margin: float = 12.0
@@ -195,7 +196,14 @@ func _drop_telegraphed_product() -> void:
 	var speed := fall_speed_at(survival_time)
 	var product := FALLING_PRODUCT_SCENE.instantiate() as FallingProduct
 	product.position = Vector2(drop_lane_positions[lane_index], product_spawn_y)
-	product.configure(speed, floor_y, landed_lifetime, product_size, landed_product_size)
+	product.configure(
+		speed,
+		floor_y,
+		landed_lifetime,
+		despawn_warning_duration,
+		product_size,
+		landed_product_size
+	)
 	product.player_hit.connect(_on_product_hit)
 	product.landed.connect(_on_product_landed)
 	product.cleared.connect(_on_product_cleared)
@@ -209,7 +217,7 @@ func _drop_telegraphed_product() -> void:
 
 
 func _on_product_hit(product: FallingProduct) -> void:
-	if is_dead:
+	if is_dead or not product.is_falling_lethal():
 		return
 
 	is_dead = true

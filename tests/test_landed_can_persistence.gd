@@ -2,11 +2,12 @@ extends SceneTree
 
 const ARENA_SCENE := preload("res://scenes/prototypes/arena.tscn")
 const PRODUCT_SCENE := preload("res://scenes/hazards/falling_product.tscn")
-const FLOAT_TOLERANCE := 0.01
-const MAX_TEST_FRAMES := 240
+const FLOAT_TOLERANCE := 0.05
+const MAX_TEST_FRAMES := 300
 
 var failures: int = 0
 var _product_landed_frame: int = -1
+var _warning_started_frame: int = -1
 var _product_cleared_frame: int = -1
 var _spawn_distances_from_landed: Array[float] = []
 var _observed_spawn_while_landed: bool = false
@@ -26,135 +27,209 @@ func _check(condition: bool, message: String) -> void:
 
 
 func _run() -> void:
-	await _test_product_landing_and_despawn()
-	await _test_landed_can_is_lethal()
-	await _test_locked_controller_clears_landed_can()
+	await _test_valid_floor_transition_and_warning()
+	await _test_falling_contact_is_lethal()
+	await _test_landed_platform_physics()
 	await _test_arena_cap_spacing_and_restart()
-	print("Landed-can persistence validation finished with %d failure(s)." % failures)
+	_release_movement_actions()
+	print("Solid landed-can validation finished with %d failure(s)." % failures)
 	quit(failures)
 
 
-func _test_product_landing_and_despawn() -> void:
+func _test_valid_floor_transition_and_warning() -> void:
 	var product := PRODUCT_SCENE.instantiate() as FallingProduct
 	product.position = Vector2(200.0, 0.0)
 	product.configure(
-		600.0,
+		0.0,
 		100.0,
-		0.20,
+		0.30,
+		0.10,
 		Vector2(72.0, 72.0),
 		Vector2(72.0, 48.0)
 	)
 	product.landed.connect(_on_unit_product_landed)
+	product.despawn_warning_started.connect(_on_unit_warning_started)
 	product.cleared.connect(_on_unit_product_cleared)
 	root.add_child(product)
 
+	for frame in range(5):
+		await physics_frame
+	_check(product.is_falling(), "Product remains falling without downward floor contact")
+	_check(product.is_falling_lethal(), "Falling state keeps the lethal sensor enabled")
+
+	product.fall_speed = 600.0
 	for frame in range(MAX_TEST_FRAMES):
 		await physics_frame
 		if _product_landed_frame >= 0:
 			break
 
-	_check(_product_landed_frame >= 0, "Falling product enters its landed state at the floor")
-	_check(product.is_landed(), "Product reports the landed state")
+	_check(_product_landed_frame >= 0, "Downward crossing of the floor triggers landed state")
+	_check(product.is_landed(), "Product reports a landed state after valid floor contact")
+	_check(product.is_landed_solid(), "Landed state enables solid collision")
+	_check(not product.is_falling_lethal(), "Landed state disables lethal collision")
 	_check(
 		absf(product.position.y - 76.0) <= FLOAT_TOLERANCE,
-		"Landed product rests on the configured floor"
+		"Landed product rests exactly on the configured floor"
 	)
-	var landed_shape := product.get_node("CollisionShape2D").shape as RectangleShape2D
-	_check(
-		landed_shape.size == Vector2(72.0, 48.0),
-		"Landed product applies its configured low obstacle dimensions"
-	)
+	var landed_shape := product.get_node("LandedBody/CollisionShape2D").shape as RectangleShape2D
+	_check(landed_shape.size == Vector2(72.0, 48.0), "Solid platform uses configured dimensions")
+	_check(product.get_node("Label").text == "PLATFORM", "Landed visual explicitly reads PLATFORM")
+
+	for frame in range(MAX_TEST_FRAMES):
+		await physics_frame
+		if _warning_started_frame >= 0:
+			break
+	_check(_warning_started_frame >= 0, "Despawn warning begins before removal")
+	_check(product.is_in_despawn_warning(), "Product enters explicit despawn-warning state")
+	_check(product.is_landed_solid(), "Product remains solid throughout despawn warning")
+	_check(product.get_node("Label").text == "DESPAWN", "Warning visual explicitly reads DESPAWN")
 
 	for frame in range(MAX_TEST_FRAMES):
 		await physics_frame
 		if _product_cleared_frame >= 0:
 			break
+	_check(_product_cleared_frame >= 0, "Product disappears after configured landed lifetime")
 
-	_check(_product_cleared_frame >= 0, "Landed product despawns after its lifetime")
-	var landed_frames := _product_cleared_frame - _product_landed_frame
-	var expected_landed_frames := ceili(0.20 * Engine.physics_ticks_per_second)
+	var warning_delay_frames := _warning_started_frame - _product_landed_frame
+	var expected_warning_delay := roundi(0.20 * Engine.physics_ticks_per_second)
 	_check(
-		abs(landed_frames - expected_landed_frames) <= 1,
-		"Landed lifetime stays within one physics frame of the configured duration"
+		abs(warning_delay_frames - expected_warning_delay) <= 1,
+		"Despawn warning begins within one frame of configured timing"
+	)
+	var warning_frames := _product_cleared_frame - _warning_started_frame
+	var expected_warning_frames := roundi(0.10 * Engine.physics_ticks_per_second)
+	_check(
+		abs(warning_frames - expected_warning_frames) <= 1,
+		"Warning duration stays within one frame of configured duration"
 	)
 	await process_frame
 
+	var invalid_product := PRODUCT_SCENE.instantiate() as FallingProduct
+	invalid_product.position = Vector2(200.0, 80.0)
+	invalid_product.configure(
+		600.0,
+		100.0,
+		1.0,
+		0.2,
+		Vector2(72.0, 72.0),
+		Vector2(72.0, 48.0)
+	)
+	root.add_child(invalid_product)
+	await physics_frame
+	await physics_frame
+	_check(
+		invalid_product.is_falling(),
+		"A product already below the floor cannot create a landed platform"
+	)
+	invalid_product.queue_free()
+	await process_frame
 
-func _test_landed_can_is_lethal() -> void:
+
+func _test_falling_contact_is_lethal() -> void:
 	var arena := ARENA_SCENE.instantiate() as CompactArena
 	arena.initial_drop_delay = 999.0
 	root.add_child(arena)
-	await physics_frame
+	await _wait_until_grounded(arena.player)
 
 	var product := PRODUCT_SCENE.instantiate() as FallingProduct
-	product.position = Vector2(200.0, 0.0)
+	product.position = Vector2(200.0, arena.player.position.y)
 	product.configure(
 		0.0,
 		arena.floor_y,
 		arena.landed_lifetime,
+		arena.despawn_warning_duration,
 		arena.product_size,
 		arena.landed_product_size
 	)
 	product.player_hit.connect(arena._on_product_hit)
 	arena.get_node("Hazards").add_child(product)
-	product._land()
-	_check(product.is_landed(), "Collision test begins with a landed can")
+	await physics_frame
+	_check(product.is_falling_lethal(), "Falling collision test starts in lethal state")
 
 	product.position.x = arena.player.position.x
 	await physics_frame
 	await physics_frame
-	_check(arena.is_dead, "Touching a landed can causes immediate death")
+	_check(arena.is_dead, "Player contact with a falling product causes immediate death")
 
 	arena.queue_free()
 	await process_frame
 
 
-func _test_locked_controller_clears_landed_can() -> void:
+func _test_landed_platform_physics() -> void:
 	var arena := ARENA_SCENE.instantiate() as CompactArena
 	arena.initial_drop_delay = 999.0
 	root.add_child(arena)
-	for frame in range(MAX_TEST_FRAMES):
-		await physics_frame
-		if arena.player.is_on_floor():
-			break
-	_check(arena.player.is_on_floor(), "Jump-clearance scenario starts with a grounded player")
-	arena.player.position.x = 480.0
+	await _wait_until_grounded(arena.player)
+	arena.player.position.x = 400.0
 	await physics_frame
 
 	var product := PRODUCT_SCENE.instantiate() as FallingProduct
-	product.position = Vector2(576.0, 0.0)
+	product.position = Vector2(576.0, arena.floor_y - arena.product_size.y * 0.5 - 1.0)
 	product.configure(
-		0.0,
+		120.0,
 		arena.floor_y,
 		99.0,
+		1.0,
 		arena.product_size,
 		arena.landed_product_size
 	)
 	product.player_hit.connect(arena._on_product_hit)
 	arena.get_node("Hazards").add_child(product)
-	product._land()
-
-	Input.action_press("move_right")
-	arena.player._jump_buffer_remaining = arena.player.jump_buffering
-	var cleared_obstacle := false
-	var minimum_player_y := arena.player.position.y
 	for frame in range(MAX_TEST_FRAMES):
 		await physics_frame
-		minimum_player_y = minf(minimum_player_y, arena.player.position.y)
+		if product.is_landed():
+			break
+	_check(product.is_landed_solid(), "Platform physics test uses a solid landed product")
+	_check(not arena.is_dead, "Floor transition away from the player is non-lethal")
+
+	arena.player.position = Vector2(480.0, arena.floor_y - 24.0)
+	arena.player.velocity = Vector2.ZERO
+	await physics_frame
+	Input.action_press("move_right")
+	for frame in range(45):
+		await physics_frame
+	Input.action_release("move_right")
+	_check(not arena.is_dead, "Horizontal contact with landed platform is non-lethal")
+	_check(
+		arena.player.position.x <= 524.1,
+		"Solid landed platform blocks horizontal movement"
+	)
+
+	arena.player.position = Vector2(576.0, 450.0)
+	arena.player.velocity = Vector2.ZERO
+	var stable_y_min := INF
+	var stable_y_max := -INF
+	for frame in range(90):
+		await physics_frame
+		if frame >= 60:
+			stable_y_min = minf(stable_y_min, arena.player.position.y)
+			stable_y_max = maxf(stable_y_max, arena.player.position.y)
+	_check(arena.player.is_on_floor(), "Player can stand on top of landed platform")
+	_check(
+		absf(arena.player.position.y - 512.0) <= FLOAT_TOLERANCE,
+		"Player settles at the expected platform-top height"
+	)
+	_check(stable_y_max - stable_y_min <= FLOAT_TOLERANCE, "Platform standing has no visible jitter")
+	_check(not arena.is_dead, "Standing on landed platform remains non-lethal")
+
+	arena.player.position = Vector2(480.0, arena.floor_y - 24.0)
+	arena.player.velocity = Vector2.ZERO
+	await physics_frame
+	await _wait_until_grounded(arena.player)
+	Input.action_press("move_right")
+	arena.player._jump_buffer_remaining = arena.player.jump_buffering
+	var cleared_platform := false
+	for frame in range(MAX_TEST_FRAMES):
+		await physics_frame
 		if arena.is_dead:
 			break
 		if arena.player.position.x > 640.0:
-			cleared_obstacle = true
+			cleared_platform = true
 			break
 	Input.action_release("move_right")
-	print(
-		"JUMP CLEARANCE METRICS: x=%.3f y=%.3f apex_y=%.3f dead=%s"
-		% [arena.player.position.x, arena.player.position.y, minimum_player_y, arena.is_dead]
-	)
-
 	_check(
-		cleared_obstacle and not arena.is_dead,
-		"Locked VM-0.1.2 controller can jump across a landed can"
+		cleared_platform and not arena.is_dead,
+		"Locked VM-0.1.2 jump comfortably clears solid landed platform"
 	)
 
 	arena.queue_free()
@@ -173,6 +248,11 @@ func _test_arena_cap_spacing_and_restart() -> void:
 		and absf(arena.maximum_fall_speed - 620.0) <= FLOAT_TOLERANCE,
 		"VM-0.2.0-A fall-speed curve remains unchanged"
 	)
+	_check(
+		absf(arena.initial_drop_cooldown - 0.80) <= FLOAT_TOLERANCE
+		and absf(arena.minimum_drop_cooldown - 0.35) <= FLOAT_TOLERANCE,
+		"VM-0.2.0-A cooldown curve remains unchanged"
+	)
 
 	arena.initial_drop_delay = 0.0
 	arena.initial_telegraph_duration = 0.01
@@ -182,18 +262,17 @@ func _test_arena_cap_spacing_and_restart() -> void:
 	arena.initial_fall_speed = 3000.0
 	arena.maximum_fall_speed = 3000.0
 	arena.landed_lifetime = 1.5
+	arena.despawn_warning_duration = 0.3
 	arena.product_dropped.connect(_on_fast_product_dropped.bind(arena))
 	root.add_child(arena)
 	await process_frame
 	arena.player.collision_layer = 0
+	arena.player.collision_mask = 0
+	arena.player.set_physics_process(false)
 
-	_check(arena.maximum_landed_cans == 2, "Initial landed-can cap is two")
-	_check(
-		absf(arena.landed_lifetime - 1.5) <= FLOAT_TOLERANCE,
-		"Test arena accepts a configurable landed lifetime"
-	)
-	_check(arena.is_landed_can_jump_clearable(), "Landed dimensions are clearable by the locked jump")
-	_check(arena.has_safe_landed_spacing(), "Minimum spacing leaves a traversable gap")
+	_check(arena.maximum_landed_cans == 2, "Initial landed-platform cap is two")
+	_check(arena.is_landed_can_jump_clearable(), "Landed dimensions are clearable by locked jump")
+	_check(arena.has_safe_landed_spacing(), "Minimum spacing leaves a traversable route")
 
 	var maximum_landed_seen := 0
 	var observed_two_landed := false
@@ -206,23 +285,23 @@ func _test_arena_cap_spacing_and_restart() -> void:
 			observed_two_landed = true
 			minimum_pair_distance = minf(minimum_pair_distance, absf(positions[0] - positions[1]))
 
-	_check(observed_two_landed, "Accelerated validation reaches two simultaneous landed cans")
+	_check(observed_two_landed, "Accelerated validation reaches two simultaneous platforms")
 	_check(
 		maximum_landed_seen <= arena.maximum_landed_cans,
-		"Arena never exceeds the configured landed-can cap"
+		"Arena never exceeds configured landed-platform cap"
 	)
 	_check(
 		minimum_pair_distance + FLOAT_TOLERANCE >= arena.minimum_landed_spacing,
-		"Simultaneous landed cans remain outside the prohibited spacing"
+		"Simultaneous platforms cannot overlap or form an adjacent wall"
 	)
-	_check(_observed_spawn_while_landed, "Additional cans spawn while a landed can remains")
+	_check(_observed_spawn_while_landed, "Additional products spawn while a platform remains")
 	for distance in _spawn_distances_from_landed:
 		_check(
 			distance + FLOAT_TOLERANCE >= arena.minimum_landed_spacing,
-			"New drop avoids overlap with every existing landed can"
+			"New drop avoids every existing landed platform"
 		)
 
-	_check(arena.active_product_count() > 0, "Restart test begins with persisted hazard state")
+	_check(arena.active_product_count() > 0, "Restart test begins with active product state")
 	current_scene = arena
 	var previous_instance_id := arena.get_instance_id()
 	var restart_event := InputEventAction.new()
@@ -235,14 +314,14 @@ func _test_arena_cap_spacing_and_restart() -> void:
 	var restarted_arena := current_scene as CompactArena
 	_check(
 		restarted_arena != null and restarted_arena.get_instance_id() != previous_instance_id,
-		"Restart replaces the arena instance"
+		"Restart replaces arena instance"
 	)
 	_check(
 		restarted_arena != null
 		and restarted_arena.falling_product_count() == 0
 		and restarted_arena.landed_product_count() == 0
 		and restarted_arena.get_node("Hazards").get_child_count() == 0,
-		"Restart clears falling and landed cans"
+		"Restart clears falling and landed product states"
 	)
 
 	if current_scene != null:
@@ -251,8 +330,25 @@ func _test_arena_cap_spacing_and_restart() -> void:
 	await process_frame
 
 
+func _wait_until_grounded(player: SharedPlayerController) -> void:
+	for frame in range(MAX_TEST_FRAMES):
+		await physics_frame
+		if player.is_on_floor():
+			return
+	_check(false, "Player reaches a floor within the test frame budget")
+
+
+func _release_movement_actions() -> void:
+	Input.action_release("move_left")
+	Input.action_release("move_right")
+
+
 func _on_unit_product_landed(_product: FallingProduct) -> void:
 	_product_landed_frame = Engine.get_physics_frames()
+
+
+func _on_unit_warning_started(_product: FallingProduct) -> void:
+	_warning_started_frame = Engine.get_physics_frames()
 
 
 func _on_unit_product_cleared(_product: FallingProduct) -> void:

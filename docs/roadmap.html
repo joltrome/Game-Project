@@ -260,9 +260,9 @@
 
       <div class="grid four" style="margin-top:16px">
         <div class="card subtle"><span class="tag evidence">Evidence</span><h3 style="margin-top:10px">What we know</h3><p class="muted">One first-time informal tester understood the avoidance objective without instruction, voluntarily replayed, and experimented with jumping near a falling can. This socially close n=1 observation does not establish broader retention.</p></div>
-        <div class="card subtle"><span class="tag hypothesis">Hypothesis</span><h3 style="margin-top:10px">Primary risk</h3><p class="muted">The game may feel like a generic survival platformer or endless runner with vending-machine art pasted on top.</p></div>
-        <div class="card subtle"><span class="tag decision">Decision</span><h3 style="margin-top:10px">Grounded precision</h3><p class="muted">Grounded horizontal velocity comes directly from current input. Airborne control remains acceleration-based. Both prototypes must use this shared behavior.</p></div>
-        <div class="card subtle"><span class="tag result">Result</span><h3 style="margin-top:10px">Build VM-0.2.1-A</h3><p class="muted">Falling cans now persist temporarily as spaced, low lethal obstacles. Automated movement, state, cap, spacing, lifetime, restart, and scene checks passed; strategic value and perceived fairness remain unverified manually.</p></div>
+        <div class="card subtle"><span class="tag hypothesis">Hypothesis</span><h3 style="margin-top:10px">Temporary terrain</h3><p class="muted">Temporary solid landed cans may make jumping strategically useful and create spatial decisions without increasing perceived unfairness.</p></div>
+        <div class="card subtle"><span class="tag decision">Decision</span><h3 style="margin-top:10px">Collision states</h3><p class="muted">Cans are lethal only while falling. Valid floor contact converts them into non-lethal solid platforms; the shared controller remains unchanged.</p></div>
+        <div class="card subtle"><span class="tag result">Result</span><h3 style="margin-top:10px">Build VM-0.2.1-A-R1</h3><p class="muted">The single can scene now switches from a lethal falling sensor to a solid temporary platform with an explicit despawn warning. Automated physics checks passed; strategic value and perceived fairness remain unverified manually.</p></div>
       </div>
     </section>
 
@@ -664,6 +664,30 @@
     text: 'The existing falling-product scene now transitions into a lethal 72×48 px landed obstacle for a configurable six-second lifetime. The arena permits later drops while landed cans remain, caps landed cans at two, and requires 256 px between landed centers. Existing warning and fall-speed values, the shared controller, arena, death, restart, and timer were unchanged. Automated tests passed for landed state, lethal contact, lifetime, cap, placement separation, jump-clearable dimensions, additional drops, and restart cleanup; manual strategic value and perceived fairness remain unverified.'
   };
 
+  const solidLandedCanDecision = {
+    id: 'decision-vm-0.2.1-a-r1-solid-platform',
+    type: 'Decision',
+    date: '2026-07-27',
+    source: 'Startup Lab correction',
+    text: 'A can is lethal while falling. After a valid floor contact it becomes a solid, non-lethal temporary platform that supports standing and blocks movement. Do not use landed cans as additional instant-death zones.'
+  };
+
+  const solidLandedCanHypothesis = {
+    id: 'hypothesis-vm-0.2.1-a-r1-temporary-terrain',
+    type: 'Hypothesis',
+    date: '2026-07-27',
+    source: 'Startup Lab approved hypothesis',
+    text: 'Temporary solid landed cans may make jumping strategically useful and create spatial decisions without increasing perceived unfairness.'
+  };
+
+  const solidLandedCanResult = {
+    id: 'result-vm-0.2.1-a-r1',
+    type: 'Result',
+    date: '2026-07-27',
+    source: 'Build VM-0.2.1-A-R1 implementation and automated validation',
+    text: 'The existing product scene now uses a lethal Area2D only while falling and enables a non-lethal StaticBody2D after a valid downward floor crossing. The landed 72×48 px platform remains solid during a one-second DESPAWN warning and clears after its configured six-second lifetime. Automated tests passed for falling lethality, non-lethal landed contact, stable standing, horizontal blocking, normal-jump clearance, transition validity, warning timing, cap, spacing, restart cleanup, preserved curves, and scene launch. Manual strategic value and perceived fairness remain unverified.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -676,7 +700,10 @@
     compactArenaResult,
     firstArenaPlaytestEvidence,
     landedCanHypothesis,
-    landedCanResult
+    landedCanResult,
+    solidLandedCanDecision,
+    solidLandedCanHypothesis,
+    solidLandedCanResult
   ];
 
   const defaultFindings = [
@@ -688,7 +715,7 @@
   ];
 
   const defaultState = {
-    version: 6,
+    version: 7,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []
