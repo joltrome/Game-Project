@@ -5,7 +5,7 @@ signal telegraph_started(lane_index: int, duration: float)
 signal product_dropped(lane_index: int, fall_speed: float)
 signal player_died
 
-const BUILD_ID := "VM-0.2.0-A"
+const BUILD_ID := "VM-0.2.1-A"
 const FALLING_PRODUCT_SCENE := preload("res://scenes/hazards/falling_product.tscn")
 const PLAYER_COLLISION_WIDTH := 32.0
 
@@ -17,8 +17,15 @@ const PLAYER_COLLISION_WIDTH := 32.0
 	3, 1, 5, 2, 4, 0, 6, 4, 2, 5, 1, 3
 ])
 @export var product_spawn_y: float = 176.0
-@export var product_despawn_y: float = 700.0
+@export var floor_y: float = 584.0
 @export var product_size: Vector2 = Vector2(72.0, 72.0)
+
+@export_category("Landed Can Experiment")
+@export var landed_product_size: Vector2 = Vector2(72.0, 48.0)
+@export var landed_lifetime: float = 6.0
+@export_range(1, 2, 1) var maximum_landed_cans: int = 2
+@export var minimum_landed_spacing: float = 256.0
+@export var jump_clearance_margin: float = 12.0
 
 @export_category("Drop Timing")
 @export var initial_drop_delay: float = 1.0
@@ -38,7 +45,8 @@ const PLAYER_COLLISION_WIDTH := 32.0
 var survival_time: float = 0.0
 var is_dead: bool = false
 
-var _active_product: FallingProduct
+var _falling_product: FallingProduct
+var _landed_products: Array[FallingProduct] = []
 var _cooldown_remaining: float = 0.0
 var _telegraph_remaining: float = 0.0
 var _telegraph_duration: float = 0.0
@@ -70,7 +78,7 @@ func _physics_process(delta: float) -> void:
 	survival_time += delta
 	_update_timer_label()
 
-	if _active_product != null:
+	if _falling_product != null:
 		return
 
 	if _telegraphed_lane_index >= 0:
@@ -80,7 +88,7 @@ func _physics_process(delta: float) -> void:
 		return
 
 	_cooldown_remaining -= delta
-	if _cooldown_remaining <= 0.0:
+	if _landed_products.size() < maximum_landed_cans and _cooldown_remaining <= 0.0:
 		_start_telegraph()
 
 
@@ -126,7 +134,38 @@ func has_reachable_ground_response() -> bool:
 
 
 func active_product_count() -> int:
-	return 1 if _active_product != null else 0
+	return falling_product_count() + landed_product_count()
+
+
+func falling_product_count() -> int:
+	return 1 if _falling_product != null else 0
+
+
+func landed_product_count() -> int:
+	return _landed_products.size()
+
+
+func landed_positions() -> PackedFloat32Array:
+	var positions := PackedFloat32Array()
+	for product in _landed_products:
+		positions.append(product.position.x)
+	return positions
+
+
+func calculated_jump_height() -> float:
+	if player.gravity <= 0.0:
+		return INF
+	return player.jump_velocity * player.jump_velocity / (2.0 * player.gravity)
+
+
+func is_landed_can_jump_clearable() -> bool:
+	return landed_product_size.y + jump_clearance_margin <= calculated_jump_height()
+
+
+func has_safe_landed_spacing() -> bool:
+	var clear_gap := minimum_landed_spacing - landed_product_size.x
+	var required_gap := PLAYER_COLLISION_WIDTH + clearance_margin * 2.0
+	return clear_gap >= required_gap
 
 
 func _difficulty_ratio_at(time_seconds: float) -> float:
@@ -140,9 +179,9 @@ func _start_telegraph() -> void:
 		push_error("Compact arena requires at least one drop lane and one sequence entry.")
 		return
 
-	var sequence_value := drop_lane_sequence[_sequence_cursor % drop_lane_sequence.size()]
-	_telegraphed_lane_index = posmod(sequence_value, drop_lane_positions.size())
-	_sequence_cursor += 1
+	_telegraphed_lane_index = _take_next_eligible_lane()
+	if _telegraphed_lane_index < 0:
+		return
 
 	_telegraph_duration = telegraph_duration_at(survival_time)
 	_telegraph_remaining = _telegraph_duration
@@ -156,11 +195,12 @@ func _drop_telegraphed_product() -> void:
 	var speed := fall_speed_at(survival_time)
 	var product := FALLING_PRODUCT_SCENE.instantiate() as FallingProduct
 	product.position = Vector2(drop_lane_positions[lane_index], product_spawn_y)
-	product.configure(speed, product_despawn_y, product_size)
+	product.configure(speed, floor_y, landed_lifetime, product_size, landed_product_size)
 	product.player_hit.connect(_on_product_hit)
+	product.landed.connect(_on_product_landed)
 	product.cleared.connect(_on_product_cleared)
 	_hazard_container.add_child(product)
-	_active_product = product
+	_falling_product = product
 
 	_telegraphed_lane_index = -1
 	_telegraph_remaining = 0.0
@@ -174,18 +214,46 @@ func _on_product_hit(product: FallingProduct) -> void:
 
 	is_dead = true
 	player.set_physics_process(false)
-	product.stop()
+	if _falling_product != null:
+		_falling_product.stop()
+	for landed_product in _landed_products:
+		landed_product.stop()
 	_set_telegraph_visible(false)
 	_death_label.visible = true
 	player_died.emit()
 
 
-func _on_product_cleared(product: FallingProduct) -> void:
-	if product != _active_product:
+func _on_product_landed(product: FallingProduct) -> void:
+	if product != _falling_product:
 		return
 
-	_active_product = null
+	_falling_product = null
+	_landed_products.append(product)
 	_cooldown_remaining = drop_cooldown_at(survival_time)
+
+
+func _on_product_cleared(product: FallingProduct) -> void:
+	if product == _falling_product:
+		_falling_product = null
+	_landed_products.erase(product)
+
+
+func _take_next_eligible_lane() -> int:
+	for _attempt in range(drop_lane_sequence.size()):
+		var sequence_value := drop_lane_sequence[_sequence_cursor % drop_lane_sequence.size()]
+		_sequence_cursor += 1
+		var lane_index := posmod(sequence_value, drop_lane_positions.size())
+		if _lane_is_eligible(lane_index):
+			return lane_index
+	return -1
+
+
+func _lane_is_eligible(lane_index: int) -> bool:
+	var lane_x := drop_lane_positions[lane_index]
+	for product in _landed_products:
+		if absf(lane_x - product.position.x) < minimum_landed_spacing:
+			return false
+	return true
 
 
 func _set_telegraph_visible(is_visible: bool) -> void:

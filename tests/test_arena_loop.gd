@@ -9,6 +9,7 @@ var failures: int = 0
 var _telegraph_events: Array[Dictionary] = []
 var _drop_events: Array[Dictionary] = []
 var _observed_arena: CompactArena
+var _observed_drop_while_landed: bool = false
 
 
 func _initialize() -> void:
@@ -71,10 +72,12 @@ func _run() -> void:
 	arena.product_dropped.connect(_on_product_dropped)
 	arena.player.collision_layer = 0
 
-	var maximum_active_products := 0
+	var maximum_falling_products := 0
+	var maximum_landed_products := 0
 	for frame in range(PHYSICS_FRAMES_TO_OBSERVE):
 		await physics_frame
-		maximum_active_products = maxi(maximum_active_products, arena.active_product_count())
+		maximum_falling_products = maxi(maximum_falling_products, arena.falling_product_count())
+		maximum_landed_products = maxi(maximum_landed_products, arena.landed_product_count())
 
 	_check(_drop_events.size() >= 3, "Observed at least three complete drops")
 	_check(
@@ -96,7 +99,12 @@ func _run() -> void:
 			elapsed_frames + 1 >= required_frames,
 			"Drop %d waits for its configured telegraph duration" % index
 		)
-	_check(maximum_active_products <= 1, "Serial drop rule prevents multiple active products")
+	_check(maximum_falling_products <= 1, "At most one product falls at a time")
+	_check(
+		maximum_landed_products <= arena.maximum_landed_cans,
+		"Landed products remain within the configured cap"
+	)
+	_check(_observed_drop_while_landed, "A new product can drop while a landed can remains")
 
 	arena.queue_free()
 	_observed_arena = null
@@ -115,7 +123,13 @@ func _test_immediate_collision_death() -> void:
 
 	var product := PRODUCT_SCENE.instantiate() as FallingProduct
 	product.position = arena.player.position
-	product.configure(0.0, 700.0, arena.product_size)
+	product.configure(
+		0.0,
+		arena.floor_y,
+		arena.landed_lifetime,
+		arena.product_size,
+		arena.landed_product_size
+	)
 	product.player_hit.connect(arena._on_product_hit)
 	arena.get_node("Hazards").add_child(product)
 
@@ -175,6 +189,8 @@ func _on_telegraph_started(lane_index: int, duration: float) -> void:
 
 
 func _on_product_dropped(lane_index: int, fall_speed: float) -> void:
+	if _observed_arena.landed_product_count() > 0:
+		_observed_drop_while_landed = true
 	_drop_events.append({
 		"lane": lane_index,
 		"fall_speed": fall_speed,

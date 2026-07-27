@@ -259,10 +259,10 @@
       </div>
 
       <div class="grid four" style="margin-top:16px">
-        <div class="card subtle"><span class="tag evidence">Evidence</span><h3 style="margin-top:10px">What we know</h3><p class="muted">After the VM-0.1.2 change and symmetry validation, one internal manual test described the shared controller as tight and responsive. Prototype A hazard behavior remains untested manually.</p></div>
+        <div class="card subtle"><span class="tag evidence">Evidence</span><h3 style="margin-top:10px">What we know</h3><p class="muted">One first-time informal tester understood the avoidance objective without instruction, voluntarily replayed, and experimented with jumping near a falling can. This socially close n=1 observation does not establish broader retention.</p></div>
         <div class="card subtle"><span class="tag hypothesis">Hypothesis</span><h3 style="margin-top:10px">Primary risk</h3><p class="muted">The game may feel like a generic survival platformer or endless runner with vending-machine art pasted on top.</p></div>
         <div class="card subtle"><span class="tag decision">Decision</span><h3 style="margin-top:10px">Grounded precision</h3><p class="muted">Grounded horizontal velocity comes directly from current input. Airborne control remains acceleration-based. Both prototypes must use this shared behavior.</p></div>
-        <div class="card subtle"><span class="tag result">Result</span><h3 style="margin-top:10px">Build VM-0.2.0-A</h3><p class="muted">The default scene now contains one visible drop source, one telegraphed product hazard, immediate death, restart, a timer, and a capped 60-second ramp. Movement and arena tests passed; hazard readability and perceived fairness remain unverified manually.</p></div>
+        <div class="card subtle"><span class="tag result">Result</span><h3 style="margin-top:10px">Build VM-0.2.1-A</h3><p class="muted">Falling cans now persist temporarily as spaced, low lethal obstacles. Automated movement, state, cap, spacing, lifetime, restart, and scene checks passed; strategic value and perceived fairness remain unverified manually.</p></div>
       </div>
     </section>
 
@@ -640,6 +640,30 @@
     text: 'Implemented a compact gray-box arena using the unchanged shared VM-0.1.2 controller, one visible vending drop rack, one deterministic telegraphed product hazard, immediate collision death, player-triggered scene reload, a visible survival timer, and a configurable linear difficulty ramp capped at 60 seconds. The movement suite and arena suite passed with zero failures, and the default scene completed a 180-frame headless launch. Manual warning readability, perceived fairness, death clarity, restart feel, and the full pressure curve remain unverified.'
   };
 
+  const firstArenaPlaytestEvidence = {
+    id: 'evidence-vm-0.2.0-a-girlfriend-test',
+    type: 'Evidence',
+    date: '2026-07-27',
+    source: 'First-time informal test by the developer’s girlfriend, Build VM-0.2.0-A',
+    text: 'Without receiving gameplay instructions, one first-time informal tester understood the avoidance objective, voluntarily used replay after dying, and independently experimented with jumping over a falling can near the floor as a trick-shot attempt. The tester is socially close to the developer and the sample size is one, so this is a positive behavioral signal but does not establish broader retention.'
+  };
+
+  const landedCanHypothesis = {
+    id: 'hypothesis-vm-0.2.1-a-landed-can-persistence',
+    type: 'Hypothesis',
+    date: '2026-07-27',
+    source: 'Startup Lab approved experiment',
+    text: 'Allowing cans to remain as low obstacles for approximately six seconds, capped at two and separated to preserve routes, may make jumping strategically useful without adding a new movement ability or hazard type. This remains untested manually.'
+  };
+
+  const landedCanResult = {
+    id: 'result-vm-0.2.1-a',
+    type: 'Result',
+    date: '2026-07-27',
+    source: 'Build VM-0.2.1-A implementation and automated validation',
+    text: 'The existing falling-product scene now transitions into a lethal 72×48 px landed obstacle for a configurable six-second lifetime. The arena permits later drops while landed cans remain, caps landed cans at two, and requires 256 px between landed centers. Existing warning and fall-speed values, the shared controller, arena, death, restart, and timer were unchanged. Automated tests passed for landed state, lethal contact, lifetime, cap, placement separation, jump-clearable dimensions, additional drops, and restart cleanup; manual strategic value and perceived fairness remain unverified.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -649,7 +673,10 @@
     groundedPrecisionResult,
     sharedBaselineDecision,
     sharedBaselineEvidence,
-    compactArenaResult
+    compactArenaResult,
+    firstArenaPlaytestEvidence,
+    landedCanHypothesis,
+    landedCanResult
   ];
 
   const defaultFindings = [
@@ -661,7 +688,7 @@
   ];
 
   const defaultState = {
-    version: 5,
+    version: 6,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

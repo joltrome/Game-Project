@@ -11,11 +11,11 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 ## Current state
 
-**Build:** VM-0.2.0-A  
+**Build:** VM-0.2.1-A
 **Phase:** Prototype A — compact arena  
-**Prototype A gameplay evidence:** None yet
+**Prototype A gameplay evidence:** One limited informal observation
 
-The default scene is the smallest mechanically complete compact-arena prototype: a shared VM-0.1.2 `CharacterBody2D` player, a visible overhead vending drop rack, one telegraphed falling-product hazard, immediate collision death, player-triggered restart, a survival timer, and a capped 60-second difficulty ramp. The movement laboratory remains available at `scenes/main.tscn`. The arena has automated coverage but still requires manual evaluation for warning readability, perceived fairness, death clarity, and restart feel.
+The default scene is the compact-arena prototype using the locked VM-0.1.2 `CharacterBody2D` player. Build VM-0.2.1-A adds one experiment to the VM-0.2.0-A readability baseline: a falling can becomes a lethal 72×48 px obstacle for six seconds after reaching the floor. New drops may occur while a can remains, with at most two landed cans and at least 256 px between their centers. The movement laboratory remains available at `scenes/main.tscn`. Persistence and its starting values require manual evaluation and are not the final difficulty baseline.
 
 ## Open locally
 
@@ -33,7 +33,7 @@ The default scene is the smallest mechanically complete compact-arena prototype:
 
 ## Next validation task
 
-Play Build VM-0.2.0-A without changing parameters. Check whether every warning identifies its eventual lane, whether collisions and their source are understandable, whether `R` restarts immediately, and whether the 60-second ramp remains readable. Record observations before tuning or adding content.
+Play Build VM-0.2.1-A without changing parameters. Check whether landed cans make jumping strategically useful, remain clearly jumpable, preserve reachable routes, and disappear at a readable time. Also verify that every warning still identifies its eventual lane and that restart clears all cans. Record observations before tuning or adding content.
 
 ## Automated movement test
 
@@ -47,6 +47,12 @@ godot --headless --log-file /tmp/vms-movement-controller-test.log --path . --scr
 
 ```bash
 godot --headless --log-file /tmp/vms-arena-test.log --path . --script res://tests/test_arena_loop.gd
+```
+
+## Automated landed-can test
+
+```bash
+godot --headless --log-file /tmp/vms-landed-can-test.log --path . --script res://tests/test_landed_can_persistence.gd
 ```
 
 ## Cost
