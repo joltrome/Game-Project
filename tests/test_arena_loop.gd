@@ -67,6 +67,10 @@ func _run() -> void:
 		absf(arena.fall_speed_at(999.0) - arena.maximum_fall_speed) <= FLOAT_TOLERANCE,
 		"Fall speed stops at its configured maximum"
 	)
+	_check(
+		absf(arena.two_can_probability_at(0.0)) <= FLOAT_TOLERANCE,
+		"Early pattern phase uses single-can drops"
+	)
 
 	arena.telegraph_started.connect(_on_telegraph_started)
 	arena.product_dropped.connect(_on_product_dropped)
@@ -99,7 +103,10 @@ func _run() -> void:
 			elapsed_frames + 1 >= required_frames,
 			"Drop %d waits for its configured telegraph duration" % index
 		)
-	_check(maximum_falling_products <= 1, "At most one product falls at a time")
+	_check(
+		maximum_falling_products <= arena.maximum_concurrent_falling_cans,
+		"Falling products remain within the configured concurrent cap"
+	)
 	_check(
 		maximum_landed_products <= arena.maximum_landed_cans,
 		"Landed products remain within the configured cap"
@@ -184,8 +191,8 @@ func _on_telegraph_started(lane_index: int, duration: float) -> void:
 		"lane": lane_index,
 		"duration": duration,
 		"frame": Engine.get_physics_frames(),
-		"warning_visible": _observed_arena.get_node("SourceRack/SourceCarriage/WarningColumn").visible,
-		"carriage_x": _observed_arena.get_node("SourceRack/SourceCarriage").position.x,
+		"warning_visible": _observed_arena.warning_is_visible_for_lane(lane_index),
+		"carriage_x": _observed_arena.warning_position_for_lane(lane_index),
 	})
 
 

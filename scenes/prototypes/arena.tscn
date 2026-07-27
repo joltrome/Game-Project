@@ -107,6 +107,32 @@ theme_override_font_sizes/font_size = 26
 text = "!"
 horizontal_alignment = 1
 
+[node name="SourceCarriage2" type="Node2D" parent="SourceRack"]
+visible = false
+position = Vector2(704, 126)
+
+[node name="WarningColumn" type="Polygon2D" parent="SourceRack/SourceCarriage2"]
+polygon = PackedVector2Array(-36, 44, 36, 44, 36, 458, -36, 458)
+color = Color(0.92, 0.24, 0.2, 0.18)
+
+[node name="Head" type="Polygon2D" parent="SourceRack/SourceCarriage2"]
+polygon = PackedVector2Array(-38, -18, 38, -18, 38, 18, -38, 18)
+color = Color(0.3, 0.34, 0.4, 1)
+
+[node name="Chute" type="Polygon2D" parent="SourceRack/SourceCarriage2"]
+polygon = PackedVector2Array(-25, 18, 25, 18, 25, 44, -25, 44)
+color = Color(0.42, 0.46, 0.52, 1)
+
+[node name="WarningText" type="Label" parent="SourceRack/SourceCarriage2"]
+offset_left = -18.0
+offset_top = -19.0
+offset_right = 18.0
+offset_bottom = 20.0
+theme_override_colors/font_color = Color(1, 0.94, 0.78, 1)
+theme_override_font_sizes/font_size = 26
+text = "!"
+horizontal_alignment = 1
+
 [node name="Hazards" type="Node2D" parent="."]
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
@@ -121,7 +147,7 @@ offset_right = 220.0
 offset_bottom = 42.0
 theme_override_colors/font_color = Color(0.68, 0.72, 0.78, 1)
 theme_override_font_sizes/font_size = 16
-text = "BUILD VM-0.2.1-A-R1"
+text = "BUILD VM-0.2.2-A"
 
 [node name="Timer" type="Label" parent="HUD"]
 offset_left = 900.0

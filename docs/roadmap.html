@@ -259,10 +259,10 @@
       </div>
 
       <div class="grid four" style="margin-top:16px">
-        <div class="card subtle"><span class="tag evidence">Evidence</span><h3 style="margin-top:10px">What we know</h3><p class="muted">One first-time informal tester understood the avoidance objective without instruction, voluntarily replayed, and experimented with jumping near a falling can. This socially close n=1 observation does not establish broader retention.</p></div>
-        <div class="card subtle"><span class="tag hypothesis">Hypothesis</span><h3 style="margin-top:10px">Temporary terrain</h3><p class="muted">Temporary solid landed cans may make jumping strategically useful and create spatial decisions without increasing perceived unfairness.</p></div>
-        <div class="card subtle"><span class="tag decision">Decision</span><h3 style="margin-top:10px">Collision states</h3><p class="muted">Cans are lethal only while falling. Valid floor contact converts them into non-lethal solid platforms; the shared controller remains unchanged.</p></div>
-        <div class="card subtle"><span class="tag result">Result</span><h3 style="margin-top:10px">Build VM-0.2.1-A-R1</h3><p class="muted">The single can scene now switches from a lethal falling sensor to a solid temporary platform with an explicit despawn warning. Automated physics checks passed; strategic value and perceived fairness remain unverified manually.</p></div>
+        <div class="card subtle"><span class="tag evidence">Evidence</span><h3 style="margin-top:10px">What we know</h3><p class="muted">One observed VM-0.2.1-A-R1 session found the falling hazards and temporary platforms readable but insufficiently challenging. This limited session does not establish a general difficulty result.</p></div>
+        <div class="card subtle"><span class="tag hypothesis">Hypothesis</span><h3 style="margin-top:10px">Concurrent patterns</h3><p class="muted">Readable concurrent falling-can patterns may create meaningful positioning and jumping decisions without requiring lower telegraph times or substantially faster cans.</p></div>
+        <div class="card subtle"><span class="tag decision">Decision</span><h3 style="margin-top:10px">Pattern pressure</h3><p class="muted">Increase overlapping decisions through validated one- and two-can patterns while preserving the controller and existing timing curves.</p></div>
+        <div class="card subtle"><span class="tag result">Result</span><h3 style="margin-top:10px">Build VM-0.2.2-A</h3><p class="muted">The arena now supports independently warned two-can patterns selected only after lane, overlap, spacing, cap, and reachable-region checks. Manual challenge and fairness remain unverified.</p></div>
       </div>
     </section>
 
@@ -688,6 +688,30 @@
     text: 'The existing product scene now uses a lethal Area2D only while falling and enables a non-lethal StaticBody2D after a valid downward floor crossing. The landed 72×48 px platform remains solid during a one-second DESPAWN warning and clears after its configured six-second lifetime. Automated tests passed for falling lethality, non-lethal landed contact, stable standing, horizontal blocking, normal-jump clearance, transition validity, warning timing, cap, spacing, restart cleanup, preserved curves, and scene launch. Manual strategic value and perceived fairness remain unverified.'
   };
 
+  const solidPlatformChallengeEvidence = {
+    id: 'evidence-vm-0.2.1-a-r1-insufficient-challenge',
+    type: 'Evidence',
+    date: '2026-07-27',
+    source: 'Observed play session, Build VM-0.2.1-A-R1',
+    text: 'One observed play session found the falling hazards and temporary solid platforms readable but reported insufficient challenge. This is a limited observation and does not establish a broader difficulty or retention result.'
+  };
+
+  const concurrentPatternHypothesis = {
+    id: 'hypothesis-vm-0.2.2-a-concurrent-patterns',
+    type: 'Hypothesis',
+    date: '2026-07-27',
+    source: 'Startup Lab approved experiment',
+    text: 'Readable concurrent falling-can patterns may create meaningful positioning and jumping decisions without requiring lower telegraph times or substantially faster cans.'
+  };
+
+  const concurrentPatternResult = {
+    id: 'result-vm-0.2.2-a',
+    type: 'Result',
+    date: '2026-07-27',
+    source: 'Build VM-0.2.2-A implementation and automated validation',
+    text: 'Implemented one- and two-can patterns across seven logical lanes with independent warning columns. The exported ramp uses single cans before 15 seconds, a 35 percent two-can probability from 15 to 35 seconds, and a 70 percent probability afterward. Pattern commitment rejects occupied landed-can footprints, platform-spacing violations, cap violations, overlapping burst positions, and patterns without a safe region reachable within the current warning-time horizontal budget. Invalid states retry after 0.25 seconds. Existing movement, warning, speed, cooldown, platform, death, restart, and timer behavior remains unchanged. Automated tests passed; manual challenge and perceived fairness remain unverified.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -703,7 +727,10 @@
     landedCanResult,
     solidLandedCanDecision,
     solidLandedCanHypothesis,
-    solidLandedCanResult
+    solidLandedCanResult,
+    solidPlatformChallengeEvidence,
+    concurrentPatternHypothesis,
+    concurrentPatternResult
   ];
 
   const defaultFindings = [
@@ -715,7 +742,7 @@
   ];
 
   const defaultState = {
-    version: 7,
+    version: 8,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

@@ -11,11 +11,11 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 ## Current state
 
-**Build:** VM-0.2.1-A-R1
+**Build:** VM-0.2.2-A
 **Phase:** Prototype A — compact arena  
 **Prototype A gameplay evidence:** One limited informal observation
 
-The default scene is the compact-arena prototype using the locked VM-0.1.2 `CharacterBody2D` player. In Build VM-0.2.1-A-R1, a can is lethal only while falling. Valid floor contact deterministically turns it into a non-lethal solid 72×48 px platform for six seconds, with an explicit one-second despawn warning. New drops may occur while a platform remains, with at most two landed cans and at least 256 px between their centers. The movement laboratory remains available at `scenes/main.tscn`. This terrain experiment requires manual evaluation and is not a validated difficulty result.
+The default scene is the compact-arena prototype using the locked VM-0.1.2 `CharacterBody2D` player. Build VM-0.2.2-A adds validated one- and two-can warning patterns to the temporary-platform baseline without changing the controller, telegraph curve, fall-speed curve, cooldown curve, six-second landed lifetime, or two-platform cap. Pattern selection uses seven logical lanes, rejects occupied or impassable configurations before commitment, and delays when no valid pattern exists. This concurrent-pattern experiment requires manual evaluation and is not a validated difficulty result.
 
 ## Open locally
 
@@ -33,7 +33,7 @@ The default scene is the compact-arena prototype using the locked VM-0.1.2 `Char
 
 ## Next validation task
 
-Play Build VM-0.2.1-A-R1 without changing parameters. Check whether the lethal-to-solid transition is immediately understandable, whether standing and jumping on cans feels stable, whether landed platforms create useful routes rather than block them, and whether the amber `DESPAWN` warning is readable. Also verify that every pre-drop warning still identifies its eventual lane and that restart clears all cans. Record observations before tuning or adding content.
+Play Build VM-0.2.2-A without changing parameters. Confirm that early play uses single cans, occasional paired warnings appear after 15 seconds, and paired warnings become more common after 35 seconds. For every pair, verify that both warning columns map to their exact cans, at least one understandable response remains, and existing platforms never disappear merely because a pattern was attempted. Record observations before tuning or adding content.
 
 ## Automated movement test
 
@@ -53,6 +53,12 @@ godot --headless --log-file /tmp/vms-arena-test.log --path . --script res://test
 
 ```bash
 godot --headless --log-file /tmp/vms-landed-can-test.log --path . --script res://tests/test_landed_can_persistence.gd
+```
+
+## Automated pattern test
+
+```bash
+godot --headless --log-file /tmp/vms-two-can-pattern-test.log --path . --script res://tests/test_two_can_patterns.gd
 ```
 
 ## Cost
