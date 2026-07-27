@@ -6,9 +6,10 @@ signal product_dropped(lane_index: int, fall_speed: float)
 signal pattern_committed(lane_indices: PackedInt32Array, duration: float)
 signal pattern_dropped(lane_indices: PackedInt32Array)
 signal pattern_retry_scheduled
+signal paired_pattern_reserved(reserved_at_time: float)
 signal player_died
 
-const BUILD_ID := "VM-0.2.2-A"
+const BUILD_ID := "VM-0.2.2-A-R1"
 const FALLING_PRODUCT_SCENE := preload("res://scenes/hazards/falling_product.tscn")
 const PLAYER_COLLISION_WIDTH := 32.0
 const ARENA_LEFT := 96.0
@@ -46,10 +47,11 @@ const ARENA_RIGHT := 1056.0
 @export var difficulty_ramp_seconds: float = 60.0
 
 @export_category("Pattern Ramp")
-@export var early_phase_end_seconds: float = 15.0
-@export var middle_phase_end_seconds: float = 35.0
-@export_range(0.0, 1.0, 0.05) var middle_two_can_probability: float = 0.35
-@export_range(0.0, 1.0, 0.05) var late_two_can_probability: float = 0.70
+@export var first_pair_start_seconds: float = 6.0
+@export var guaranteed_pair_phase_end_seconds: float = 10.0
+@export var mixed_pair_phase_end_seconds: float = 15.0
+@export_range(0.0, 1.0, 0.05) var mixed_two_can_probability: float = 0.50
+@export_range(0.0, 1.0, 0.05) var late_two_can_probability: float = 1.0
 @export_range(1, 2, 1) var maximum_concurrent_falling_cans: int = 2
 @export var pattern_retry_delay: float = 0.25
 @export var pattern_random_seed: int = 2202
@@ -64,6 +66,9 @@ var is_dead: bool = false
 var _falling_products: Array[FallingProduct] = []
 var _landed_products: Array[FallingProduct] = []
 var _pending_pattern_lanes := PackedInt32Array()
+var _reserved_pattern_size: int = 0
+var _pair_reservation_started_at: float = -1.0
+var _first_pair_has_been_reserved: bool = false
 var _cooldown_remaining: float = 0.0
 var _telegraph_remaining: float = 0.0
 var _telegraph_duration: float = 0.0
@@ -121,7 +126,10 @@ func _physics_process(delta: float) -> void:
 	if _cooldown_remaining > 0.0:
 		return
 
-	if _landed_products.size() >= maximum_landed_cans:
+	if (
+		_landed_products.size() >= maximum_landed_cans
+		and not has_reserved_pair()
+	):
 		return
 
 	_start_pattern_telegraph()
@@ -157,10 +165,12 @@ func fall_speed_at(time_seconds: float) -> float:
 
 
 func two_can_probability_at(time_seconds: float) -> float:
-	if time_seconds < early_phase_end_seconds:
+	if time_seconds < first_pair_start_seconds:
 		return 0.0
-	if time_seconds < middle_phase_end_seconds:
-		return middle_two_can_probability
+	if time_seconds < guaranteed_pair_phase_end_seconds:
+		return 1.0
+	if time_seconds < mixed_pair_phase_end_seconds:
+		return mixed_two_can_probability
 	return late_two_can_probability
 
 
@@ -194,6 +204,22 @@ func pending_pattern_lanes() -> PackedInt32Array:
 
 func has_pending_pattern() -> bool:
 	return not _pending_pattern_lanes.is_empty()
+
+
+func has_reserved_pair() -> bool:
+	return _reserved_pattern_size == 2
+
+
+func reserved_pattern_size() -> int:
+	return _reserved_pattern_size
+
+
+func pair_reservation_started_at() -> float:
+	return _pair_reservation_started_at
+
+
+func first_pair_has_been_reserved() -> bool:
+	return _first_pair_has_been_reserved
 
 
 func landed_positions() -> PackedFloat32Array:
@@ -332,12 +358,21 @@ func _safe_interval_is_reachable(
 
 
 func _start_pattern_telegraph() -> void:
-	var selected_pattern := _select_valid_pattern()
+	var requested_pattern_size := 1
+	if has_reserved_pair():
+		requested_pattern_size = _reserved_pattern_size
+	elif _should_select_paired_pattern():
+		_reserve_paired_pattern()
+		requested_pattern_size = _reserved_pattern_size
+
+	var selected_pattern := _select_valid_pattern(requested_pattern_size)
 	if selected_pattern.is_empty():
 		_cooldown_remaining = pattern_retry_delay
 		pattern_retry_scheduled.emit()
 		return
 
+	if requested_pattern_size == 2:
+		_clear_pair_reservation()
 	_pending_pattern_lanes = selected_pattern
 	_telegraph_duration = telegraph_duration_at(survival_time)
 	_telegraph_remaining = _telegraph_duration
@@ -345,25 +380,32 @@ func _start_pattern_telegraph() -> void:
 	pattern_committed.emit(_pending_pattern_lanes.duplicate(), _telegraph_duration)
 
 
-func _select_valid_pattern() -> PackedInt32Array:
-	var remaining_landed_capacity := maximum_landed_cans - _landed_products.size()
-	var maximum_pattern_size := mini(maximum_concurrent_falling_cans, remaining_landed_capacity)
-	var wants_two := (
-		maximum_pattern_size >= 2
-		and _rng.randf() < two_can_probability_at(survival_time)
-	)
+func _should_select_paired_pattern() -> bool:
+	if maximum_concurrent_falling_cans < 2:
+		return false
+	if survival_time < first_pair_start_seconds:
+		return false
+	if not _first_pair_has_been_reserved:
+		return true
+	return _rng.randf() < two_can_probability_at(survival_time)
 
-	var requested_sizes: Array[int] = []
-	if wants_two:
-		requested_sizes.append(2)
-	requested_sizes.append(1)
-	for pattern_size in requested_sizes:
-		if pattern_size > maximum_pattern_size:
-			continue
-		var valid_patterns := _collect_valid_patterns(pattern_size)
-		if not valid_patterns.is_empty():
-			return valid_patterns[_rng.randi_range(0, valid_patterns.size() - 1)]
 
+func _reserve_paired_pattern() -> void:
+	_reserved_pattern_size = 2
+	_pair_reservation_started_at = survival_time
+	_first_pair_has_been_reserved = true
+	paired_pattern_reserved.emit(_pair_reservation_started_at)
+
+
+func _clear_pair_reservation() -> void:
+	_reserved_pattern_size = 0
+	_pair_reservation_started_at = -1.0
+
+
+func _select_valid_pattern(pattern_size: int) -> PackedInt32Array:
+	var valid_patterns := _collect_valid_patterns(pattern_size)
+	if not valid_patterns.is_empty():
+		return valid_patterns[_rng.randi_range(0, valid_patterns.size() - 1)]
 	return PackedInt32Array()
 
 
@@ -454,6 +496,7 @@ func _on_product_hit(product: FallingProduct) -> void:
 	for landed_product in _landed_products:
 		landed_product.stop()
 	_pending_pattern_lanes = PackedInt32Array()
+	_clear_pair_reservation()
 	_clear_pattern_warnings()
 	_death_label.visible = true
 	player_died.emit()

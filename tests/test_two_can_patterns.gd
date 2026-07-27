@@ -3,6 +3,7 @@ extends SceneTree
 const ARENA_SCENE := preload("res://scenes/prototypes/arena.tscn")
 const FLOAT_TOLERANCE := 0.01
 const MAX_TEST_FRAMES := 300
+const NATURAL_LIFECYCLE_LIMIT_SECONDS := 15.0
 
 var failures: int = 0
 
@@ -22,9 +23,11 @@ func _check(condition: bool, message: String) -> void:
 
 func _run() -> void:
 	await _test_phase_configuration_and_pattern_enumeration()
+	await _test_natural_lifecycle_launches_reserved_pair()
 	await _test_single_pattern_launch()
 	await _test_two_can_pattern_launch_and_occupied_lanes()
 	await _test_invalid_pattern_retry()
+	await _test_late_phase_repeatedly_selects_pairs()
 	await _test_pending_pattern_restart_cleanup()
 	print("Two-can pattern validation finished with %d failure(s)." % failures)
 	quit(failures)
@@ -38,17 +41,24 @@ func _test_phase_configuration_and_pattern_enumeration() -> void:
 
 	_check(
 		absf(arena.two_can_probability_at(0.0)) <= FLOAT_TOLERANCE,
-		"Early phase probability is zero"
+		"Zero-to-six-second phase uses single patterns"
 	)
 	_check(
-		absf(arena.two_can_probability_at(arena.early_phase_end_seconds) - 0.35)
+		absf(arena.two_can_probability_at(arena.first_pair_start_seconds) - 1.0)
 		<= FLOAT_TOLERANCE,
-		"Middle phase probability is 35 percent"
+		"Six-to-ten-second phase guarantees paired selection"
 	)
 	_check(
-		absf(arena.two_can_probability_at(arena.middle_phase_end_seconds) - 0.70)
+		absf(
+			arena.two_can_probability_at(arena.guaranteed_pair_phase_end_seconds)
+			- 0.50
+		) <= FLOAT_TOLERANCE,
+		"Ten-to-fifteen-second phase uses 50 percent paired selection"
+	)
+	_check(
+		absf(arena.two_can_probability_at(arena.mixed_pair_phase_end_seconds) - 1.0)
 		<= FLOAT_TOLERANCE,
-		"Later phase probability is 70 percent"
+		"Fifteen-second-plus phase always selects paired patterns"
 	)
 	_check(arena.maximum_concurrent_falling_cans == 2, "Concurrent falling cap is two")
 
@@ -72,6 +82,84 @@ func _test_phase_configuration_and_pattern_enumeration() -> void:
 				"Every accepted pair preserves future platform spacing"
 			)
 	_check(valid_pair_count > 0, "At least one fair two-can pattern is available")
+
+	arena.queue_free()
+	await process_frame
+
+
+func _test_natural_lifecycle_launches_reserved_pair() -> void:
+	var arena := ARENA_SCENE.instantiate() as CompactArena
+	var observation := {
+		"reservation_time": -1.0,
+		"pair_drop_time": -1.0,
+		"single_commits_after_reservation": 0,
+		"single_drops_before_reservation": 0,
+		"maximum_landed_before_pair": 0,
+		"maximum_wait": 0.0,
+	}
+	arena.paired_pattern_reserved.connect(
+		func(reserved_at_time: float) -> void:
+			if observation.reservation_time < 0.0:
+				observation.reservation_time = reserved_at_time
+	)
+	arena.pattern_committed.connect(
+		func(lane_indices: PackedInt32Array, _duration: float) -> void:
+			if observation.reservation_time >= 0.0 and lane_indices.size() == 1:
+				observation.single_commits_after_reservation += 1
+	)
+	arena.pattern_dropped.connect(
+		func(lane_indices: PackedInt32Array) -> void:
+			if lane_indices.size() == 1 and observation.reservation_time < 0.0:
+				observation.single_drops_before_reservation += 1
+			if lane_indices.size() == 2 and observation.pair_drop_time < 0.0:
+				observation.pair_drop_time = arena.survival_time
+				observation.maximum_wait = (
+					observation.pair_drop_time - observation.reservation_time
+				)
+	)
+	root.add_child(arena)
+	await process_frame
+	_disable_player(arena)
+
+	while (
+		arena.survival_time < NATURAL_LIFECYCLE_LIMIT_SECONDS
+		and observation.pair_drop_time < 0.0
+	):
+		await physics_frame
+		observation.maximum_landed_before_pair = maxi(
+			observation.maximum_landed_before_pair,
+			arena.landed_product_count()
+		)
+
+	_check(
+		observation.single_drops_before_reservation >= 2
+		and observation.maximum_landed_before_pair == arena.maximum_landed_cans,
+		"Natural regression reaches the two-landed-can lifecycle that starved pairs"
+	)
+	_check(
+		observation.reservation_time >= arena.first_pair_start_seconds
+		and observation.reservation_time
+			< arena.guaranteed_pair_phase_end_seconds + FLOAT_TOLERANCE,
+		"Natural scheduler reserves its first pair during the six-to-ten-second window"
+	)
+	_check(
+		observation.pair_drop_time > observation.reservation_time
+		and observation.pair_drop_time <= NATURAL_LIFECYCLE_LIMIT_SECONDS,
+		"Reserved pair eventually launches during the intended early-game window"
+	)
+	_check(
+		observation.single_commits_after_reservation == 0,
+		"No replacement single commits after a pair becomes reserved"
+	)
+	_check(not arena.has_reserved_pair(), "Pair reservation clears only after pair commitment")
+	print(
+		"NATURAL_LIFECYCLE_METRICS reservation=%.3fs pair_drop=%.3fs maximum_wait=%.3fs"
+		% [
+			observation.reservation_time,
+			observation.pair_drop_time,
+			observation.maximum_wait,
+		]
+	)
 
 	arena.queue_free()
 	await process_frame
@@ -160,19 +248,68 @@ func _test_invalid_pattern_retry() -> void:
 	_configure_fast_pattern_test(arena, true)
 	arena.minimum_safe_region_width = 2000.0
 	var retry_observation := {"count": 0}
+	var committed_sizes: Array[int] = []
+	var pattern_observation := _connect_pattern_observation(arena)
 	arena.pattern_retry_scheduled.connect(
 		func() -> void: retry_observation.count += 1
+	)
+	arena.pattern_committed.connect(
+		func(lane_indices: PackedInt32Array, _duration: float) -> void:
+			committed_sizes.append(lane_indices.size())
 	)
 	root.add_child(arena)
 	_disable_player(arena)
 
 	for frame in range(30):
 		await physics_frame
-		if retry_observation.count > 0:
+		if retry_observation.count > 1:
 			break
 	_check(retry_observation.count > 0, "No-valid-pattern state schedules a delayed retry")
+	_check(arena.has_reserved_pair(), "Invalid pair remains reserved between retries")
+	_check(arena.reserved_pattern_size() == 2, "Retry retains the paired pattern size")
 	_check(not arena.has_pending_pattern(), "Invalid pattern is never committed")
 	_check(arena.falling_product_count() == 0, "Invalid pattern spawns no cans")
+	_check(committed_sizes.is_empty(), "Reserved pair never silently downgrades to a single")
+
+	var original_reservation_time := arena.pair_reservation_started_at()
+	arena.minimum_safe_region_width = 64.0
+	await _wait_for_pattern_drop(pattern_observation)
+	_check(
+		pattern_observation.committed_lanes.size() == 2,
+		"Temporarily invalid reservation launches as a pair after state becomes valid"
+	)
+	_check(
+		original_reservation_time >= 0.0,
+		"Retries preserve one reservation rather than selecting a replacement"
+	)
+
+	arena.queue_free()
+	await process_frame
+
+
+func _test_late_phase_repeatedly_selects_pairs() -> void:
+	var arena := ARENA_SCENE.instantiate() as CompactArena
+	_configure_fast_pattern_test(arena, true)
+	arena.survival_time = arena.mixed_pair_phase_end_seconds
+	arena.landed_lifetime = 0.15
+	arena.despawn_warning_duration = 0.05
+	var committed_sizes: Array[int] = []
+	arena.pattern_committed.connect(
+		func(lane_indices: PackedInt32Array, _duration: float) -> void:
+			committed_sizes.append(lane_indices.size())
+	)
+	root.add_child(arena)
+	_disable_player(arena)
+
+	for frame in range(MAX_TEST_FRAMES):
+		await physics_frame
+		if committed_sizes.size() >= 3:
+			break
+	_check(committed_sizes.size() >= 3, "Late-phase scheduler commits repeated patterns")
+	_check(
+		committed_sizes.all(func(pattern_size: int) -> bool: return pattern_size == 2),
+		"Every pattern selected at fifteen seconds or later is paired"
+	)
 
 	arena.queue_free()
 	await process_frame
@@ -181,18 +318,16 @@ func _test_invalid_pattern_retry() -> void:
 func _test_pending_pattern_restart_cleanup() -> void:
 	var arena := ARENA_SCENE.instantiate() as CompactArena
 	_configure_fast_pattern_test(arena, true)
-	arena.initial_telegraph_duration = 1.0
-	arena.minimum_telegraph_duration = 1.0
+	arena.minimum_safe_region_width = 2000.0
 	root.add_child(arena)
 	_disable_player(arena)
 
 	for frame in range(MAX_TEST_FRAMES):
 		await physics_frame
-		if arena.has_pending_pattern():
+		if arena.has_reserved_pair():
 			break
-	_check(arena.has_pending_pattern(), "Restart test begins with a pending pattern")
-	var pending_lanes := arena.pending_pattern_lanes()
-	_check(pending_lanes.size() == 2, "Restart test has two pending warning lanes")
+	_check(arena.has_reserved_pair(), "Restart test begins with a reserved pair")
+	_check(not arena.has_pending_pattern(), "Reserved pair has no committed warning lanes yet")
 
 	current_scene = arena
 	var previous_instance_id := arena.get_instance_id()
@@ -211,9 +346,11 @@ func _test_pending_pattern_restart_cleanup() -> void:
 	_check(
 		restarted_arena != null
 		and not restarted_arena.has_pending_pattern()
+		and not restarted_arena.has_reserved_pair()
+		and restarted_arena.reserved_pattern_size() == 0
 		and restarted_arena.falling_product_count() == 0
 		and restarted_arena.landed_product_count() == 0,
-		"Restart clears warnings, falling cans, platforms, and pending state"
+		"Restart clears warnings, cans, platforms, reservation, and retry state"
 	)
 	_check(
 		restarted_arena != null
@@ -243,12 +380,13 @@ func _configure_fast_pattern_test(arena: CompactArena, force_two: bool) -> void:
 	arena.landed_lifetime = 2.0
 	arena.despawn_warning_duration = 0.25
 	if force_two:
-		arena.early_phase_end_seconds = 0.0
-		arena.middle_phase_end_seconds = 0.0
+		arena.first_pair_start_seconds = 0.0
+		arena.guaranteed_pair_phase_end_seconds = 0.0
+		arena.mixed_pair_phase_end_seconds = 0.0
 		arena.late_two_can_probability = 1.0
 	else:
-		arena.early_phase_end_seconds = 999.0
-		arena.middle_two_can_probability = 0.0
+		arena.first_pair_start_seconds = 999.0
+		arena.mixed_two_can_probability = 0.0
 		arena.late_two_can_probability = 0.0
 
 

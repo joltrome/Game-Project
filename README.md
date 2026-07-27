@@ -11,11 +11,12 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 ## Current state
 
-**Build:** VM-0.2.2-A
+**Build:** VM-0.2.2-A-R1
+
 **Phase:** Prototype A — compact arena  
 **Prototype A gameplay evidence:** One limited informal observation
 
-The default scene is the compact-arena prototype using the locked VM-0.1.2 `CharacterBody2D` player. Build VM-0.2.2-A adds validated one- and two-can warning patterns to the temporary-platform baseline without changing the controller, telegraph curve, fall-speed curve, cooldown curve, six-second landed lifetime, or two-platform cap. Pattern selection uses seven logical lanes, rejects occupied or impassable configurations before commitment, and delays when no valid pattern exists. This concurrent-pattern experiment requires manual evaluation and is not a validated difficulty result.
+The default scene is the compact-arena prototype using the locked VM-0.1.2 `CharacterBody2D` player. Build VM-0.2.2-A-R1 fixes paired-pattern starvation by reserving a selected pair until two current lanes pass the existing capacity, overlap, spacing, and reachable-region checks. The experimental ramp uses singles before six seconds, guarantees the first pair selection from six seconds onward, uses a 50 percent pair probability from 10 to 15 seconds after that first reservation, and selects pairs at 15 seconds or later. The controller, telegraph curve, fall-speed curve, cooldown curve, six-second landed lifetime, and two-platform cap are unchanged. This pacing experiment requires manual evaluation and is not a validated difficulty result.
 
 ## Open locally
 
@@ -33,7 +34,7 @@ The default scene is the compact-arena prototype using the locked VM-0.1.2 `Char
 
 ## Next validation task
 
-Play Build VM-0.2.2-A without changing parameters. Confirm that early play uses single cans, occasional paired warnings appear after 15 seconds, and paired warnings become more common after 35 seconds. For every pair, verify that both warning columns map to their exact cans, at least one understandable response remains, and existing platforms never disappear merely because a pattern was attempted. Record observations before tuning or adding content.
+Play Build VM-0.2.2-A-R1 without changing parameters. Confirm that early play starts with singles and that the first paired warning reliably appears during a short run. Watch for an understandable pause while a reserved pair waits for both temporary platforms to despawn. For every pair, verify that both warning columns map to their exact cans, at least one reachable response remains, jumping becomes relevant without creating an unavoidable configuration, and no reserved pair is replaced by another single. Record observations before tuning or adding content.
 
 ## Automated movement test
 

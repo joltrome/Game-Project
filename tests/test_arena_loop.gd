@@ -2,7 +2,7 @@ extends SceneTree
 
 const ARENA_SCENE := preload("res://scenes/prototypes/arena.tscn")
 const PRODUCT_SCENE := preload("res://scenes/hazards/falling_product.tscn")
-const PHYSICS_FRAMES_TO_OBSERVE := 720
+const PHYSICS_FRAMES_TO_OBSERVE := 900
 const FLOAT_TOLERANCE := 0.01
 
 var failures: int = 0
