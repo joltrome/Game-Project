@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vending Machine Survival — Core Loop Roadmap</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0d10;
+      --panel: #141820;
+      --panel-2: #1b202a;
+      --line: #303744;
+      --text: #f4f6f8;
+      --muted: #aeb6c2;
+      --accent: #f5c542;
+      --accent-2: #67d7c4;
+      --danger: #ff7373;
+      --success: #72df92;
+      --warning: #ffb86b;
+      --info: #7eb8ff;
+      --shadow: 0 18px 50px rgba(0,0,0,.28);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font: 15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(245,197,66,.11), transparent 27rem),
+        radial-gradient(circle at 95% 10%, rgba(103,215,196,.09), transparent 30rem),
+        var(--bg);
+      color: var(--text);
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    a { color: var(--accent-2); }
+    .shell { max-width: 1450px; margin: 0 auto; padding: 22px; }
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) auto;
+      gap: 20px;
+      align-items: start;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: linear-gradient(135deg, rgba(27,32,42,.96), rgba(16,20,27,.96));
+      box-shadow: var(--shadow);
+    }
+    .eyebrow { color: var(--accent); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; }
+    h1 { font-size: clamp(28px, 4vw, 50px); line-height: 1.05; margin: 8px 0 10px; letter-spacing: -.035em; }
+    h2 { margin: 0 0 12px; font-size: 23px; }
+    h3 { margin: 0 0 7px; font-size: 17px; }
+    p { margin: 0 0 10px; }
+    .pitch { max-width: 850px; color: var(--muted); font-size: 17px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+    .btn {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 13px;
+      background: var(--panel-2);
+      color: var(--text);
+      font-weight: 700;
+    }
+    .btn:hover { transform: translateY(-1px); border-color: #4e596a; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #17130a; }
+    .btn.danger { color: #ffdada; border-color: rgba(255,115,115,.45); }
+    .btn.small { padding: 7px 9px; font-size: 13px; }
+    .scope-lock {
+      margin: 18px 0;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 13px;
+      align-items: start;
+      padding: 16px 18px;
+      border: 1px solid rgba(255,115,115,.42);
+      border-radius: 14px;
+      background: rgba(255,115,115,.08);
+    }
+    .scope-lock strong { color: #ffc5c5; }
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      gap: 7px;
+      overflow-x: auto;
+      padding: 12px 0;
+      backdrop-filter: blur(14px);
+      background: rgba(11,13,16,.82);
+    }
+    .nav button {
+      white-space: nowrap;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 12px;
+      color: var(--muted);
+      background: rgba(20,24,32,.92);
+    }
+    .nav button.active { color: #17130a; background: var(--accent); border-color: var(--accent); font-weight: 800; }
+    .tab { display: none; }
+    .tab.active { display: block; }
+    .grid { display: grid; gap: 16px; }
+    .grid.two { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .grid.four { grid-template-columns: repeat(4, minmax(0,1fr)); }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(20,24,32,.93);
+      padding: 18px;
+      box-shadow: 0 10px 32px rgba(0,0,0,.16);
+    }
+    .card.subtle { background: rgba(20,24,32,.68); }
+    .muted { color: var(--muted); }
+    .tiny { font-size: 12px; color: var(--muted); }
+    .stat { font-size: 29px; font-weight: 900; letter-spacing: -.04em; }
+    .stat-label { color: var(--muted); font-size: 13px; }
+    .tag { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 999px; padding: 3px 8px; color: var(--muted); font-size: 12px; }
+    .tag.evidence { color: #bcd7ff; border-color: rgba(126,184,255,.5); }
+    .tag.hypothesis { color: #ffe0b6; border-color: rgba(255,184,107,.5); }
+    .tag.decision { color: #c7fff5; border-color: rgba(103,215,196,.5); }
+    .tag.result { color: #caffd7; border-color: rgba(114,223,146,.5); }
+    .progress { height: 9px; border-radius: 999px; overflow: hidden; background: #090b0e; border: 1px solid #252b35; }
+    .progress > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .25s ease; }
+    .phase { margin-bottom: 18px; }
+    .phase-head { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 12px; margin-bottom: 9px; }
+    .task-list { display: grid; gap: 9px; }
+    .task {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) 142px;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid #2a313c;
+      border-radius: 12px;
+      background: rgba(10,13,17,.52);
+    }
+    .task.done { opacity: .62; }
+    .task.done .task-title { text-decoration: line-through; }
+    .task-title { font-weight: 800; }
+    .task-detail { color: var(--muted); font-size: 13px; margin-top: 3px; }
+    select, input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #0f1319;
+      color: var(--text);
+      padding: 9px 10px;
+    }
+    textarea { min-height: 92px; resize: vertical; }
+    label { display: grid; gap: 5px; color: var(--muted); font-size: 13px; }
+    .form-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; }
+    .form-grid .wide { grid-column: span 2; }
+    .form-grid .full { grid-column: 1 / -1; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 8px; border-bottom: 1px solid #2a313c; text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+    .table-wrap { overflow-x: auto; }
+    .callout { border-left: 4px solid var(--accent); padding: 12px 14px; background: rgba(245,197,66,.07); border-radius: 0 10px 10px 0; }
+    .danger-callout { border-left-color: var(--danger); background: rgba(255,115,115,.07); }
+    .success-callout { border-left-color: var(--success); background: rgba(114,223,146,.07); }
+    .prototype-title { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+    .versus { font-size: 13px; color: var(--muted); padding: 3px 8px; border: 1px solid var(--line); border-radius: 999px; }
+    .checklist { list-style: none; padding: 0; margin: 10px 0 0; }
+    .checklist li { padding: 6px 0 6px 22px; position: relative; color: var(--muted); }
+    .checklist li::before { content: "□"; position: absolute; left: 0; color: var(--accent); }
+    .footer { color: var(--muted); text-align: center; padding: 30px 0 10px; font-size: 12px; }
+    .empty { padding: 20px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 12px; }
+    .metric-pass { color: var(--success); }
+    .metric-fail { color: var(--danger); }
+    .kbd { border: 1px solid #4a5362; background: #191f28; border-bottom-width: 3px; padding: 1px 6px; border-radius: 6px; font-size: 12px; }
+    dialog { max-width: 720px; width: calc(100% - 30px); border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--text); padding: 0; }
+    dialog::backdrop { background: rgba(0,0,0,.72); }
+    dialog .dialog-body { padding: 20px; }
+    pre { white-space: pre-wrap; word-break: break-word; padding: 14px; background: #0d1015; border: 1px solid var(--line); border-radius: 10px; color: #dbe2ea; max-height: 50vh; overflow: auto; }
+    @media (max-width: 980px) {
+      .topbar { grid-template-columns: 1fr; }
+      .actions { justify-content: flex-start; }
+      .grid.four, .grid.three { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .form-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+    @media (max-width: 650px) {
+      .shell { padding: 12px; }
+      .grid.two, .grid.three, .grid.four { grid-template-columns: 1fr; }
+      .task { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid .wide, .form-grid .full { grid-column: auto; }
+      h1 { font-size: 34px; }
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">Game 1 · Core-loop validation</div>
+      <h1>Vending Machine Survival</h1>
+      <p class="pitch">A tiny person is trapped inside a malfunctioning vending machine. Dodge falling products and increasingly absurd machine failures for as long as possible.</p>
+      <p class="tiny">Roadmap version 0.1 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="copyHandoff">Copy Codex handoff</button>
+      <button class="btn" id="exportJson">Export data</button>
+      <button class="btn" id="importJson">Import data</button>
+      <input hidden type="file" id="importFile" accept="application/json" />
+      <button class="btn danger" id="resetAll">Reset</button>
+    </div>
+  </header>
+
+  <section class="scope-lock">
+    <div aria-hidden="true">🔒</div>
+    <div><strong>Scope lock:</strong> no daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-progression, or extra modes. Do not expand until players voluntarily restart after dying.</div>
+  </section>
+
+  <nav class="nav" aria-label="Roadmap sections">
+    <button class="active" data-tab="dashboard">Dashboard</button>
+    <button data-tab="roadmap">Roadmap</button>
+    <button data-tab="prototypes">Prototype comparison</button>
+    <button data-tab="findings">Evidence & findings</button>
+    <button data-tab="playtests">Playtests</button>
+    <button data-tab="qa">QA gates</button>
+    <button data-tab="handoff">Codex handoff</button>
+  </nav>
+
+  <main>
+    <section class="tab active" id="dashboard">
+      <div class="grid four" style="margin-bottom:16px">
+        <div class="card"><div class="stat" id="overallProgress">0%</div><div class="stat-label">Roadmap complete</div></div>
+        <div class="card"><div class="stat" id="restartRate">—</div><div class="stat-label">Restarted after first death</div></div>
+        <div class="card"><div class="stat" id="fourthRunRate">—</div><div class="stat-label">Started a fourth run</div></div>
+        <div class="card"><div class="stat" id="playtestCount">0</div><div class="stat-label">Playtests logged</div></div>
+      </div>
+
+      <div class="grid two">
+        <div class="card">
+          <h2>Current recommendation</h2>
+          <div class="callout">
+            <strong>Build with Godot 4 + GDScript, export to Web, distribute through itch.io.</strong>
+            <p class="muted" style="margin-top:7px">Keep one repository and two gameplay scenes sharing the same player controller, collision logic, restart flow, and gray-box visual language.</p>
+          </div>
+          <div style="height:14px"></div>
+          <h3>Immediate next action</h3>
+          <p id="nextAction" class="muted">Loading…</p>
+        </div>
+        <div class="card">
+          <h2>Validation gate</h2>
+          <p class="muted">Provisional gate for the first 10 useful tests. This is a decision threshold, not evidence.</p>
+          <ul class="checklist">
+            <li>At least 7/10 restart after the first death without prompting.</li>
+            <li>At least 4/10 initiate a fourth run without prompting.</li>
+            <li>Most testers correctly understand why they died.</li>
+            <li>One prototype creates clearly stronger self-directed replay behavior.</li>
+          </ul>
+          <div class="progress" style="margin-top:12px"><div id="gateProgress"></div></div>
+          <p class="tiny" id="gateText" style="margin-top:7px">No playtest evidence yet.</p>
+        </div>
+      </div>
+
+      <div class="grid four" style="margin-top:16px">
+        <div class="card subtle"><span class="tag evidence">Evidence</span><h3 style="margin-top:10px">What we know</h3><p class="muted">After the VM-0.1.2 change and symmetry validation, one internal manual test described the shared controller as tight and responsive. Prototype A hazard behavior remains untested manually.</p></div>
+        <div class="card subtle"><span class="tag hypothesis">Hypothesis</span><h3 style="margin-top:10px">Primary risk</h3><p class="muted">The game may feel like a generic survival platformer or endless runner with vending-machine art pasted on top.</p></div>
+        <div class="card subtle"><span class="tag decision">Decision</span><h3 style="margin-top:10px">Grounded precision</h3><p class="muted">Grounded horizontal velocity comes directly from current input. Airborne control remains acceleration-based. Both prototypes must use this shared behavior.</p></div>
+        <div class="card subtle"><span class="tag result">Result</span><h3 style="margin-top:10px">Build VM-0.2.0-A</h3><p class="muted">The default scene now contains one visible drop source, one telegraphed product hazard, immediate death, restart, a timer, and a capped 60-second ramp. Movement and arena tests passed; hazard readability and perceived fairness remain unverified manually.</p></div>
+      </div>
+    </section>
+
+    <section class="tab" id="roadmap">
+      <div class="card" style="margin-bottom:16px">
+        <h2>Implementation roadmap</h2>
+        <p class="muted">Change task states as work progresses. “Blocked” should explain a concrete obstacle, not uncertainty or reluctance.</p>
+      </div>
+      <div id="roadmapPhases"></div>
+    </section>
+
+    <section class="tab" id="prototypes">
+      <div class="grid two">
+        <article class="card">
+          <div class="prototype-title"><div><span class="tag">Prototype A</span><h2 style="margin-top:9px">Compact arena</h2></div><span class="versus">Agency-first</span></div>
+          <p class="muted">Free left/right movement and jumping inside a constrained vending-machine chamber.</p>
+          <h3>Hypothesis</h3><p class="muted">The arena creates intentional positioning, readable recovery, and stronger “I can do better” deaths.</p>
+          <h3>Failure modes</h3>
+          <ul class="checklist">
+            <li>Feels like a generic platform survival game.</li>
+            <li>Camping in one safe location dominates.</li>
+            <li>Jumping invalidates most hazards.</li>
+            <li>Too much empty movement between threats.</li>
+          </ul>
+          <h3>Machine-native justification</h3><p class="muted">Products fall from visible coils or shelves; jams shake before releasing; refrigeration failures alter floor traction.</p>
+        </article>
+        <article class="card">
+          <div class="prototype-title"><div><span class="tag">Prototype B</span><h2 style="margin-top:9px">Conveyor scroll</h2></div><span class="versus">Pressure-first</span></div>
+          <p class="muted">The environment automatically advances while the player has limited horizontal repositioning and jumping.</p>
+          <h3>Hypothesis</h3><p class="muted">Forced movement creates more immediate tension, rhythm, and shorter gaps between meaningful decisions.</p>
+          <h3>Failure modes</h3>
+          <ul class="checklist">
+            <li>Feels like a generic endless runner.</li>
+            <li>Forced motion combines with random falls to create unavoidable deaths.</li>
+            <li>The player watches patterns instead of making choices.</li>
+            <li>Limited repositioning makes controls feel unresponsive.</li>
+          </ul>
+          <h3>Machine-native justification</h3><p class="muted">An internal delivery conveyor or product elevator drags the player toward the retrieval chute.</p>
+        </article>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2>Controlled comparison</h2>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Variable</th><th>Must remain identical</th><th>Allowed difference</th></tr></thead>
+          <tbody>
+            <tr><td>Player controller</td><td>Acceleration, deceleration, max speed, jump force, gravity, coyote time, jump buffer</td><td>Only the conveyor’s environmental displacement</td></tr>
+            <tr><td>Damage</td><td>Hitboxes, invulnerability policy, death feedback</td><td>Hazard arrangement required by each structure</td></tr>
+            <tr><td>Presentation</td><td>Player scale, shapes, palette, line weight, camera clarity, sound volume</td><td>Scene layout and movement source</td></tr>
+            <tr><td>Restart</td><td>Death-to-input delay and player-triggered restart</td><td>None</td></tr>
+            <tr><td>Testing</td><td>Same testers, time allowance, instructions, device where practical</td><td>Alternate AB and BA order</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <section class="tab" id="findings">
+      <div class="card">
+        <h2>Add a finding</h2>
+        <form id="findingForm" class="form-grid">
+          <label>Type<select id="findingType"><option>Evidence</option><option>Hypothesis</option><option>Decision</option><option>Result</option></select></label>
+          <label>Date<input id="findingDate" type="date" /></label>
+          <label class="wide">Source or test<input id="findingSource" placeholder="e.g. Playtest PT-003 or team decision" /></label>
+          <label class="full">Statement<textarea id="findingText" required placeholder="Record exactly what is supported. Do not turn interpretation into evidence."></textarea></label>
+          <div class="full"><button class="btn primary" type="submit">Add finding</button></div>
+        </form>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="prototype-title"><h2>Finding log</h2><button class="btn small" id="downloadFindings">Download Markdown</button></div>
+        <div id="findingList" style="margin-top:12px"></div>
+      </div>
+    </section>
+
+    <section class="tab" id="playtests">
+      <div class="card">
+        <h2>Log a playtest</h2>
+        <p class="muted">Prefer observed behavior over scores or compliments. Never prompt the tester to restart.</p>
+        <form id="playtestForm" class="form-grid">
+          <label>Tester code<input id="ptTester" required placeholder="PT-001" /></label>
+          <label>Date<input id="ptDate" type="date" /></label>
+          <label>Order<select id="ptOrder"><option>AB</option><option>BA</option><option>A only</option><option>B only</option></select></label>
+          <label>Device<input id="ptDevice" placeholder="Desktop keyboard" /></label>
+          <label>Total runs<input id="ptRuns" type="number" min="1" value="1" /></label>
+          <label>Restarted after first death?<select id="ptRestart"><option value="yes">Yes</option><option value="no">No</option><option value="unknown">Unknown</option></select></label>
+          <label>Started fourth run?<select id="ptFourth"><option value="yes">Yes</option><option value="no">No</option><option value="unknown">Unknown</option></select></label>
+          <label>Understood death?<select id="ptUnderstood"><option value="yes">Yes</option><option value="partial">Partly</option><option value="no">No</option></select></label>
+          <label>Preferred prototype<select id="ptPreferred"><option value="A">A — Arena</option><option value="B">B — Conveyor</option><option value="tie">No clear preference</option><option value="na">Not compared</option></select></label>
+          <label>Unfair deaths observed<input id="ptUnfair" type="number" min="0" value="0" /></label>
+          <label class="wide">Stopped because…<input id="ptStopReason" placeholder="Bored, frustrated, time limit, satisfied…" /></label>
+          <label class="full">Observed behavior and exact comments<textarea id="ptNotes" placeholder="Separate what happened from your interpretation."></textarea></label>
+          <div class="full"><button class="btn primary" type="submit">Save playtest</button></div>
+        </form>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="prototype-title"><h2>Playtest log</h2><button class="btn small" id="downloadPlaytests">Download CSV</button></div>
+        <div id="playtestList" style="margin-top:12px"></div>
+      </div>
+    </section>
+
+    <section class="tab" id="qa">
+      <div class="grid two">
+        <div class="card">
+          <h2>Control-feel gate</h2>
+          <ul class="checklist">
+            <li>Left/right response is immediate without feeling binary.</li>
+            <li>Stopping distance is predictable.</li>
+            <li>Jump input is buffered shortly before landing.</li>
+            <li>Coyote time forgives a narrowly missed ledge.</li>
+            <li>Holding jump produces a deliberate, tested result.</li>
+            <li>Air control is useful but does not erase commitment.</li>
+            <li>Keyboard ghosting does not block movement + jump combinations.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>Fairness gate</h2>
+          <ul class="checklist">
+            <li>Every damaging object has a readable source and telegraph.</li>
+            <li>At least one reachable response exists when a hazard commits.</li>
+            <li>Spawn logic cannot seal all escape paths.</li>
+            <li>Player hitbox visually matches the sprite/shape.</li>
+            <li>Death cause is obvious without explanatory text.</li>
+            <li>Randomness changes situations, not whether survival is possible.</li>
+            <li>Difficulty increases through pressure, not hidden information.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>Restart gate</h2>
+          <ul class="checklist">
+            <li>Death feedback completes quickly.</li>
+            <li>Restart requires an intentional player input.</li>
+            <li>Restart returns directly to control, not a menu.</li>
+            <li>No forced tutorial repeats.</li>
+            <li>Run count and cause of death can be logged anonymously.</li>
+            <li>The tester is never verbally told to “try again.”</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>Visual-coherence gate</h2>
+          <ul class="checklist">
+            <li>All gray-box objects use one consistent visual grammar.</li>
+            <li>Danger, background, collision, and decoration read differently.</li>
+            <li>Hazards originate from vending-machine mechanisms.</li>
+            <li>Camera framing shows needed reaction space.</li>
+            <li>No placeholder asset implies a mechanic that does not exist.</li>
+            <li>The conveyor has a physically legible source of motion.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h2>Stop conditions</h2>
+        <div class="grid three">
+          <div class="callout danger-callout"><strong>Generic</strong><p class="muted">Testers describe it only as “Dodge the blocks” and cannot recall a vending-machine-specific event.</p></div>
+          <div class="callout danger-callout"><strong>Unfair</strong><p class="muted">Players repeatedly misidentify death causes or correctly report that no reachable response existed.</p></div>
+          <div class="callout danger-callout"><strong>No pull</strong><p class="muted">Players stop after one or two runs and need prompting to continue.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab" id="handoff">
+      <div class="grid two">
+        <div class="card">
+          <h2>Recommended working setup</h2>
+          <ol class="muted">
+            <li>Keep this ChatGPT project for product decisions, research, playtest interpretation, and scope control.</li>
+            <li>Create a local Git repository for the Godot project.</li>
+            <li>Put this file under <span class="kbd">docs/roadmap.html</span>.</li>
+            <li>Open the repository folder in Codex for direct code editing, test runs, and diffs.</li>
+            <li>Commit after every working milestone; tag playable builds.</li>
+            <li>Export findings from this roadmap and commit the JSON/Markdown snapshot.</li>
+          </ol>
+          <div class="callout" style="margin-top:14px"><strong>Boundary:</strong> ChatGPT and Codex histories are separate. Treat repository files—especially <span class="kbd">AGENTS.md</span>, this roadmap, and the decision log—as the durable shared context.</div>
+        </div>
+        <div class="card">
+          <h2>Suggested repository</h2>
+<pre>vending-machine-survival/
+├── AGENTS.md
+├── README.md
+├── project.godot
+├── docs/
+│   ├── roadmap.html
+│   ├── findings.md
+│   └── playtests.csv
+├── scenes/
+│   ├── main.tscn
+│   ├── prototypes/
+│   │   ├── arena.tscn
+│   │   └── conveyor.tscn
+│   ├── player/
+│   └── hazards/
+├── scripts/
+├── assets/
+├── tests/
+└── builds/</pre>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="prototype-title"><h2>Generated Codex handoff</h2><button class="btn primary" id="copyHandoff2">Copy</button></div>
+        <pre id="handoffPreview"></pre>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">This roadmap is intentionally local-first and dependency-free. Export data before clearing browser storage or moving devices.</footer>
+</div>
+
+<dialog id="messageDialog"><div class="dialog-body"><h2 id="dialogTitle">Message</h2><p id="dialogText" class="muted"></p><div style="text-align:right;margin-top:18px"><button class="btn primary" onclick="document.getElementById('messageDialog').close()">Close</button></div></div></dialog>
+
+<script>
+(() => {
+  'use strict';
+  const STORAGE_KEY = 'vms-roadmap-v1';
+  const today = new Date().toISOString().slice(0,10);
+
+  const phases = [
+    {
+      id: 'p0', title: 'Phase 0 — Foundation', goal: 'Create a reproducible, scope-locked project before gameplay work.',
+      tasks: [
+        ['p0-engine', 'Install Godot 4 and create a GDScript project', 'Use the stable Godot 4 release available to the team. Do not choose C# for a web-first build.'],
+        ['p0-repo', 'Create the Git repository and base folders', 'Add README.md, AGENTS.md, docs/, scenes/, scripts/, assets/, tests/, and builds/.'],
+        ['p0-roadmap', 'Commit this roadmap into docs/roadmap.html', 'The repository—not chat history—is the durable handoff surface.'],
+        ['p0-baseline', 'Create an empty runnable main scene', 'The project should launch without warnings and show the build ID.'],
+        ['p0-inputs', 'Define shared input actions', 'move_left, move_right, jump, restart, pause.'],
+        ['p0-export', 'Configure a Web export preset', 'Prove the blank project runs in a desktop browser before adding gameplay.']
+      ]
+    },
+    {
+      id: 'p1', title: 'Phase 1 — Shared movement laboratory', goal: 'Make movement worth controlling before building hazards.',
+      tasks: [
+        ['p1-player', 'Build a shared CharacterBody2D player controller', 'Acceleration, deceleration, max speed, gravity, jump, air control.'],
+        ['p1-buffer', 'Add coyote time and jump buffering', 'Keep values exported/configurable; do not bury tuning constants.'],
+        ['p1-camera', 'Set camera, arena scale, and reaction space', 'The player must be readable at the intended browser viewport.'],
+        ['p1-feel', 'Run an internal movement-only feel test', 'Moving and jumping around an empty box should already feel precise.'],
+        ['p1-tests', 'Add automated checks for shared controller invariants', 'At minimum test input action presence, restart path, and scene load errors.']
+      ]
+    },
+    {
+      id: 'p2', title: 'Phase 2 — Prototype A: compact arena', goal: 'Test agency, positioning, and readable recovery.',
+      tasks: [
+        ['p2-arena', 'Build the compact arena scene', 'Use simple geometry with vending-machine scale cues.'],
+        ['p2-dropper', 'Implement one visible product-drop mechanism', 'Telegraph from a coil or shelf; no arbitrary sky spawning.'],
+        ['p2-fair', 'Guarantee reachable safe space for each committed drop', 'Start deterministic; add constrained randomness only after fairness is proven.'],
+        ['p2-death', 'Add shared death feedback and player-triggered restart', 'No menu between death and the next run.'],
+        ['p2-tune', 'Tune one complete 30–60 second pressure curve', 'Do not add a second hazard until the first creates meaningful decisions.']
+      ]
+    },
+    {
+      id: 'p3', title: 'Phase 3 — Prototype B: conveyor', goal: 'Test forced pace without creating helplessness.',
+      tasks: [
+        ['p3-conveyor', 'Build the conveyor scene using the shared controller', 'Environmental displacement is the primary structural difference.'],
+        ['p3-source', 'Make the conveyor motion visually legible', 'Show belts, rollers, an elevator, or the route toward the retrieval chute.'],
+        ['p3-reposition', 'Tune limited horizontal repositioning', 'The player must still feel responsible for success and failure.'],
+        ['p3-fair', 'Add a safe-response constraint to combined motion and drops', 'Reject hazard states with no reachable response.'],
+        ['p3-tune', 'Tune a matched 30–60 second pressure curve', 'Match approximate intensity to Prototype A for a fair comparison.']
+      ]
+    },
+    {
+      id: 'p4', title: 'Phase 4 — Comparison build', goal: 'Create a controlled A/B package rather than two unrelated demos.',
+      tasks: [
+        ['p4-order', 'Add AB and BA prototype ordering', 'Use URL parameters or a simple assignment screen.'],
+        ['p4-fixed', 'Audit all shared variables', 'Movement, collisions, death, restart, presentation, sound, and instructions.'],
+        ['p4-buildid', 'Display build ID and prototype ID', 'Example: VM-0.1.0 / Arena.'],
+        ['p4-log', 'Log minimal anonymous session events locally', 'run_started, player_died, restart_pressed, prototype_started.'],
+        ['p4-web', 'Export and smoke-test the browser build', 'Test keyboard input, resizing, focus loss, audio, and restart.']
+      ]
+    },
+    {
+      id: 'p5', title: 'Phase 5 — Moderated playtests', goal: 'Observe voluntary replay before building analytics infrastructure.',
+      tasks: [
+        ['p5-script', 'Prepare a neutral moderator script', 'Explain controls only. Do not sell the concept or suggest restarting.'],
+        ['p5-first5', 'Run five moderated tests', 'Alternate AB/BA order and record observed behavior.'],
+        ['p5-fix', 'Fix only control, clarity, fairness, and restart blockers', 'No content expansion between test waves.'],
+        ['p5-next5', 'Run five more moderated tests', 'Use the revised build with balanced ordering.'],
+        ['p5-gate', 'Evaluate the voluntary-restart gate', 'Continue, revise the loop, choose a prototype, or kill the direction.']
+      ]
+    },
+    {
+      id: 'p6', title: 'Phase 6 — Only after the gate passes', goal: 'Polish the winning loop without hiding weak retention behind features.',
+      tasks: [
+        ['p6-select', 'Select one structure using behavior evidence', 'Preference comments are secondary to repeat-run behavior and fairness.'],
+        ['p6-theme', 'Add one additional machine-native failure', 'It must create a new decision, not only a new sprite.'],
+        ['p6-juice', 'Add restrained game feel', 'Audio, squash/stretch, hit stop, particles, and camera shake only where clarity improves.'],
+        ['p6-unmod', 'Publish an unmoderated itch.io test', 'Only now add lightweight remote telemetry if useful.'],
+        ['p6-review', 'Re-check the scope lock', 'Daily challenges and monetization remain excluded.']
+      ]
+    }
+  ];
+
+  const IMPLEMENTATION_TASK_STATUSES = new Map([
+    ['p0-engine', 'done'],
+    ['p0-repo', 'done'],
+    ['p0-roadmap', 'done'],
+    ['p0-baseline', 'done'],
+    ['p0-inputs', 'done'],
+    ['p1-player', 'done'],
+    ['p1-buffer', 'done'],
+    ['p1-camera', 'done'],
+    ['p1-feel', 'done'],
+    ['p1-tests', 'done'],
+    ['p2-arena', 'done'],
+    ['p2-dropper', 'done'],
+    ['p2-fair', 'done'],
+    ['p2-death', 'done'],
+    ['p2-tune', 'in_progress']
+  ]);
+
+  const implementationResult = {
+    id: 'result-vm-0.1.0',
+    type: 'Result',
+    date: '2026-07-27',
+    source: 'Build VM-0.1.0 implementation',
+    text: 'Implemented the shared CharacterBody2D movement laboratory with exported movement values, coyote time, jump buffering, gray-box boundaries, one test ledge, visible build ID, and scene reload. Static resource checks passed; runtime behavior was not verified because Godot was unavailable in the implementation environment.'
+  };
+
+  const movementFeedbackEvidence = {
+    id: 'evidence-vm-0.1.0-movement-playtest',
+    type: 'Evidence',
+    date: '2026-07-27',
+    source: 'Internal playtest report, Build VM-0.1.0',
+    text: 'The tester reported that arrow keys did not move the player, landed reversals retained unwanted momentum, the jump felt floaty, and the center test ledge could not be reached again from the floor.'
+  };
+
+  const responsiveBaselineDecision = {
+    id: 'decision-vm-0.1.1-responsive-baseline',
+    type: 'Decision',
+    date: '2026-07-27',
+    source: 'Reversible movement-lab tuning decision',
+    text: 'Use a tighter neutral shared controller for the prototype comparison rather than treating accidental slipperiness as a game trait. Reconsider deliberate slippery movement only as a separately justified, machine-native mechanic.'
+  };
+
+  const tuningResult = {
+    id: 'result-vm-0.1.1',
+    type: 'Result',
+    date: '2026-07-27',
+    source: 'Build VM-0.1.1 implementation',
+    text: 'Corrected left/right arrow key constants; changed maximum speed 320→300, ground acceleration 1800→2800, ground deceleration 2200→4200, air acceleration 900→1400, gravity 1800→2400, and jump velocity -650→-700; applied ground deceleration during reversals; and lowered the test ledge from 138 px to 80 px above the floor. Automated Godot movement checks passed. Revised control feel is not yet a result.'
+  };
+
+  const groundedPrecisionDecision = {
+    id: 'decision-vm-0.1.2-grounded-precision',
+    type: 'Decision',
+    date: '2026-07-27',
+    source: 'Startup Lab movement decision',
+    text: 'For the compact dodge-survival comparison, grounded horizontal velocity is assigned directly from current input with no retained momentum. Airborne control remains acceleration-based, and both future prototypes use the same shared controller.'
+  };
+
+  const groundedPrecisionResult = {
+    id: 'result-vm-0.1.2',
+    type: 'Result',
+    date: '2026-07-27',
+    source: 'Build VM-0.1.2 automated validation',
+    text: 'Removed the ground acceleration and deceleration parameters and assigned grounded horizontal velocity directly from current input before jump consumption. Mirrored tests recorded takeoff velocities of ±300 px/s, apex differences of 0.054 px, displacement differences of 0.023 px, and no opposite-direction takeoff carry. Automated tests passed with zero failures; manual control feel remains unverified.'
+  };
+
+  const sharedBaselineDecision = {
+    id: 'decision-vm-0.1.2-locked-baseline',
+    type: 'Decision',
+    date: '2026-07-27',
+    source: 'Startup Lab decision after manual movement test',
+    text: 'Accept VM-0.1.2 as the locked shared movement baseline for both prototypes. Do not add an aerial action or another movement ability without new evidence.'
+  };
+
+  const sharedBaselineEvidence = {
+    id: 'evidence-vm-0.1.2-manual-movement-test',
+    type: 'Evidence',
+    date: '2026-07-27',
+    source: 'Internal manual test report, Build VM-0.1.2',
+    text: 'The tester reported that VM-0.1.2 visually appeared consistent and felt tight and responsive during manual movement testing.'
+  };
+
+  const compactArenaResult = {
+    id: 'result-vm-0.2.0-a',
+    type: 'Result',
+    date: '2026-07-27',
+    source: 'Build VM-0.2.0-A implementation and automated validation',
+    text: 'Implemented a compact gray-box arena using the unchanged shared VM-0.1.2 controller, one visible vending drop rack, one deterministic telegraphed product hazard, immediate collision death, player-triggered scene reload, a visible survival timer, and a configurable linear difficulty ramp capped at 60 seconds. The movement suite and arena suite passed with zero failures, and the default scene completed a 180-frame headless launch. Manual warning readability, perceived fairness, death clarity, restart feel, and the full pressure curve remain unverified.'
+  };
+
+  const migrationFindings = [
+    implementationResult,
+    movementFeedbackEvidence,
+    responsiveBaselineDecision,
+    tuningResult,
+    groundedPrecisionDecision,
+    groundedPrecisionResult,
+    sharedBaselineDecision,
+    sharedBaselineEvidence,
+    compactArenaResult
+  ];
+
+  const defaultFindings = [
+    { id: crypto.randomUUID(), type: 'Evidence', date: '2026-07-26', source: 'Project brief', text: 'At project brief creation, no players had tested the game; therefore no gameplay evidence existed yet.' },
+    { id: crypto.randomUUID(), type: 'Hypothesis', date: today, source: 'Design hypothesis', text: 'The compact arena may create more agency and more understandable deaths than forced scrolling.' },
+    { id: crypto.randomUUID(), type: 'Hypothesis', date: today, source: 'Design hypothesis', text: 'The conveyor may create faster tension but has a higher risk of unavoidable or low-agency deaths.' },
+    { id: crypto.randomUUID(), type: 'Decision', date: today, source: 'Scope decision', text: 'Do not add meta systems or monetization before voluntary restart behavior is observed.' },
+    ...migrationFindings
+  ];
+
+  const defaultState = {
+    version: 5,
+    statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
+    findings: defaultFindings,
+    playtests: []
+  };
+
+  let state = loadState();
+  const $ = id => document.getElementById(id);
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return structuredClone(defaultState);
+      const parsed = JSON.parse(raw);
+      const parsedVersion = Number(parsed.version || 1);
+      const statuses = { ...defaultState.statuses, ...(parsed.statuses || {}) };
+      const findings = Array.isArray(parsed.findings) ? parsed.findings : structuredClone(defaultFindings);
+      if (parsedVersion < defaultState.version) {
+        IMPLEMENTATION_TASK_STATUSES.forEach((status, id) => { statuses[id] = status; });
+        findings.forEach(finding => {
+          if (finding.source === 'Project brief' && finding.text === 'No players have tested the game yet; therefore there is no gameplay evidence.') {
+            finding.date = '2026-07-26';
+            finding.text = 'At project brief creation, no players had tested the game; therefore no gameplay evidence existed yet.';
+          }
+        });
+        migrationFindings.forEach(migrationFinding => {
+          if (!findings.some(finding => finding.id === migrationFinding.id)) {
+            findings.push(structuredClone(migrationFinding));
+          }
+        });
+      }
+      return {
+        ...structuredClone(defaultState),
+        ...parsed,
+        version: defaultState.version,
+        statuses,
+        findings,
+        playtests: Array.isArray(parsed.playtests) ? parsed.playtests : []
+      };
+    } catch (err) {
+      console.warn('Could not load saved roadmap data', err);
+      return structuredClone(defaultState);
+    }
+  }
+
+  function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    renderDashboard();
+    renderHandoff();
+  }
+
+  function showMessage(title, text) {
+    $('dialogTitle').textContent = title;
+    $('dialogText').textContent = text;
+    $('messageDialog').showModal();
+  }
+
+  function renderRoadmap() {
+    $('roadmapPhases').innerHTML = phases.map(phase => {
+      const done = phase.tasks.filter(t => state.statuses[t[0]] === 'done').length;
+      const percent = Math.round(done / phase.tasks.length * 100);
+      const tasks = phase.tasks.map(([id,title,detail]) => {
+        const status = state.statuses[id] || 'not_started';
+        return `<div class="task ${status === 'done' ? 'done' : ''}">
+          <div><div class="task-title">${escapeHtml(title)}</div><div class="task-detail">${escapeHtml(detail)}</div></div>
+          <select class="task-status" data-task="${id}" aria-label="Status for ${escapeHtml(title)}">
+            ${statusOptions(status)}
+          </select>
+        </div>`;
+      }).join('');
+      return `<section class="card phase">
+        <div class="phase-head"><div><h2>${escapeHtml(phase.title)}</h2><p class="muted">${escapeHtml(phase.goal)}</p></div><strong>${done}/${phase.tasks.length}</strong></div>
+        <div class="progress"><div style="width:${percent}%"></div></div>
+        <div class="task-list" style="margin-top:12px">${tasks}</div>
+      </section>`;
+    }).join('');
+
+    document.querySelectorAll('.task-status').forEach(select => {
+      select.addEventListener('change', event => {
+        state.statuses[event.target.dataset.task] = event.target.value;
+        saveState();
+        renderRoadmap();
+      });
+    });
+  }
+
+  function statusOptions(selected) {
+    const values = [['not_started','Not started'],['in_progress','In progress'],['blocked','Blocked'],['done','Done']];
+    return values.map(([value,label]) => `<option value="${value}" ${value === selected ? 'selected' : ''}>${label}</option>`).join('');
+  }
+
+  function renderDashboard() {
+    const allTasks = phases.flatMap(p => p.tasks);
+    const done = allTasks.filter(t => state.statuses[t[0]] === 'done').length;
+    const percent = Math.round(done / allTasks.length * 100);
+    $('overallProgress').textContent = `${percent}%`;
+
+    const next = allTasks.find(t => state.statuses[t[0]] !== 'done');
+    $('nextAction').textContent = next ? next[1] : 'All roadmap tasks are complete. Review the evidence before expanding scope.';
+    $('playtestCount').textContent = state.playtests.length;
+
+    const knownRestart = state.playtests.filter(p => ['yes','no'].includes(p.restart));
+    const restartYes = knownRestart.filter(p => p.restart === 'yes').length;
+    const restartRate = knownRestart.length ? Math.round(restartYes / knownRestart.length * 100) : null;
+    $('restartRate').textContent = restartRate === null ? '—' : `${restartRate}%`;
+    $('restartRate').className = `stat ${restartRate !== null && restartRate >= 70 ? 'metric-pass' : restartRate !== null ? 'metric-fail' : ''}`;
+
+    const knownFourth = state.playtests.filter(p => ['yes','no'].includes(p.fourth));
+    const fourthYes = knownFourth.filter(p => p.fourth === 'yes').length;
+    const fourthRate = knownFourth.length ? Math.round(fourthYes / knownFourth.length * 100) : null;
+    $('fourthRunRate').textContent = fourthRate === null ? '—' : `${fourthRate}%`;
+    $('fourthRunRate').className = `stat ${fourthRate !== null && fourthRate >= 40 ? 'metric-pass' : fourthRate !== null ? 'metric-fail' : ''}`;
+
+    let passed = 0;
+    if (state.playtests.length >= 10) passed++;
+    if (restartRate !== null && restartRate >= 70) passed++;
+    if (fourthRate !== null && fourthRate >= 40) passed++;
+    const understoodKnown = state.playtests.filter(p => ['yes','partial','no'].includes(p.understood));
+    const understoodGood = understoodKnown.filter(p => p.understood === 'yes').length;
+    const understoodRate = understoodKnown.length ? understoodGood / understoodKnown.length * 100 : 0;
+    if (understoodKnown.length >= 10 && understoodRate >= 70) passed++;
+    $('gateProgress').style.width = `${passed / 4 * 100}%`;
+    $('gateText').textContent = state.playtests.length
+      ? `${state.playtests.length}/10 tests · ${restartYes}/${knownRestart.length || 0} restarted · ${fourthYes}/${knownFourth.length || 0} reached run four · ${understoodGood}/${understoodKnown.length || 0} clearly understood death.`
+      : 'No playtest evidence yet.';
+  }
+
+  function renderFindings() {
+    if (!state.findings.length) {
+      $('findingList').innerHTML = '<div class="empty">No findings recorded.</div>';
+      return;
+    }
+    $('findingList').innerHTML = state.findings.slice().reverse().map(f => `<div class="card subtle" style="margin-bottom:9px">
+      <div class="prototype-title"><div><span class="tag ${f.type.toLowerCase()}">${escapeHtml(f.type)}</span> <span class="tiny">${escapeHtml(f.date || '')} · ${escapeHtml(f.source || 'No source')}</span></div><button class="btn small danger delete-finding" data-id="${f.id}">Delete</button></div>
+      <p style="margin-top:10px">${escapeHtml(f.text)}</p>
+    </div>`).join('');
+    document.querySelectorAll('.delete-finding').forEach(btn => btn.addEventListener('click', () => {
+      state.findings = state.findings.filter(f => f.id !== btn.dataset.id);
+      saveState(); renderFindings();
+    }));
+  }
+
+  function renderPlaytests() {
+    if (!state.playtests.length) {
+      $('playtestList').innerHTML = '<div class="empty">No playtests recorded. That means all gameplay claims remain hypotheses.</div>';
+      return;
+    }
+    $('playtestList').innerHTML = `<div class="table-wrap"><table><thead><tr><th>Tester</th><th>Date</th><th>Order</th><th>Runs</th><th>Restarted</th><th>Fourth</th><th>Death clear</th><th>Preferred</th><th>Unfair</th><th>Observed notes</th><th></th></tr></thead><tbody>${state.playtests.slice().reverse().map(p => `<tr>
+      <td>${escapeHtml(p.tester)}</td><td>${escapeHtml(p.date)}</td><td>${escapeHtml(p.order)}</td><td>${escapeHtml(String(p.runs))}</td><td>${escapeHtml(p.restart)}</td><td>${escapeHtml(p.fourth)}</td><td>${escapeHtml(p.understood)}</td><td>${escapeHtml(p.preferred)}</td><td>${escapeHtml(String(p.unfair))}</td><td>${escapeHtml([p.stopReason,p.notes].filter(Boolean).join(' — '))}</td><td><button class="btn small danger delete-playtest" data-id="${p.id}">Delete</button></td>
+    </tr>`).join('')}</tbody></table></div>`;
+    document.querySelectorAll('.delete-playtest').forEach(btn => btn.addEventListener('click', () => {
+      state.playtests = state.playtests.filter(p => p.id !== btn.dataset.id);
+      saveState(); renderPlaytests();
+    }));
+  }
+
+  function buildHandoff() {
+    const allTasks = phases.flatMap(p => p.tasks);
+    const nextTasks = allTasks.filter(t => state.statuses[t[0]] !== 'done').slice(0,5).map(t => `- ${t[1]} [${state.statuses[t[0]].replace('_',' ')}]`).join('\n');
+    const recentFindings = state.findings.slice(-8).map(f => `- ${f.type}: ${f.text} (Source: ${f.source || 'unspecified'})`).join('\n');
+    return `You are working on Game 1: Vending Machine Survival.\n\nPITCH\nA tiny person is trapped inside a malfunctioning vending machine. Dodge falling products and increasingly absurd machine failures for as long as possible.\n\nCURRENT GOAL\nDiscover a fun, responsive, visually coherent core loop by comparing:\nA. Compact arena with left/right movement and jumping.\nB. Automatically scrolling conveyor with limited horizontal repositioning and jumping.\n\nSCOPE LOCK\nExclude daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-progression, and extra modes. Do not expand scope before players voluntarily restart after dying.\n\nENGINE / DELIVERY\nUse Godot 4 with GDScript. Maintain one project with shared movement, collision, death, restart, and gray-box presentation. Export to Web for itch.io playtests.\n\nOPERATING RULES\n- Keep evidence, hypotheses, decisions, and results separate.\n- Challenge generic, unfair, overcomplicated, or visually inconsistent mechanics.\n- Every hazard must have a readable machine-native source and reachable response.\n- Prefer observed behavior over ratings or compliments.\n- Alternate AB and BA playtest order.\n- Do not use paid APIs unless explicitly approved and instrumented.\n\nNEXT TASKS\n${nextTasks || '- Review findings and select the next evidence-driven task.'}\n\nRECENT FINDINGS\n${recentFindings || '- No findings recorded.'}\n\nPLAYTEST STATUS\n${state.playtests.length} tests logged. Do not claim the core loop is validated without behavioral evidence.\n\nBefore editing code: inspect the repository, explain the smallest intended change, and preserve shared variables between the two prototypes. After editing: run available tests, report files changed, test results, known risks, and any scope implications.`;
+  }
+
+  function renderHandoff() { $('handoffPreview').textContent = buildHandoff(); }
+
+  function download(filename, text, mime = 'text/plain') {
+    const blob = new Blob([text], {type: mime});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 500);
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+  }
+
+  async function copyHandoff() {
+    try { await navigator.clipboard.writeText(buildHandoff()); showMessage('Copied', 'The current handoff brief is on your clipboard. Paste it into a Codex task after opening the local repository.'); }
+    catch { showMessage('Copy failed', 'Your browser blocked clipboard access. Open the Codex handoff tab and copy the text manually.'); }
+  }
+
+  document.querySelectorAll('.nav button').forEach(button => button.addEventListener('click', () => {
+    document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    button.classList.add('active');
+    $(button.dataset.tab).classList.add('active');
+  }));
+
+  $('findingDate').value = today;
+  $('ptDate').value = today;
+
+  $('findingForm').addEventListener('submit', e => {
+    e.preventDefault();
+    state.findings.push({
+      id: crypto.randomUUID(), type: $('findingType').value, date: $('findingDate').value,
+      source: $('findingSource').value.trim(), text: $('findingText').value.trim()
+    });
+    $('findingSource').value = ''; $('findingText').value = '';
+    saveState(); renderFindings();
+  });
+
+  $('playtestForm').addEventListener('submit', e => {
+    e.preventDefault();
+    state.playtests.push({
+      id: crypto.randomUUID(), tester: $('ptTester').value.trim(), date: $('ptDate').value,
+      order: $('ptOrder').value, device: $('ptDevice').value.trim(), runs: Number($('ptRuns').value),
+      restart: $('ptRestart').value, fourth: $('ptFourth').value, understood: $('ptUnderstood').value,
+      preferred: $('ptPreferred').value, unfair: Number($('ptUnfair').value),
+      stopReason: $('ptStopReason').value.trim(), notes: $('ptNotes').value.trim()
+    });
+    $('ptTester').value = ''; $('ptRuns').value = 1; $('ptUnfair').value = 0; $('ptStopReason').value = ''; $('ptNotes').value = '';
+    saveState(); renderPlaytests();
+  });
+
+  $('copyHandoff').addEventListener('click', copyHandoff);
+  $('copyHandoff2').addEventListener('click', copyHandoff);
+
+  $('exportJson').addEventListener('click', () => download(`vms-roadmap-${today}.json`, JSON.stringify(state, null, 2), 'application/json'));
+  $('importJson').addEventListener('click', () => $('importFile').click());
+  $('importFile').addEventListener('change', async e => {
+    const file = e.target.files[0]; if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      if (!parsed || typeof parsed !== 'object' || !parsed.statuses) throw new Error('Invalid roadmap data');
+      state = { ...structuredClone(defaultState), ...parsed, statuses: {...defaultState.statuses, ...(parsed.statuses || {})} };
+      saveState(); renderAll(); showMessage('Imported', 'Roadmap data was imported successfully.');
+    } catch (err) { showMessage('Import failed', err.message || 'The selected file is not valid roadmap JSON.'); }
+    e.target.value = '';
+  });
+
+  $('resetAll').addEventListener('click', () => {
+    if (!confirm('Reset all task states, findings, and playtests? Export first if you need a backup.')) return;
+    state = structuredClone(defaultState); saveState(); renderAll();
+  });
+
+  $('downloadFindings').addEventListener('click', () => {
+    const grouped = ['Evidence','Hypothesis','Decision','Result'].map(type => `## ${type}\n\n${state.findings.filter(f => f.type === type).map(f => `- **${f.date || 'Undated'}:** ${f.text} _Source: ${f.source || 'unspecified'}_`).join('\n') || '- None'}`).join('\n\n');
+    download(`vms-findings-${today}.md`, `# Vending Machine Survival Findings\n\n${grouped}\n`);
+  });
+
+  $('downloadPlaytests').addEventListener('click', () => {
+    const columns = ['tester','date','order','device','runs','restart','fourth','understood','preferred','unfair','stopReason','notes'];
+    const csv = [columns.join(','), ...state.playtests.map(p => columns.map(c => `"${String(p[c] ?? '').replaceAll('"','""')}"`).join(','))].join('\n');
+    download(`vms-playtests-${today}.csv`, csv, 'text/csv');
+  });
+
+  function renderAll() { renderRoadmap(); renderFindings(); renderPlaytests(); renderDashboard(); renderHandoff(); }
+  renderAll();
+})();
+</script>
+</body>
+</html>

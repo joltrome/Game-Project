@@ -1,0 +1,158 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/arena.gd" id="1_arena"]
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
+size = Vector2(960, 48)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall"]
+size = Vector2(48, 520)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_death"]
+bg_color = Color(0.12, 0.135, 0.16, 0.94)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.92, 0.24, 0.20, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[node name="CompactArena" type="Node2D"]
+script = ExtResource("1_arena")
+
+[node name="ArenaBackground" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(96, 150, 1056, 150, 1056, 584, 96, 584)
+color = Color(0.075, 0.09, 0.11, 1)
+
+[node name="Floor" type="StaticBody2D" parent="."]
+position = Vector2(576, 608)
+
+[node name="Visual" type="Polygon2D" parent="Floor"]
+polygon = PackedVector2Array(-480, -24, 480, -24, 480, 24, -480, 24)
+color = Color(0.32, 0.35, 0.39, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Floor"]
+shape = SubResource("RectangleShape2D_floor")
+
+[node name="LeftWall" type="StaticBody2D" parent="."]
+position = Vector2(72, 324)
+
+[node name="Visual" type="Polygon2D" parent="LeftWall"]
+polygon = PackedVector2Array(-24, -260, 24, -260, 24, 260, -24, 260)
+color = Color(0.32, 0.35, 0.39, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LeftWall"]
+shape = SubResource("RectangleShape2D_wall")
+
+[node name="RightWall" type="StaticBody2D" parent="."]
+position = Vector2(1080, 324)
+
+[node name="Visual" type="Polygon2D" parent="RightWall"]
+polygon = PackedVector2Array(-24, -260, 24, -260, 24, 260, -24, 260)
+color = Color(0.32, 0.35, 0.39, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RightWall"]
+shape = SubResource("RectangleShape2D_wall")
+
+[node name="SourceRack" type="Node2D" parent="."]
+
+[node name="Cabinet" type="Polygon2D" parent="SourceRack"]
+polygon = PackedVector2Array(96, 24, 1056, 24, 1056, 150, 96, 150)
+color = Color(0.22, 0.245, 0.28, 1)
+
+[node name="DisplayWindow" type="Polygon2D" parent="SourceRack"]
+polygon = PackedVector2Array(132, 56, 1020, 56, 1020, 106, 132, 106)
+color = Color(0.10, 0.12, 0.145, 1)
+
+[node name="ShelfLine" type="Polygon2D" parent="SourceRack"]
+polygon = PackedVector2Array(132, 112, 1020, 112, 1020, 122, 132, 122)
+color = Color(0.48, 0.52, 0.57, 1)
+
+[node name="MachineLabel" type="Label" parent="SourceRack"]
+offset_left = 426.0
+offset_top = 68.0
+offset_right = 726.0
+offset_bottom = 94.0
+theme_override_colors/font_color = Color(0.76, 0.82, 0.88, 1)
+theme_override_font_sizes/font_size = 18
+text = "VENDING DROP RACK"
+horizontal_alignment = 1
+
+[node name="SourceCarriage" type="Node2D" parent="SourceRack"]
+position = Vector2(576, 126)
+
+[node name="WarningColumn" type="Polygon2D" parent="SourceRack/SourceCarriage"]
+polygon = PackedVector2Array(-36, 44, 36, 44, 36, 458, -36, 458)
+color = Color(0.92, 0.24, 0.2, 0.18)
+
+[node name="Head" type="Polygon2D" parent="SourceRack/SourceCarriage"]
+polygon = PackedVector2Array(-38, -18, 38, -18, 38, 18, -38, 18)
+color = Color(0.3, 0.34, 0.4, 1)
+
+[node name="Chute" type="Polygon2D" parent="SourceRack/SourceCarriage"]
+polygon = PackedVector2Array(-25, 18, 25, 18, 25, 44, -25, 44)
+color = Color(0.42, 0.46, 0.52, 1)
+
+[node name="WarningText" type="Label" parent="SourceRack/SourceCarriage"]
+offset_left = -18.0
+offset_top = -19.0
+offset_right = 18.0
+offset_bottom = 20.0
+theme_override_colors/font_color = Color(1, 0.94, 0.78, 1)
+theme_override_font_sizes/font_size = 26
+text = "!"
+horizontal_alignment = 1
+
+[node name="Hazards" type="Node2D" parent="."]
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+position = Vector2(576, 552)
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="BuildId" type="Label" parent="HUD"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 220.0
+offset_bottom = 42.0
+theme_override_colors/font_color = Color(0.68, 0.72, 0.78, 1)
+theme_override_font_sizes/font_size = 16
+text = "BUILD VM-0.2.0-A"
+
+[node name="Timer" type="Label" parent="HUD"]
+offset_left = 900.0
+offset_top = 16.0
+offset_right = 1136.0
+offset_bottom = 44.0
+theme_override_colors/font_color = Color(0.93, 0.95, 0.98, 1)
+theme_override_font_sizes/font_size = 18
+text = "SURVIVAL  00.00 s"
+horizontal_alignment = 2
+
+[node name="Controls" type="Label" parent="HUD"]
+offset_left = 96.0
+offset_top = 614.0
+offset_right = 1056.0
+offset_bottom = 640.0
+theme_override_colors/font_color = Color(0.68, 0.72, 0.78, 1)
+theme_override_font_sizes/font_size = 14
+text = "MOVE: A/D or ←/→    JUMP: SPACE    RESTART: R"
+horizontal_alignment = 1
+
+[node name="DeathMessage" type="Label" parent="HUD"]
+visible = false
+offset_left = 356.0
+offset_top = 286.0
+offset_right = 796.0
+offset_bottom = 362.0
+theme_override_styles/normal = SubResource("StyleBoxFlat_death")
+theme_override_colors/font_color = Color(1, 0.93, 0.88, 1)
+theme_override_font_sizes/font_size = 22
+text = "CRUSHED
+PRESS R TO RESTART"
+horizontal_alignment = 1
+vertical_alignment = 1
