@@ -11,12 +11,12 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 ## Current state
 
-**Build:** VM-0.2.2-A-R1
+**Build:** VM-0.2.3-A
 
 **Phase:** Prototype A — compact arena  
-**Prototype A gameplay evidence:** One limited informal observation
+**Prototype A gameplay evidence:** Limited internal observations
 
-The default scene is the compact-arena prototype using the locked VM-0.1.2 `CharacterBody2D` player. Build VM-0.2.2-A-R1 fixes paired-pattern starvation by reserving a selected pair until two current lanes pass the existing capacity, overlap, spacing, and reachable-region checks. The experimental ramp uses singles before six seconds, guarantees the first pair selection from six seconds onward, uses a 50 percent pair probability from 10 to 15 seconds after that first reservation, and selects pairs at 15 seconds or later. The controller, telegraph curve, fall-speed curve, cooldown curve, six-second landed lifetime, and two-platform cap are unchanged. This pacing experiment requires manual evaluation and is not a validated difficulty result.
+The default scene is the compact-arena prototype using the locked VM-0.1.2 `CharacterBody2D` player. Build VM-0.2.3-A is a combined experimental pacing correction: piecewise warning and target fall-duration curves accelerate single drops through 12 seconds, paired patterns begin at 12 seconds, post-drop scheduling runs independently of landed capacity, and temporary terrain rolls through a three-platform cap using warned oldest-first removal. Each falling can keeps its own aligned chute visible until landing. The controller and arena dimensions are unchanged. Pacing, fairness, jump usage, and challenge remain unvalidated until manual review.
 
 ## Open locally
 
@@ -34,7 +34,7 @@ The default scene is the compact-arena prototype using the locked VM-0.1.2 `Char
 
 ## Next validation task
 
-Play Build VM-0.2.2-A-R1 without changing parameters. Confirm that early play starts with singles and that the first paired warning reliably appears during a short run. Watch for an understandable pause while a reserved pair waits for both temporary platforms to despawn. For every pair, verify that both warning columns map to their exact cans, at least one reachable response remains, jumping becomes relevant without creating an unavoidable configuration, and no reserved pair is replaced by another single. Record observations before tuning or adding content.
+Play Build VM-0.2.3-A without changing parameters. Confirm that single cans visibly accelerate, the first pair appears near 12–13 seconds, and two independent chutes remain aligned with their cans throughout each fall. Watch the orange `REMOVE` warning when rolling terrain exceeds three platforms. Verify that one prior platform remains after paired replacement where possible, the player’s supporting platform is avoided when another can be removed, no long capacity pause returns, and every pattern still presents a reachable response. Record pacing, warning readability, jump usage, and any unavoidable arrangement before tuning.
 
 ## Automated movement test
 

@@ -4,6 +4,7 @@ extends Area2D
 signal player_hit(product: FallingProduct)
 signal landed(product: FallingProduct)
 signal despawn_warning_started(product: FallingProduct)
+signal rolling_eviction_warning_started(product: FallingProduct)
 signal cleared(product: FallingProduct)
 
 enum ProductState {
@@ -15,13 +16,14 @@ enum ProductState {
 
 @export var fall_speed: float = 360.0
 @export var floor_y: float = 584.0
-@export var landed_lifetime: float = 6.0
-@export var despawn_warning_duration: float = 1.0
+@export var landed_lifetime: float = 2.0
+@export var despawn_warning_duration: float = 0.35
 @export var falling_size: Vector2 = Vector2(72.0, 72.0)
 @export var landed_size: Vector2 = Vector2(72.0, 48.0)
 
 var state: ProductState = ProductState.FALLING
 var landed_time_remaining: float = 0.0
+var _rolling_eviction_pending: bool = false
 
 @onready var _body_visual: Polygon2D = $Body
 @onready var _band_visual: Polygon2D = $Band
@@ -78,6 +80,7 @@ func configure(
 	if is_node_ready():
 		state = ProductState.FALLING
 		landed_time_remaining = 0.0
+		_rolling_eviction_pending = false
 		set_physics_process(true)
 		_update_collision_shapes()
 		_set_collision_mode(true, false)
@@ -102,12 +105,33 @@ func is_in_despawn_warning() -> bool:
 	return state == ProductState.DESPAWN_WARNING
 
 
+func is_rolling_eviction_pending() -> bool:
+	return is_landed() and _rolling_eviction_pending
+
+
 func is_falling_lethal() -> bool:
 	return state == ProductState.FALLING and monitoring and not _falling_collision.disabled
 
 
 func is_landed_solid() -> bool:
 	return is_landed() and not _landed_collision.disabled
+
+
+func request_rolling_eviction(warning_duration: float) -> bool:
+	if not is_landed() or _rolling_eviction_pending:
+		return false
+
+	_rolling_eviction_pending = true
+	state = ProductState.DESPAWN_WARNING
+	landed_time_remaining = minf(
+		landed_time_remaining,
+		maxf(warning_duration, 0.0)
+	)
+	_apply_eviction_warning_visual()
+	rolling_eviction_warning_started.emit(self)
+	if landed_time_remaining <= 0.0:
+		_clear()
+	return true
 
 
 func _is_valid_floor_contact(previous_bottom: float, current_bottom: float) -> bool:
@@ -117,6 +141,7 @@ func _is_valid_floor_contact(previous_bottom: float, current_bottom: float) -> b
 func _land() -> void:
 	state = ProductState.LANDED
 	landed_time_remaining = landed_lifetime
+	_rolling_eviction_pending = false
 	position.y = floor_y - landed_size.y * 0.5
 	_set_collision_mode(false, true)
 	_apply_product_size(landed_size)
@@ -129,12 +154,14 @@ func _start_despawn_warning() -> void:
 		return
 
 	state = ProductState.DESPAWN_WARNING
+	_rolling_eviction_pending = false
 	_apply_warning_visual()
 	despawn_warning_started.emit(self)
 
 
 func _clear() -> void:
 	state = ProductState.STOPPED
+	_rolling_eviction_pending = false
 	_set_collision_mode(false, false)
 	cleared.emit(self)
 	queue_free()
@@ -190,6 +217,12 @@ func _apply_warning_visual() -> void:
 	_body_visual.color = Color(0.92, 0.62, 0.20, 1.0)
 	_band_visual.color = Color(0.42, 0.24, 0.08, 1.0)
 	_label.text = "DESPAWN"
+
+
+func _apply_eviction_warning_visual() -> void:
+	_body_visual.color = Color(0.96, 0.48, 0.16, 1.0)
+	_band_visual.color = Color(0.46, 0.16, 0.06, 1.0)
+	_label.text = "REMOVE"
 
 
 func _on_body_entered(body: Node2D) -> void:

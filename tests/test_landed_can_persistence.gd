@@ -239,30 +239,41 @@ func _test_landed_platform_physics() -> void:
 func _test_arena_cap_spacing_and_restart() -> void:
 	var arena := ARENA_SCENE.instantiate() as CompactArena
 	_check(
-		absf(arena.initial_telegraph_duration - 0.85) <= FLOAT_TOLERANCE
-		and absf(arena.minimum_telegraph_duration - 0.50) <= FLOAT_TOLERANCE,
-		"VM-0.2.0-A telegraph values remain unchanged"
+		absf(arena.telegraph_at_zero_seconds - 0.70) <= FLOAT_TOLERANCE
+		and absf(arena.minimum_telegraph_duration - 0.28) <= FLOAT_TOLERANCE,
+		"VM-0.2.3-A telegraph hypotheses are configured"
 	)
 	_check(
-		absf(arena.initial_fall_speed - 360.0) <= FLOAT_TOLERANCE
-		and absf(arena.maximum_fall_speed - 620.0) <= FLOAT_TOLERANCE,
-		"VM-0.2.0-A fall-speed curve remains unchanged"
+		absf(arena.fall_duration_at_zero_seconds - 0.75) <= FLOAT_TOLERANCE
+		and absf(arena.minimum_fall_duration - 0.25) <= FLOAT_TOLERANCE,
+		"VM-0.2.3-A target fall-duration hypotheses are configured"
 	)
 	_check(
-		absf(arena.initial_drop_cooldown - 0.80) <= FLOAT_TOLERANCE
-		and absf(arena.minimum_drop_cooldown - 0.35) <= FLOAT_TOLERANCE,
-		"VM-0.2.0-A cooldown curve remains unchanged"
+		absf(arena.post_drop_delay_before_five_seconds - 0.40) <= FLOAT_TOLERANCE
+		and absf(arena.minimum_post_drop_delay - 0.15) <= FLOAT_TOLERANCE,
+		"VM-0.2.3-A post-drop delay hypotheses are configured"
 	)
 
 	arena.initial_drop_delay = 0.0
-	arena.initial_telegraph_duration = 0.01
+	arena.telegraph_at_zero_seconds = 0.01
+	arena.telegraph_at_five_seconds = 0.01
+	arena.telegraph_at_twelve_seconds = 0.01
+	arena.telegraph_at_twenty_seconds = 0.01
 	arena.minimum_telegraph_duration = 0.01
-	arena.initial_drop_cooldown = 0.01
-	arena.minimum_drop_cooldown = 0.01
-	arena.initial_fall_speed = 3000.0
-	arena.maximum_fall_speed = 3000.0
+	arena.fall_duration_at_zero_seconds = 0.05
+	arena.fall_duration_at_five_seconds = 0.05
+	arena.fall_duration_at_twelve_seconds = 0.05
+	arena.fall_duration_at_twenty_seconds = 0.05
+	arena.minimum_fall_duration = 0.05
+	arena.post_drop_delay_before_five_seconds = 0.01
+	arena.post_drop_delay_at_five_seconds = 0.01
+	arena.post_drop_delay_at_twelve_seconds = 0.01
+	arena.post_drop_delay_at_twenty_seconds = 0.01
+	arena.minimum_post_drop_delay = 0.01
+	arena.paired_pattern_start_seconds = 999.0
 	arena.landed_lifetime = 1.5
 	arena.despawn_warning_duration = 0.3
+	arena.rolling_eviction_warning_duration = 0.02
 	arena.product_dropped.connect(_on_fast_product_dropped.bind(arena))
 	root.add_child(arena)
 	await process_frame
@@ -270,22 +281,27 @@ func _test_arena_cap_spacing_and_restart() -> void:
 	arena.player.collision_mask = 0
 	arena.player.set_physics_process(false)
 
-	_check(arena.maximum_landed_cans == 2, "Initial landed-platform cap is two")
+	_check(arena.maximum_landed_cans == 3, "Rolling landed-platform cap is three")
 	_check(arena.is_landed_can_jump_clearable(), "Landed dimensions are clearable by locked jump")
 	_check(arena.has_safe_landed_spacing(), "Minimum spacing leaves a traversable route")
 
 	var maximum_landed_seen := 0
-	var observed_two_landed := false
+	var observed_three_landed := false
 	var minimum_pair_distance := INF
 	for frame in range(MAX_TEST_FRAMES):
 		await physics_frame
 		maximum_landed_seen = maxi(maximum_landed_seen, arena.landed_product_count())
 		var positions := arena.landed_positions()
-		if positions.size() == 2:
-			observed_two_landed = true
-			minimum_pair_distance = minf(minimum_pair_distance, absf(positions[0] - positions[1]))
+		if positions.size() == 3:
+			observed_three_landed = true
+		for first_index in range(positions.size()):
+			for second_index in range(first_index + 1, positions.size()):
+				minimum_pair_distance = minf(
+					minimum_pair_distance,
+					absf(positions[first_index] - positions[second_index])
+				)
 
-	_check(observed_two_landed, "Accelerated validation reaches two simultaneous platforms")
+	_check(observed_three_landed, "Accelerated validation reaches three simultaneous platforms")
 	_check(
 		maximum_landed_seen <= arena.maximum_landed_cans,
 		"Arena never exceeds configured landed-platform cap"
@@ -355,12 +371,14 @@ func _on_unit_product_cleared(_product: FallingProduct) -> void:
 	_product_cleared_frame = Engine.get_physics_frames()
 
 
-func _on_fast_product_dropped(_lane_index: int, _speed: float, arena: CompactArena) -> void:
-	var landed_x_positions := arena.landed_positions()
+func _on_fast_product_dropped(lane_index: int, _speed: float, arena: CompactArena) -> void:
+	var landed_x_positions := PackedFloat32Array()
+	for product in arena._landed_products:
+		if is_instance_valid(product) and not product.is_rolling_eviction_pending():
+			landed_x_positions.append(product.position.x)
 	if not landed_x_positions.is_empty():
 		_observed_spawn_while_landed = true
 
-	var source_carriage := arena.get_node("SourceRack/SourceCarriage") as Node2D
-	var drop_x: float = source_carriage.position.x
+	var drop_x: float = arena.drop_lane_positions[lane_index]
 	for landed_x in landed_x_positions:
 		_spawn_distances_from_landed.append(absf(drop_x - landed_x))

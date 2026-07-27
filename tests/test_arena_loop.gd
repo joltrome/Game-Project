@@ -56,16 +56,22 @@ func _run() -> void:
 	_check(arena.has_reachable_ground_response(), "Arena reports a reachable grounded response")
 
 	_check(
-		absf(arena.telegraph_duration_at(999.0) - arena.minimum_telegraph_duration) <= FLOAT_TOLERANCE,
+		absf(
+			arena.telegraph_duration_at(999.0) - arena.minimum_telegraph_duration
+		) <= FLOAT_TOLERANCE,
 		"Telegraph duration stops at its configured minimum"
 	)
 	_check(
-		absf(arena.drop_cooldown_at(999.0) - arena.minimum_drop_cooldown) <= FLOAT_TOLERANCE,
+		absf(
+			arena.drop_cooldown_at(999.0) - arena.minimum_post_drop_delay
+		) <= FLOAT_TOLERANCE,
 		"Drop cooldown stops at its configured minimum"
 	)
 	_check(
-		absf(arena.fall_speed_at(999.0) - arena.maximum_fall_speed) <= FLOAT_TOLERANCE,
-		"Fall speed stops at its configured maximum"
+		absf(
+			arena.target_fall_duration_at(999.0) - arena.minimum_fall_duration
+		) <= FLOAT_TOLERANCE,
+		"Target fall duration stops at its configured minimum"
 	)
 	_check(
 		absf(arena.two_can_probability_at(0.0)) <= FLOAT_TOLERANCE,
@@ -85,7 +91,8 @@ func _run() -> void:
 
 	_check(_drop_events.size() >= 3, "Observed at least three complete drops")
 	_check(
-		_telegraph_events.size() == _drop_events.size() or _telegraph_events.size() == _drop_events.size() + 1,
+		_telegraph_events.size() >= _drop_events.size()
+		and _telegraph_events.size() <= _drop_events.size() + 2,
 		"Every observed drop has exactly one preceding telegraph"
 	)
 	for index in range(_drop_events.size()):

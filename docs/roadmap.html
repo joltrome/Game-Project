@@ -259,10 +259,10 @@
       </div>
 
       <div class="grid four" style="margin-top:16px">
-        <div class="card subtle"><span class="tag evidence">Evidence</span><h3 style="margin-top:10px">What we know</h3><p class="muted">Manual review of VM-0.2.2-A found no paired drops. Code inspection and a natural-lifecycle regression reproduced pair starvation caused by replacement singles refilling platform capacity.</p></div>
-        <div class="card subtle"><span class="tag hypothesis">Hypothesis</span><h3 style="margin-top:10px">Aggressive pair ramp</h3><p class="muted">A guaranteed early pair followed by 50 percent pair selection at 10–15 seconds and paired selection after 15 seconds may create overlapping decisions by 15–20 seconds without changing warning or fall-speed curves.</p></div>
-        <div class="card subtle"><span class="tag decision">Decision</span><h3 style="margin-top:10px">Reserved pairs</h3><p class="muted">A selected pair remains reserved until a valid two-can arrangement can launch; replacement singles and silent downgrade are prohibited.</p></div>
-        <div class="card subtle"><span class="tag result">Result</span><h3 style="margin-top:10px">Build VM-0.2.2-A-R1</h3><p class="muted">The natural-lifecycle regression reserved the first pair at 8.900 seconds and dropped it at 12.350 seconds after a 3.450-second wait. Manual pacing and fairness remain unverified.</p></div>
+        <div class="card subtle"><span class="tag evidence">Evidence</span><h3 style="margin-top:10px">What we know</h3><p class="muted">Manual review found VM-0.2.2-A-R1 technically produced pairs but remained extremely easy, with slow falls, long safe phases, capacity waits, loss of both prior platforms, and only one chute visible during paired falls.</p></div>
+        <div class="card subtle"><span class="tag hypothesis">Hypothesis</span><h3 style="margin-top:10px">Combined pacing correction</h3><p class="muted">Faster piecewise timing, capacity-independent scheduling, three-slot rolling terrain, and persistent per-can chutes may create readable positioning and jumping pressure by 15–20 seconds.</p></div>
+        <div class="card subtle"><span class="tag decision">Decision</span><h3 style="margin-top:10px">VM-0.2.3-A scope</h3><p class="muted">Evaluate the pacing, rolling-terrain, and chute changes together; do not attribute any observed difference to one component.</p></div>
+        <div class="card subtle"><span class="tag result">Result</span><h3 style="margin-top:10px">Build VM-0.2.3-A</h3><p class="muted">The deterministic natural run committed its first pair at 12.733 seconds, dropped it at 13.133 seconds, and measured a 0.117-second maximum interval with neither a fall nor warning. Manual pacing and fairness remain unverified.</p></div>
       </div>
     </section>
 
@@ -744,6 +744,38 @@
     text: 'Implemented persistent size-two reservations with configurable 0–6, 6–10, 10–15, and 15+ second phase values. A reserved pair retries after 0.25 seconds without committing a single and selects lanes only when the current arena state passes the existing validators. Under the normal deterministic seed, the natural-lifecycle regression reached two landed cans, reserved the first pair at 8.900 seconds, and dropped the pair at 12.350 seconds after a 3.450-second wait. Automated tests also confirmed repeated paired selection after 15 seconds, retry retention, no downgrade, and restart cleanup. Manual pacing, warning readability, jump usage, and perceived fairness remain unverified.'
   };
 
+  const reservedPairPacingEvidence = {
+    id: 'evidence-vm-0.2.2-a-r1-pacing-review',
+    type: 'Evidence',
+    date: '2026-07-28',
+    source: 'Manual review, Build VM-0.2.2-A-R1',
+    text: 'Paired drops occurred, but the observed session remained extremely easy and contained long safe phases. Falling cans took too long to reach the floor, the scheduler waited for landed platforms to disappear, paired landings removed both previous platforms, and only one chute remained visible for two falling cans. This observation does not establish broader difficulty or fairness.'
+  };
+
+  const aggressiveRollingCorrectionDecision = {
+    id: 'decision-vm-0.2.3-a-combined-correction',
+    type: 'Decision',
+    date: '2026-07-28',
+    source: 'Startup Lab decision',
+    text: 'Implement VM-0.2.3-A as one combined aggressive-pacing and rolling-terrain correction. Evaluate piecewise timing, capacity-independent scheduling, a three-platform oldest-first rolling cap, shorter natural lifetime, and persistent per-can chutes together. Do not claim that one individual change caused any later difference. Three-can patterns remain postponed.'
+  };
+
+  const aggressiveRollingCorrectionHypothesis = {
+    id: 'hypothesis-vm-0.2.3-a-combined-pressure',
+    type: 'Hypothesis',
+    date: '2026-07-28',
+    source: 'Startup Lab approved experiment',
+    text: 'The approved timing sequence, rolling three-platform terrain, and one visible chute per falling can may place the player under readable positioning or jumping pressure by 15–20 seconds without creating unavoidable arrangements. All values remain experimental.'
+  };
+
+  const aggressiveRollingCorrectionResult = {
+    id: 'result-vm-0.2.3-a',
+    type: 'Result',
+    date: '2026-07-28',
+    source: 'Build VM-0.2.3-A implementation and automated validation',
+    text: 'Implemented exported piecewise telegraph, target fall-duration, and post-drop-delay curves; fall speed is derived from the 372 px chute-to-floor distance. Singles run before 12 seconds and pairs are selected from 12 seconds onward. Scheduling can overlap single falls and no longer depends on landed capacity. Terrain now has a three-platform cap, a two-second natural lifetime, a 0.35-second final warning, and deterministic warned oldest-first overflow removal that avoids the player support when another platform is eligible. Each falling can owns one aligned chute until landing. Under the deterministic natural test, the first pair committed at 12.733 seconds and dropped at 13.133 seconds; the longest interval with neither a falling can nor active warning was 0.117 seconds. Automated movement, arena, platform, eviction, pattern, restart, and chute checks passed. Manual pacing, challenge, jump usage, and perceived fairness remain unverified.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -766,7 +798,11 @@
     pairedPatternStarvationResult,
     reservedPairDecision,
     aggressivePairRampHypothesis,
-    reservedPairCorrectionResult
+    reservedPairCorrectionResult,
+    reservedPairPacingEvidence,
+    aggressiveRollingCorrectionDecision,
+    aggressiveRollingCorrectionHypothesis,
+    aggressiveRollingCorrectionResult
   ];
 
   const defaultFindings = [
@@ -778,7 +814,7 @@
   ];
 
   const defaultState = {
-    version: 9,
+    version: 10,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

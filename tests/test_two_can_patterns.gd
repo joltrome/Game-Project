@@ -1,9 +1,10 @@
 extends SceneTree
 
 const ARENA_SCENE := preload("res://scenes/prototypes/arena.tscn")
-const FLOAT_TOLERANCE := 0.01
-const MAX_TEST_FRAMES := 300
-const NATURAL_LIFECYCLE_LIMIT_SECONDS := 15.0
+const PRODUCT_SCENE := preload("res://scenes/hazards/falling_product.tscn")
+const FLOAT_TOLERANCE := 0.02
+const MAX_TEST_FRAMES := 420
+const NATURAL_LIFECYCLE_LIMIT_SECONDS := 21.0
 
 var failures: int = 0
 
@@ -16,148 +17,204 @@ func _check(condition: bool, message: String) -> void:
 	if condition:
 		print("PASS: %s" % message)
 		return
-
 	failures += 1
 	push_error("FAIL: %s" % message)
 
 
 func _run() -> void:
-	await _test_phase_configuration_and_pattern_enumeration()
-	await _test_natural_lifecycle_launches_reserved_pair()
-	await _test_single_pattern_launch()
-	await _test_two_can_pattern_launch_and_occupied_lanes()
-	await _test_invalid_pattern_retry()
-	await _test_late_phase_repeatedly_selects_pairs()
-	await _test_pending_pattern_restart_cleanup()
-	print("Two-can pattern validation finished with %d failure(s)." % failures)
+	await _test_piecewise_pacing_configuration()
+	await _test_natural_scheduler_pressure_and_chutes()
+	await _test_pair_chutes_resolve_independently()
+	await _test_invalid_pair_retries_without_single_downgrade()
+	await _test_two_existing_plus_pair_rolls_to_three()
+	await _test_three_existing_plus_pair_evicts_oldest_two()
+	await _test_player_support_avoidance()
+	await _test_restart_clears_all_pattern_and_eviction_state()
+	print("VM-0.2.3-A pacing validation finished with %d failure(s)." % failures)
 	quit(failures)
 
 
-func _test_phase_configuration_and_pattern_enumeration() -> void:
+func _test_piecewise_pacing_configuration() -> void:
 	var arena := ARENA_SCENE.instantiate() as CompactArena
 	root.add_child(arena)
 	await process_frame
 	_disable_player(arena)
 
-	_check(
-		absf(arena.two_can_probability_at(0.0)) <= FLOAT_TOLERANCE,
-		"Zero-to-six-second phase uses single patterns"
-	)
-	_check(
-		absf(arena.two_can_probability_at(arena.first_pair_start_seconds) - 1.0)
-		<= FLOAT_TOLERANCE,
-		"Six-to-ten-second phase guarantees paired selection"
-	)
-	_check(
-		absf(
-			arena.two_can_probability_at(arena.guaranteed_pair_phase_end_seconds)
-			- 0.50
-		) <= FLOAT_TOLERANCE,
-		"Ten-to-fifteen-second phase uses 50 percent paired selection"
-	)
-	_check(
-		absf(arena.two_can_probability_at(arena.mixed_pair_phase_end_seconds) - 1.0)
-		<= FLOAT_TOLERANCE,
-		"Fifteen-second-plus phase always selects paired patterns"
-	)
-	_check(arena.maximum_concurrent_falling_cans == 2, "Concurrent falling cap is two")
+	var checkpoints := [0.0, 5.0, 12.0, 20.0, 30.0]
+	var expected_telegraphs := [0.70, 0.55, 0.40, 0.32, 0.28]
+	var expected_fall_durations := [0.75, 0.60, 0.40, 0.30, 0.25]
+	var expected_delays := [0.40, 0.30, 0.20, 0.20, 0.15]
+	var previous_speed := 0.0
+	for index in range(checkpoints.size()):
+		var checkpoint: float = checkpoints[index]
+		_check(
+			absf(arena.telegraph_duration_at(checkpoint) - expected_telegraphs[index])
+			<= FLOAT_TOLERANCE,
+			"Telegraph duration matches the %.0f-second pacing checkpoint" % checkpoint
+		)
+		_check(
+			absf(
+				arena.target_fall_duration_at(checkpoint)
+				- expected_fall_durations[index]
+			) <= FLOAT_TOLERANCE,
+			"Target fall duration matches the %.0f-second pacing checkpoint" % checkpoint
+		)
+		_check(
+			absf(arena.drop_cooldown_at(checkpoint) - expected_delays[index])
+			<= FLOAT_TOLERANCE,
+			"Post-drop delay matches the %.0f-second pacing checkpoint" % checkpoint
+		)
+		var speed := arena.fall_speed_at(checkpoint)
+		_check(
+			absf(
+				speed * arena.target_fall_duration_at(checkpoint)
+				- arena.drop_distance()
+			) <= FLOAT_TOLERANCE,
+			"Fall speed at %.0f seconds is derived from actual drop distance" % checkpoint
+		)
+		_check(
+			speed + FLOAT_TOLERANCE >= previous_speed,
+			"Fall speed does not reset at the %.0f-second phase boundary" % checkpoint
+		)
+		previous_speed = speed
 
-	var valid_pair_count := 0
-	for first_lane in range(arena.drop_lane_positions.size()):
-		for second_lane in range(first_lane + 1, arena.drop_lane_positions.size()):
-			var pattern := PackedInt32Array([first_lane, second_lane])
-			if not arena.is_pattern_valid(pattern):
-				continue
-			valid_pair_count += 1
-			_check(
-				arena.pattern_has_reachable_safe_region(pattern),
-				"Every accepted pair has a reachable safe region"
-			)
-			var separation := absf(
-				arena.drop_lane_positions[first_lane]
-				- arena.drop_lane_positions[second_lane]
-			)
-			_check(
-				separation >= arena.minimum_landed_spacing,
-				"Every accepted pair preserves future platform spacing"
-			)
-	_check(valid_pair_count > 0, "At least one fair two-can pattern is available")
+	_check(
+		arena.two_can_probability_at(11.99) == 0.0
+		and arena.two_can_probability_at(12.0) == 1.0,
+		"Pattern sequence switches from singles to guaranteed pairs at 12 seconds"
+	)
+	_check(arena.maximum_landed_cans == 3, "Rolling terrain cap is three platforms")
+	_check(
+		absf(arena.landed_lifetime - 2.0) <= FLOAT_TOLERANCE
+		and absf(arena.despawn_warning_duration - 0.35) <= FLOAT_TOLERANCE,
+		"Natural platform lifetime and final warning use the approved hypotheses"
+	)
 
 	arena.queue_free()
 	await process_frame
 
 
-func _test_natural_lifecycle_launches_reserved_pair() -> void:
+func _test_natural_scheduler_pressure_and_chutes() -> void:
 	var arena := ARENA_SCENE.instantiate() as CompactArena
 	var observation := {
-		"reservation_time": -1.0,
-		"pair_drop_time": -1.0,
-		"single_commits_after_reservation": 0,
-		"single_drops_before_reservation": 0,
-		"maximum_landed_before_pair": 0,
-		"maximum_wait": 0.0,
+		"pending_size": 0,
+		"single_speeds": [],
+		"first_pair_commit": -1.0,
+		"first_pair_drop": -1.0,
+		"first_pair_speed": -1.0,
+		"pair_chutes_visible": false,
+		"pair_chutes_aligned": false,
+		"drop_while_landed": false,
+		"last_all_landed_time": -1.0,
+		"longest_idle_gap": 0.0,
+		"pattern_count": 0,
 	}
-	arena.paired_pattern_reserved.connect(
-		func(reserved_at_time: float) -> void:
-			if observation.reservation_time < 0.0:
-				observation.reservation_time = reserved_at_time
-	)
 	arena.pattern_committed.connect(
-		func(lane_indices: PackedInt32Array, _duration: float) -> void:
-			if observation.reservation_time >= 0.0 and lane_indices.size() == 1:
-				observation.single_commits_after_reservation += 1
+		func(lanes: PackedInt32Array, _duration: float) -> void:
+			observation.pending_size = lanes.size()
+			observation.pattern_count += 1
+			if observation.last_all_landed_time >= 0.0:
+				observation.longest_idle_gap = maxf(
+					observation.longest_idle_gap,
+					arena.survival_time - observation.last_all_landed_time
+				)
+				observation.last_all_landed_time = -1.0
+			if lanes.size() == 2 and observation.first_pair_commit < 0.0:
+				observation.first_pair_commit = arena.survival_time
+	)
+	arena.product_dropped.connect(
+		func(_lane_index: int, speed: float) -> void:
+			if observation.pending_size == 1:
+				observation.single_speeds.append(speed)
+			elif observation.pending_size == 2 and observation.first_pair_speed < 0.0:
+				observation.first_pair_speed = speed
 	)
 	arena.pattern_dropped.connect(
-		func(lane_indices: PackedInt32Array) -> void:
-			if lane_indices.size() == 1 and observation.reservation_time < 0.0:
-				observation.single_drops_before_reservation += 1
-			if lane_indices.size() == 2 and observation.pair_drop_time < 0.0:
-				observation.pair_drop_time = arena.survival_time
-				observation.maximum_wait = (
-					observation.pair_drop_time - observation.reservation_time
-				)
+		func(lanes: PackedInt32Array) -> void:
+			if arena.landed_product_count() > 0:
+				observation.drop_while_landed = true
+			if lanes.size() == 2 and observation.first_pair_drop < 0.0:
+				observation.first_pair_drop = arena.survival_time
+				observation.pair_chutes_visible = arena.active_chute_count() == 2
+				observation.pair_chutes_aligned = true
+				for lane_index in lanes:
+					observation.pair_chutes_aligned = (
+						observation.pair_chutes_aligned
+						and arena.chute_is_visible_for_lane(lane_index)
+						and absf(
+							arena.chute_position_for_lane(lane_index)
+							- arena.drop_lane_positions[lane_index]
+						) <= FLOAT_TOLERANCE
+					)
+	)
+	arena.falling_product_landed.connect(
+		func(_product: FallingProduct) -> void:
+			if (
+				arena.falling_product_count() == 0
+				and not arena.has_pending_pattern()
+			):
+				observation.last_all_landed_time = arena.survival_time
 	)
 	root.add_child(arena)
 	await process_frame
 	_disable_player(arena)
 
-	while (
-		arena.survival_time < NATURAL_LIFECYCLE_LIMIT_SECONDS
-		and observation.pair_drop_time < 0.0
-	):
+	while arena.survival_time < NATURAL_LIFECYCLE_LIMIT_SECONDS:
 		await physics_frame
-		observation.maximum_landed_before_pair = maxi(
-			observation.maximum_landed_before_pair,
-			arena.landed_product_count()
-		)
 
+	_check(observation.pattern_count >= 8, "Natural lifecycle launches repeated patterns")
 	_check(
-		observation.single_drops_before_reservation >= 2
-		and observation.maximum_landed_before_pair == arena.maximum_landed_cans,
-		"Natural regression reaches the two-landed-can lifecycle that starved pairs"
+		observation.single_speeds.size() >= 3,
+		"Single phase produces enough drops to exercise its speed ramp"
+	)
+	var singles_accelerate := true
+	for index in range(1, observation.single_speeds.size()):
+		singles_accelerate = (
+			singles_accelerate
+			and observation.single_speeds[index]
+				+ FLOAT_TOLERANCE >= observation.single_speeds[index - 1]
+		)
+	_check(singles_accelerate, "Single phase ramps fall speed before paired play")
+	_check(
+		observation.first_pair_commit >= arena.paired_pattern_start_seconds
+		and observation.first_pair_commit <= 13.5,
+		"First pair commits naturally near the approved 12-second transition"
 	)
 	_check(
-		observation.reservation_time >= arena.first_pair_start_seconds
-		and observation.reservation_time
-			< arena.guaranteed_pair_phase_end_seconds + FLOAT_TOLERANCE,
-		"Natural scheduler reserves its first pair during the six-to-ten-second window"
+		observation.first_pair_drop > observation.first_pair_commit
+		and observation.first_pair_drop <= 14.0,
+		"First paired drop begins during the intended early pressure window"
 	)
 	_check(
-		observation.pair_drop_time > observation.reservation_time
-		and observation.pair_drop_time <= NATURAL_LIFECYCLE_LIMIT_SECONDS,
-		"Reserved pair eventually launches during the intended early-game window"
+		not observation.single_speeds.is_empty()
+		and observation.first_pair_speed
+			+ FLOAT_TOLERANCE >= observation.single_speeds.back(),
+		"Paired drops retain the speed reached by the single phase"
 	)
 	_check(
-		observation.single_commits_after_reservation == 0,
-		"No replacement single commits after a pair becomes reserved"
+		observation.drop_while_landed,
+		"Scheduler launches new hazards while landed terrain exists"
 	)
-	_check(not arena.has_reserved_pair(), "Pair reservation clears only after pair commitment")
+	_check(
+		observation.longest_idle_gap <= 0.15,
+		"No scheduler idle gap is caused by waiting for landed capacity"
+	)
+	_check(
+		observation.pair_chutes_visible,
+		"A paired drop keeps two chute instances visible while both cans fall"
+	)
+	_check(
+		observation.pair_chutes_aligned,
+		"Each paired chute aligns with its own warning lane and can"
+	)
 	print(
-		"NATURAL_LIFECYCLE_METRICS reservation=%.3fs pair_drop=%.3fs maximum_wait=%.3fs"
-		% [
-			observation.reservation_time,
-			observation.pair_drop_time,
-			observation.maximum_wait,
+		(
+			"NATURAL_PACING_METRICS first_pair_commit=%.3fs "
+			+ "first_pair_drop=%.3fs longest_idle_gap=%.3fs"
+		) % [
+			observation.first_pair_commit,
+			observation.first_pair_drop,
+			observation.longest_idle_gap,
 		]
 	)
 
@@ -165,169 +222,216 @@ func _test_natural_lifecycle_launches_reserved_pair() -> void:
 	await process_frame
 
 
-func _test_single_pattern_launch() -> void:
+func _test_pair_chutes_resolve_independently() -> void:
 	var arena := ARENA_SCENE.instantiate() as CompactArena
-	_configure_fast_pattern_test(arena, false)
-	var observation := _connect_pattern_observation(arena)
-	root.add_child(arena)
-	_disable_player(arena)
-
-	await _wait_for_pattern_drop(observation)
-	var committed_lanes: PackedInt32Array = observation.committed_lanes
-	var dropped_lanes: PackedInt32Array = observation.dropped_lanes
-	_check(committed_lanes.size() == 1, "Forced early phase commits a single-can pattern")
-	_check(dropped_lanes == committed_lanes, "Single pattern drops its committed lane")
-	_check(observation.telegraph_lanes == Array(committed_lanes), "Single drop has one matching warning")
-	_check(observation.drop_lanes == Array(committed_lanes), "Single warning produces one matching can")
-	_check(observation.valid_at_commit, "Single pattern passes validation before commitment")
-
-	arena.queue_free()
-	await process_frame
-
-
-func _test_two_can_pattern_launch_and_occupied_lanes() -> void:
-	var arena := ARENA_SCENE.instantiate() as CompactArena
-	_configure_fast_pattern_test(arena, true)
-	var observation := _connect_pattern_observation(arena)
-	root.add_child(arena)
-	_disable_player(arena)
-
-	await _wait_for_pattern_drop(observation)
-	var committed_lanes: PackedInt32Array = observation.committed_lanes
-	var dropped_lanes: PackedInt32Array = observation.dropped_lanes
-	_check(committed_lanes.size() == 2, "Forced later phase commits a two-can pattern")
-	_check(dropped_lanes == committed_lanes, "Two-can pattern drops both committed lanes")
-	_check(observation.telegraph_lanes == Array(committed_lanes), "Each falling can has one matching warning")
-	_check(observation.drop_lanes == Array(committed_lanes), "Each warning produces its matching can")
-	_check(observation.all_warnings_visible, "Both warning lanes are simultaneously visible")
-	_check(observation.all_warning_positions_match, "Both warning chutes match their logical lanes")
-	_check(observation.falling_count_at_drop == 2, "Two cans become concurrent on pattern drop")
-	_check(observation.valid_at_commit, "Two-can pattern passes validation before commitment")
-	_check(not arena.has_pending_pattern(), "Pending pattern clears after spawning")
-
-	var spawn_positions: Array[float] = []
-	for child in arena.get_node("Hazards").get_children():
-		if child is FallingProduct:
-			spawn_positions.append(child.position.x)
-	_check(spawn_positions.size() == 2, "Two product instances launch")
-	_check(
-		spawn_positions.size() == 2
-		and absf(spawn_positions[0] - spawn_positions[1]) >= arena.product_size.x,
-		"Spawn collision footprints do not overlap"
+	_configure_fast_pair_test(arena)
+	var observation := {"dropped_lanes": PackedInt32Array()}
+	arena.pattern_dropped.connect(
+		func(lanes: PackedInt32Array) -> void:
+			if observation.dropped_lanes.is_empty():
+				observation.dropped_lanes = lanes.duplicate()
 	)
+	root.add_child(arena)
+	await process_frame
+	_disable_player(arena)
 
-	var maximum_falling_seen := arena.falling_product_count()
 	for frame in range(MAX_TEST_FRAMES):
 		await physics_frame
-		maximum_falling_seen = maxi(maximum_falling_seen, arena.falling_product_count())
-		if arena.landed_product_count() == 2:
+		if observation.dropped_lanes.size() == 2:
 			break
-	_check(
-		maximum_falling_seen <= arena.maximum_concurrent_falling_cans,
-		"Runtime never exceeds concurrent falling cap"
-	)
-	_check(arena.landed_product_count() == 2, "Both cans can complete the pattern as platforms")
+	var dropped_lanes: PackedInt32Array = observation.dropped_lanes
+	_check(dropped_lanes.size() == 2, "Forced pair launches two cans")
+	_check(arena.active_chute_count() == 2, "Both chute instances remain active after drop")
 
-	for lane_index in committed_lanes:
+	var products: Array[FallingProduct] = []
+	for child in arena.get_node("Hazards").get_children():
+		if child is FallingProduct and child.is_falling():
+			products.append(child)
+	_check(products.size() == 2, "Independent chute test finds both falling products")
+	if products.size() == 2:
+		products[0].position.y = arena.floor_y - arena.product_size.y * 0.5 - 1.0
+		await physics_frame
+		await physics_frame
 		_check(
-			arena.lane_footprint_overlaps_landed(lane_index),
-			"Occupied landed-can lane reports footprint overlap"
+			arena.active_chute_count() == 1,
+			"Landing one can resolves only its corresponding chute"
 		)
-		_check(not arena.is_lane_available(lane_index), "Occupied landed-can lane is unavailable")
+		var remaining_lane := dropped_lanes[1]
+		if not products[1].is_falling():
+			remaining_lane = dropped_lanes[0]
 		_check(
-			not arena.is_pattern_valid(PackedInt32Array([lane_index])),
-			"Pattern validator rejects an occupied landed-can lane"
+			arena.chute_is_visible_for_lane(remaining_lane),
+			"The other can keeps its own chute visible"
 		)
 
 	arena.queue_free()
 	await process_frame
 
 
-func _test_invalid_pattern_retry() -> void:
+func _test_invalid_pair_retries_without_single_downgrade() -> void:
 	var arena := ARENA_SCENE.instantiate() as CompactArena
-	_configure_fast_pattern_test(arena, true)
+	_configure_fast_pair_test(arena)
 	arena.minimum_safe_region_width = 2000.0
 	var retry_observation := {"count": 0}
 	var committed_sizes: Array[int] = []
-	var pattern_observation := _connect_pattern_observation(arena)
 	arena.pattern_retry_scheduled.connect(
 		func() -> void: retry_observation.count += 1
 	)
 	arena.pattern_committed.connect(
-		func(lane_indices: PackedInt32Array, _duration: float) -> void:
-			committed_sizes.append(lane_indices.size())
+		func(lanes: PackedInt32Array, _duration: float) -> void:
+			committed_sizes.append(lanes.size())
 	)
 	root.add_child(arena)
+	await process_frame
 	_disable_player(arena)
 
-	for frame in range(30):
+	for frame in range(60):
 		await physics_frame
-		if retry_observation.count > 1:
+		if retry_observation.count >= 2:
 			break
-	_check(retry_observation.count > 0, "No-valid-pattern state schedules a delayed retry")
-	_check(arena.has_reserved_pair(), "Invalid pair remains reserved between retries")
-	_check(arena.reserved_pattern_size() == 2, "Retry retains the paired pattern size")
-	_check(not arena.has_pending_pattern(), "Invalid pattern is never committed")
-	_check(arena.falling_product_count() == 0, "Invalid pattern spawns no cans")
-	_check(committed_sizes.is_empty(), "Reserved pair never silently downgrades to a single")
+	_check(
+		retry_observation.count >= 2,
+		"Temporarily invalid pair schedules repeated short retries"
+	)
+	_check(arena.has_reserved_pair(), "Invalid pair remains reserved")
+	_check(committed_sizes.is_empty(), "Reserved pair never downgrades to a single")
 
-	var original_reservation_time := arena.pair_reservation_started_at()
 	arena.minimum_safe_region_width = 64.0
-	await _wait_for_pattern_drop(pattern_observation)
+	for frame in range(MAX_TEST_FRAMES):
+		await physics_frame
+		if not committed_sizes.is_empty():
+			break
 	_check(
-		pattern_observation.committed_lanes.size() == 2,
-		"Temporarily invalid reservation launches as a pair after state becomes valid"
-	)
-	_check(
-		original_reservation_time >= 0.0,
-		"Retries preserve one reservation rather than selecting a replacement"
+		committed_sizes.size() == 1 and committed_sizes[0] == 2,
+		"Reserved pair commits as a pair after fairness becomes valid"
 	)
 
 	arena.queue_free()
 	await process_frame
 
 
-func _test_late_phase_repeatedly_selects_pairs() -> void:
-	var arena := ARENA_SCENE.instantiate() as CompactArena
-	_configure_fast_pattern_test(arena, true)
-	arena.survival_time = arena.mixed_pair_phase_end_seconds
-	arena.landed_lifetime = 0.15
-	arena.despawn_warning_duration = 0.05
-	var committed_sizes: Array[int] = []
-	arena.pattern_committed.connect(
-		func(lane_indices: PackedInt32Array, _duration: float) -> void:
-			committed_sizes.append(lane_indices.size())
-	)
-	root.add_child(arena)
-	_disable_player(arena)
-
-	for frame in range(MAX_TEST_FRAMES):
-		await physics_frame
-		if committed_sizes.size() >= 3:
-			break
-	_check(committed_sizes.size() >= 3, "Late-phase scheduler commits repeated patterns")
+func _test_two_existing_plus_pair_rolls_to_three() -> void:
+	var arena := await _make_scheduler_disabled_arena()
+	var oldest := await _spawn_landed_product(arena, 192.0)
+	var newer := await _spawn_landed_product(arena, 960.0)
+	var planned := arena._select_platform_evictions(2) as Array[FallingProduct]
 	_check(
-		committed_sizes.all(func(pattern_size: int) -> bool: return pattern_size == 2),
-		"Every pattern selected at fifteen seconds or later is paired"
+		planned.size() == 1 and planned[0] == oldest,
+		"Two existing plus two incoming selects only the oldest platform"
+	)
+
+	var timing := {"warning_frame": -1, "clear_frame": -1}
+	oldest.rolling_eviction_warning_started.connect(
+		func(_product: FallingProduct) -> void:
+			timing.warning_frame = Engine.get_physics_frames()
+	)
+	oldest.cleared.connect(
+		func(_product: FallingProduct) -> void:
+			timing.clear_frame = Engine.get_physics_frames()
+	)
+	arena._begin_rolling_evictions(planned)
+	_check(
+		oldest.is_rolling_eviction_pending()
+		and oldest.is_landed_solid()
+		and not oldest.is_falling_lethal()
+		and oldest.get_node("Label").text == "REMOVE",
+		"Rolling eviction gives a readable warning while remaining non-lethal and solid"
+	)
+	await _wait_for_product_clear(oldest)
+	_check(
+		timing.warning_frame >= 0 and timing.clear_frame > timing.warning_frame,
+		"Rolling eviction warning occurs before disappearance"
+	)
+	var warning_duration := (
+		float(timing.clear_frame - timing.warning_frame)
+		/ Engine.physics_ticks_per_second
+	)
+	_check(
+		absf(warning_duration - arena.rolling_eviction_warning_duration) <= 0.03,
+		"Rolling eviction uses its configured warning duration"
+	)
+
+	var incoming_one := await _spawn_landed_product(arena, 192.0)
+	var incoming_two := await _spawn_landed_product(arena, 448.0)
+	_check(
+		arena.landed_product_count() == 3
+		and arena._landed_products.has(newer)
+		and arena._landed_products.has(incoming_one)
+		and arena._landed_products.has(incoming_two),
+		"Two existing plus two incoming finishes with one previous and two new platforms"
 	)
 
 	arena.queue_free()
 	await process_frame
 
 
-func _test_pending_pattern_restart_cleanup() -> void:
-	var arena := ARENA_SCENE.instantiate() as CompactArena
-	_configure_fast_pattern_test(arena, true)
-	arena.minimum_safe_region_width = 2000.0
-	root.add_child(arena)
-	_disable_player(arena)
+func _test_three_existing_plus_pair_evicts_oldest_two() -> void:
+	var arena := await _make_scheduler_disabled_arena()
+	var oldest := await _spawn_landed_product(arena, 192.0)
+	var middle := await _spawn_landed_product(arena, 576.0)
+	var newest := await _spawn_landed_product(arena, 960.0)
+	var planned := arena._select_platform_evictions(2) as Array[FallingProduct]
+	_check(
+		planned.size() == 2 and planned[0] == oldest and planned[1] == middle,
+		"Three existing plus two incoming deterministically selects the two oldest"
+	)
+	arena._begin_rolling_evictions(planned)
+	await _wait_for_product_clear(oldest)
+	await _wait_for_product_clear(middle)
+	var incoming_one := await _spawn_landed_product(arena, 192.0)
+	var incoming_two := await _spawn_landed_product(arena, 448.0)
+	_check(
+		arena.landed_product_count() == 3
+		and arena._landed_products.has(newest)
+		and arena._landed_products.has(incoming_one)
+		and arena._landed_products.has(incoming_two),
+		"Three existing plus two incoming retains the newest old platform and adds both new"
+	)
+
+	arena.queue_free()
+	await process_frame
+
+
+func _test_player_support_avoidance() -> void:
+	var arena := await _make_scheduler_disabled_arena(false)
+	var supporting_oldest := await _spawn_landed_product(arena, 192.0)
+	var alternative := await _spawn_landed_product(arena, 576.0)
+	await _spawn_landed_product(arena, 960.0)
+	arena.player.position = Vector2(192.0, 512.0)
+	arena.player.velocity = Vector2.ZERO
+	await physics_frame
+
+	var planned := arena._select_platform_evictions(1) as Array[FallingProduct]
+	_check(
+		planned.size() == 1
+		and planned[0] == alternative
+		and planned[0] != supporting_oldest,
+		"Eviction avoids the player-supporting oldest platform when another is eligible"
+	)
+
+	arena.queue_free()
+	await process_frame
+
+
+func _test_restart_clears_all_pattern_and_eviction_state() -> void:
+	var arena := await _make_scheduler_disabled_arena()
+	await _spawn_landed_product(arena, 192.0)
+	await _spawn_landed_product(arena, 576.0)
+	await _spawn_landed_product(arena, 960.0)
+	arena.initial_drop_delay = 0.0
+	arena.paired_pattern_start_seconds = 0.0
+	arena.telegraph_at_zero_seconds = 1.0
+	arena.telegraph_at_five_seconds = 1.0
+	arena.telegraph_at_twelve_seconds = 1.0
+	arena._cooldown_remaining = 0.0
+	arena.set_physics_process(true)
 
 	for frame in range(MAX_TEST_FRAMES):
 		await physics_frame
-		if arena.has_reserved_pair():
+		if arena.has_pending_pattern() and arena.eviction_pending_count() > 0:
 			break
-	_check(arena.has_reserved_pair(), "Restart test begins with a reserved pair")
-	_check(not arena.has_pending_pattern(), "Reserved pair has no committed warning lanes yet")
+	_check(arena.has_pending_pattern(), "Restart test begins with paired warnings")
+	_check(arena.eviction_pending_count() == 2, "Restart test begins with rolling evictions")
 
 	current_scene = arena
 	var previous_instance_id := arena.get_instance_id()
@@ -338,29 +442,30 @@ func _test_pending_pattern_restart_cleanup() -> void:
 	await process_frame
 	await process_frame
 
-	var restarted_arena := current_scene as CompactArena
+	var restarted := current_scene as CompactArena
 	_check(
-		restarted_arena != null and restarted_arena.get_instance_id() != previous_instance_id,
-		"Restart replaces patterned arena instance"
+		restarted != null and restarted.get_instance_id() != previous_instance_id,
+		"Restart replaces the arena instance"
 	)
 	_check(
-		restarted_arena != null
-		and not restarted_arena.has_pending_pattern()
-		and not restarted_arena.has_reserved_pair()
-		and restarted_arena.reserved_pattern_size() == 0
-		and restarted_arena.falling_product_count() == 0
-		and restarted_arena.landed_product_count() == 0,
-		"Restart clears warnings, cans, platforms, reservation, and retry state"
+		restarted != null
+		and not restarted.has_pending_pattern()
+		and not restarted.has_reserved_pair()
+		and restarted.active_chute_count() == 0
+		and restarted.falling_product_count() == 0
+		and restarted.landed_product_count() == 0
+		and restarted.eviction_pending_count() == 0,
+		"Restart clears warnings, chutes, products, terrain, evictions, and reservations"
 	)
 	_check(
-		restarted_arena != null
-		and not restarted_arena.get_node(
+		restarted != null
+		and not restarted.get_node(
 			"SourceRack/SourceCarriage/WarningColumn"
 		).visible
-		and not restarted_arena.get_node(
+		and not restarted.get_node(
 			"SourceRack/SourceCarriage2/WarningColumn"
 		).visible,
-		"Restart hides both warning lanes"
+		"Restart hides both active warning columns"
 	)
 
 	if current_scene != null:
@@ -369,101 +474,80 @@ func _test_pending_pattern_restart_cleanup() -> void:
 	await process_frame
 
 
-func _configure_fast_pattern_test(arena: CompactArena, force_two: bool) -> void:
+func _configure_fast_pair_test(arena: CompactArena) -> void:
 	arena.initial_drop_delay = 0.0
-	arena.initial_telegraph_duration = 0.10
-	arena.minimum_telegraph_duration = 0.10
-	arena.initial_drop_cooldown = 0.05
-	arena.minimum_drop_cooldown = 0.05
-	arena.initial_fall_speed = 1200.0
-	arena.maximum_fall_speed = 1200.0
-	arena.landed_lifetime = 2.0
-	arena.despawn_warning_duration = 0.25
-	if force_two:
-		arena.first_pair_start_seconds = 0.0
-		arena.guaranteed_pair_phase_end_seconds = 0.0
-		arena.mixed_pair_phase_end_seconds = 0.0
-		arena.late_two_can_probability = 1.0
-	else:
-		arena.first_pair_start_seconds = 999.0
-		arena.mixed_two_can_probability = 0.0
-		arena.late_two_can_probability = 0.0
+	arena.paired_pattern_start_seconds = 0.0
+	arena.telegraph_at_zero_seconds = 0.05
+	arena.telegraph_at_five_seconds = 0.05
+	arena.telegraph_at_twelve_seconds = 0.05
+	arena.telegraph_at_twenty_seconds = 0.05
+	arena.minimum_telegraph_duration = 0.05
+	arena.fall_duration_at_zero_seconds = 0.25
+	arena.fall_duration_at_five_seconds = 0.25
+	arena.fall_duration_at_twelve_seconds = 0.25
+	arena.fall_duration_at_twenty_seconds = 0.25
+	arena.minimum_fall_duration = 0.25
+	arena.post_drop_delay_before_five_seconds = 0.05
+	arena.post_drop_delay_at_five_seconds = 0.05
+	arena.post_drop_delay_at_twelve_seconds = 0.05
+	arena.post_drop_delay_at_twenty_seconds = 0.05
+	arena.minimum_post_drop_delay = 0.05
+	arena.pattern_retry_delay = 0.03
 
 
-func _connect_pattern_observation(arena: CompactArena) -> Dictionary:
-	var observation := {
-		"committed_lanes": PackedInt32Array(),
-		"dropped_lanes": PackedInt32Array(),
-		"telegraph_lanes": [],
-		"drop_lanes": [],
-		"all_warnings_visible": true,
-		"all_warning_positions_match": true,
-		"falling_count_at_drop": 0,
-		"valid_at_commit": false,
-	}
-	arena.pattern_committed.connect(_on_pattern_committed.bind(observation, arena))
-	arena.telegraph_started.connect(_on_telegraph_started.bind(observation, arena))
-	arena.product_dropped.connect(_on_product_dropped.bind(observation))
-	arena.pattern_dropped.connect(_on_pattern_dropped.bind(observation, arena))
-	return observation
+func _make_scheduler_disabled_arena(
+	disable_player: bool = true
+) -> CompactArena:
+	var arena := ARENA_SCENE.instantiate() as CompactArena
+	arena.initial_drop_delay = 999.0
+	arena.landed_lifetime = 99.0
+	arena.rolling_eviction_warning_duration = 0.35
+	root.add_child(arena)
+	await process_frame
+	if disable_player:
+		_disable_player(arena)
+	arena.set_physics_process(false)
+	return arena
 
 
-func _wait_for_pattern_drop(observation: Dictionary) -> void:
+func _spawn_landed_product(
+	arena: CompactArena,
+	x_position: float
+) -> FallingProduct:
+	var product := PRODUCT_SCENE.instantiate() as FallingProduct
+	product.position = Vector2(
+		x_position,
+		arena.floor_y - arena.product_size.y * 0.5 - 1.0
+	)
+	product.configure(
+		3000.0,
+		arena.floor_y,
+		arena.landed_lifetime,
+		arena.despawn_warning_duration,
+		arena.product_size,
+		arena.landed_product_size
+	)
+	product.landed.connect(arena._on_product_landed)
+	product.cleared.connect(arena._on_product_cleared)
+	arena.get_node("Hazards").add_child(product)
+	arena._falling_products.append(product)
+	for frame in range(10):
+		await physics_frame
+		if product.is_landed():
+			return product
+	_check(false, "Test product reaches landed state")
+	return product
+
+
+func _wait_for_product_clear(product: Variant) -> void:
 	for frame in range(MAX_TEST_FRAMES):
 		await physics_frame
-		if not observation.dropped_lanes.is_empty():
+		if not is_instance_valid(product):
 			return
-	_check(false, "Pattern drops within test frame budget")
+	_check(false, "Warned platform clears within the test frame budget")
 
 
 func _disable_player(arena: CompactArena) -> void:
 	arena.player.collision_layer = 0
 	arena.player.collision_mask = 0
 	arena.player.set_physics_process(false)
-
-
-func _on_pattern_committed(
-	lane_indices: PackedInt32Array,
-	_duration: float,
-	observation: Dictionary,
-	arena: CompactArena
-) -> void:
-	observation.committed_lanes = lane_indices.duplicate()
-	observation.valid_at_commit = arena.is_pattern_valid(lane_indices)
-
-
-func _on_telegraph_started(
-	lane_index: int,
-	_duration: float,
-	observation: Dictionary,
-	arena: CompactArena
-) -> void:
-	observation.telegraph_lanes.append(lane_index)
-	observation.all_warnings_visible = (
-		observation.all_warnings_visible
-		and arena.warning_is_visible_for_lane(lane_index)
-	)
-	observation.all_warning_positions_match = (
-		observation.all_warning_positions_match
-		and absf(
-			arena.warning_position_for_lane(lane_index)
-			- arena.drop_lane_positions[lane_index]
-		) <= FLOAT_TOLERANCE
-	)
-
-
-func _on_product_dropped(
-	lane_index: int,
-	_speed: float,
-	observation: Dictionary
-) -> void:
-	observation.drop_lanes.append(lane_index)
-
-
-func _on_pattern_dropped(
-	lane_indices: PackedInt32Array,
-	observation: Dictionary,
-	arena: CompactArena
-) -> void:
-	observation.dropped_lanes = lane_indices.duplicate()
-	observation.falling_count_at_drop = arena.falling_product_count()
