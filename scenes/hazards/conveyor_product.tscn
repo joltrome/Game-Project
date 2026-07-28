@@ -1,0 +1,46 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/conveyor_product.gd" id="1_product"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_product"]
+size = Vector2(72, 72)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_landed"]
+size = Vector2(72, 48)
+
+[node name="ConveyorProduct" type="Area2D"]
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1_product")
+
+[node name="Body" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
+color = Color(0.36, 0.72, 0.86, 1)
+
+[node name="Band" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(-36, -8, 36, -8, 36, 8, -36, 8)
+color = Color(0.13, 0.27, 0.34, 1)
+
+[node name="Label" type="Label" parent="."]
+offset_left = -36.0
+offset_top = -10.0
+offset_right = 36.0
+offset_bottom = 10.0
+theme_override_colors/font_color = Color(0.9, 0.96, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "PRODUCT"
+horizontal_alignment = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_product")
+
+[node name="LandedBody" type="AnimatableBody2D" parent="."]
+collision_layer = 1
+collision_mask = 1
+sync_to_physics = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LandedBody"]
+disabled = true
+shape = SubResource("RectangleShape2D_landed")
+
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]

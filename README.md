@@ -11,19 +11,27 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 ## Current state
 
-**Build:** VM-0.2.3-A-R1
+**Build:** VM-0.3.0-B
 
-**Phase:** Prototype A — compact arena  
-**Prototype A gameplay evidence:** Limited internal observations
+**Phase:** Prototype B — minimum fixed-camera conveyor
+**Gameplay evidence:** Prototype B has not yet been manually reviewed
 
-The default scene is the compact-arena prototype using the locked VM-0.1.2 `CharacterBody2D` player. Build VM-0.2.3-A-R1 preserves the aggressive pacing and rolling terrain while correcting wall-hug camping. Fourteen symmetric logical lanes are derived from the arena and can collision geometry, covering every reachable player center. A configurable one-second edge dwell reserves a normal warned single or pair containing the corresponding wall-adjacent lane, retaining the request when current terrain or fairness checks make it temporarily invalid. Anti-camping effectiveness and perceived fairness remain unvalidated until manual review.
+The Prototype B branch defaults to a separate fixed-camera conveyor scene using the unchanged VM-0.1.2 `CharacterBody2D` player. Build VM-0.3.0-B uses single warned drops from one visible source. Falling cans are lethal; valid conveyor landings become solid, non-lethal moving platforms that carry a standing player left and clean up after leaving the playable area. The player-center control band is x=280–760. A deterministic automated run measured first stationary-player obstacle contact at 10.033 seconds. Whether this removes low-decision waiting without creating perceived unfairness remains a hypothesis pending manual review.
+
+Prototype A is frozen on `master` and tag `VM-0.2.3-A-R1`. Its scene remains available at `scenes/prototypes/arena.tscn`.
 
 ## Open locally
 
 1. Install Godot 4.x.
 2. In Godot Project Manager, choose **Import**.
 3. Select this folder's `project.godot`.
-4. Open the project and press **F6/F5**.
+4. Open the project and press **F5** for Prototype B.
+
+## Switch prototypes in Godot
+
+- Prototype B: open `scenes/prototypes/conveyor.tscn` and press **F6**, or press **F5** on this branch.
+- Prototype A: open `scenes/prototypes/arena.tscn` and press **F6**.
+- To switch back to B immediately, select the already open `conveyor.tscn` tab and press **F6** again. This does not edit either scene or require changing branches.
 
 ## Use with Codex
 
@@ -34,7 +42,7 @@ The default scene is the compact-arena prototype using the locked VM-0.1.2 `Char
 
 ## Next validation task
 
-Play Build VM-0.2.3-A-R1 without changing parameters. Test both walls separately: briefly touch the wall and leave, then remain against it for more than one second. Confirm brief use is not singled out, sustained camping eventually produces a normally warned wall-adjacent drop, the warning and chute align exactly, and an inward escape remains reachable. Let an edge can land and verify it sits flush with the wall, remains non-lethal and jumpable, and creates no narrow pocket. Also confirm that the established pacing, rolling terrain, two-chute pairs, and restart behavior remain intact.
+Play Build VM-0.3.0-B without changing parameters. First remain stationary and record when the first moving obstacle requires a response. Check the warning/chute alignment, falling lethality, landed solidity, leftward motion, standing carry, normal jumping, control-band limits, offscreen cleanup, survival timer, death message, and `R` restart. Then compare against the frozen Prototype A scene using **F6**. Do not tune or add paired drops before recording the manual comparison.
 
 ## Automated movement test
 
@@ -66,6 +74,12 @@ godot --headless --log-file /tmp/vms-two-can-pattern-test.log --path . --script 
 
 ```bash
 godot --headless --log-file /tmp/vms-edge-coverage-test.log --path . --script res://tests/test_edge_coverage.gd
+```
+
+## Automated conveyor test
+
+```bash
+godot --headless --log-file /tmp/vms-conveyor-test.log --path . --script res://tests/test_conveyor_prototype.gd
 ```
 
 ## Cost

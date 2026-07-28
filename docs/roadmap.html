@@ -565,7 +565,11 @@
     ['p2-dropper', 'done'],
     ['p2-fair', 'done'],
     ['p2-death', 'done'],
-    ['p2-tune', 'in_progress']
+    ['p2-tune', 'done'],
+    ['p3-conveyor', 'done'],
+    ['p3-source', 'done'],
+    ['p3-reposition', 'done'],
+    ['p3-fair', 'in_progress']
   ]);
 
   const implementationResult = {
@@ -808,6 +812,38 @@
     text: 'The prior seven 72 px footprints left untargetable player-center intervals at 112–156, 228–284, 356–412, 484–540, 612–668, 740–796, 868–924, and 996–1040 px. VM-0.2.3-A-R1 derives fourteen symmetric lanes from the actual arena and can geometry. Centers run from 132 to 1020 px at approximately 68.308 px spacing; outer footprints are 96–168 and 984–1056 px, flush with the inner walls, and analytical plus 0.5 px sampling found no coverage gap across the playable 112–1040 px center interval. The exported edge zone is 72 px and dwell threshold is one second. Requests retain normal warning, timing, single/pair phase, lane, terrain, overlap, and inward-safe-region validation. Deterministic natural tests measured 1.117 seconds from threshold activation to left launch and 3.500 seconds to right launch, the latter waiting while earlier states made targeting invalid. Automated edge, movement, arena, platform, pattern, restart, chute, and headless launch checks passed. Perceived anti-camping fairness remains unverified.'
   };
 
+  const prototypeALowDecisionEvidence = {
+    id: 'evidence-vm-0.2.3-a-r1-low-decision-loop',
+    type: 'Evidence',
+    date: '2026-07-28',
+    source: 'Manual review, Build VM-0.2.3-A-R1',
+    text: 'The controller, warnings, death, restart, pacing, rolling terrain, and anti-camping behavior were reported as readable and functional. Manual testing also identified a dominant low-decision strategy: remain mostly stationary, wait for a vertical warning, move slightly outside its lane, and repeat. This is an internal observation of a structural limitation of the vertical-only telegraphed loop, not broader retention evidence.'
+  };
+
+  const prototypeAFreezeDecision = {
+    id: 'decision-vm-0.2.3-a-r1-freeze',
+    type: 'Decision',
+    date: '2026-07-28',
+    source: 'Startup Lab comparison decision',
+    text: 'Accept VM-0.2.3-A-R1 as Prototype A’s frozen comparison baseline. Preserve the arena except for critical bug fixes, and do not attempt to address its low-decision strategy through bouncing hazards, removed telegraphs, a smaller arena, new hazard types, or additional difficulty tuning.'
+  };
+
+  const conveyorPrototypeHypothesis = {
+    id: 'hypothesis-vm-0.3.0-b-moving-terrain',
+    type: 'Hypothesis',
+    date: '2026-07-28',
+    source: 'Startup Lab approved Prototype B experiment',
+    text: 'A continuously scrolling conveyor that carries landed cans toward the player may eliminate stationary waiting and make repositioning and jumping continuously relevant. The initial target is for a stationary player to require a response within approximately 10–15 seconds. This is not a validated gameplay result.'
+  };
+
+  const conveyorPrototypeResult = {
+    id: 'result-vm-0.3.0-b',
+    type: 'Result',
+    date: '2026-07-28',
+    source: 'Build VM-0.3.0-B implementation and automated validation',
+    text: 'Implemented Prototype B as a separate fixed-camera scene on its own branch without changing the Prototype A scene, arena scheduler, shared player controller, or original falling-product files. The initial exported values are 140 px/s conveyor speed, player-center control band x=280–760, 0.65-second warning, 0.65-second target fall duration, 6.5-second initial delay, and 1.80-second post-drop interval. Single cans inherit the existing falling-lethal to landed-solid state logic; the B-only subclass moves its landed AnimatableBody2D left, carries a standing player, and clears offscreen. A deterministic natural test measured first stationary-player contact at 10.033 seconds versus a 10.001-second geometric estimate and observed a new falling can while an earlier landed can remained active. Automated movement, Prototype A, platform, pattern, edge, conveyor, restart, and headless scene checks passed. Manual pressure, fairness, and comparative value remain unverified.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -838,7 +874,11 @@
     edgeCampingExploitEvidence,
     edgeCoverageDecision,
     edgeTargetingHypothesis,
-    edgeCoverageResult
+    edgeCoverageResult,
+    prototypeALowDecisionEvidence,
+    prototypeAFreezeDecision,
+    conveyorPrototypeHypothesis,
+    conveyorPrototypeResult
   ];
 
   const defaultFindings = [
@@ -850,7 +890,7 @@
   ];
 
   const defaultState = {
-    version: 11,
+    version: 12,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []
