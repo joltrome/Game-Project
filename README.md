@@ -11,12 +11,12 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 ## Current state
 
-**Build:** VM-0.2.3-A
+**Build:** VM-0.2.3-A-R1
 
 **Phase:** Prototype A — compact arena  
 **Prototype A gameplay evidence:** Limited internal observations
 
-The default scene is the compact-arena prototype using the locked VM-0.1.2 `CharacterBody2D` player. Build VM-0.2.3-A is a combined experimental pacing correction: piecewise warning and target fall-duration curves accelerate single drops through 12 seconds, paired patterns begin at 12 seconds, post-drop scheduling runs independently of landed capacity, and temporary terrain rolls through a three-platform cap using warned oldest-first removal. Each falling can keeps its own aligned chute visible until landing. The controller and arena dimensions are unchanged. Pacing, fairness, jump usage, and challenge remain unvalidated until manual review.
+The default scene is the compact-arena prototype using the locked VM-0.1.2 `CharacterBody2D` player. Build VM-0.2.3-A-R1 preserves the aggressive pacing and rolling terrain while correcting wall-hug camping. Fourteen symmetric logical lanes are derived from the arena and can collision geometry, covering every reachable player center. A configurable one-second edge dwell reserves a normal warned single or pair containing the corresponding wall-adjacent lane, retaining the request when current terrain or fairness checks make it temporarily invalid. Anti-camping effectiveness and perceived fairness remain unvalidated until manual review.
 
 ## Open locally
 
@@ -34,7 +34,7 @@ The default scene is the compact-arena prototype using the locked VM-0.1.2 `Char
 
 ## Next validation task
 
-Play Build VM-0.2.3-A without changing parameters. Confirm that single cans visibly accelerate, the first pair appears near 12–13 seconds, and two independent chutes remain aligned with their cans throughout each fall. Watch the orange `REMOVE` warning when rolling terrain exceeds three platforms. Verify that one prior platform remains after paired replacement where possible, the player’s supporting platform is avoided when another can be removed, no long capacity pause returns, and every pattern still presents a reachable response. Record pacing, warning readability, jump usage, and any unavoidable arrangement before tuning.
+Play Build VM-0.2.3-A-R1 without changing parameters. Test both walls separately: briefly touch the wall and leave, then remain against it for more than one second. Confirm brief use is not singled out, sustained camping eventually produces a normally warned wall-adjacent drop, the warning and chute align exactly, and an inward escape remains reachable. Let an edge can land and verify it sits flush with the wall, remains non-lethal and jumpable, and creates no narrow pocket. Also confirm that the established pacing, rolling terrain, two-chute pairs, and restart behavior remain intact.
 
 ## Automated movement test
 
@@ -60,6 +60,12 @@ godot --headless --log-file /tmp/vms-landed-can-test.log --path . --script res:/
 
 ```bash
 godot --headless --log-file /tmp/vms-two-can-pattern-test.log --path . --script res://tests/test_two_can_patterns.gd
+```
+
+## Automated edge-coverage test
+
+```bash
+godot --headless --log-file /tmp/vms-edge-coverage-test.log --path . --script res://tests/test_edge_coverage.gd
 ```
 
 ## Cost

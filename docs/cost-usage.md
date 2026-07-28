@@ -27,6 +27,7 @@ Codex authentication mode, model identity, remaining subscription allowance, and
 | 2026-07-27 23:14:40 JST | Build VM-0.2.2-A telegraphed two-can patterns | Unknown | GPT-5 family; exact variant not exposed | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Baseline GitHub synchronization followed by local Godot pattern implementation, automated checks, and headless validation. |
 | 2026-07-27 23:43:30 JST | Build VM-0.2.2-A-R1 reserved paired-pattern correction | Unknown | GPT-5 family; exact variant not exposed | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Local scheduler correction, regression tests, documentation, and headless Godot validation only. |
 | 2026-07-28 00:17:17 JST | Build VM-0.2.3-A aggressive pacing and rolling-terrain correction | Unknown | GPT-5 family; exact variant not exposed | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Local Godot scheduler, platform-management, chute-lifecycle, tests, documentation, and headless validation only. |
+| 2026-07-28 10:34:05 JST | Build VM-0.2.3-A-R1 edge coverage and anti-camping correction | Unknown | GPT-5 family; exact variant not exposed | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Local collision-geometry derivation, scheduler targeting, tests, documentation, and headless Godot validation only. |
 
 ## Paid API session fields
 

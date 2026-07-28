@@ -259,10 +259,10 @@
       </div>
 
       <div class="grid four" style="margin-top:16px">
-        <div class="card subtle"><span class="tag evidence">Evidence</span><h3 style="margin-top:10px">What we know</h3><p class="muted">Manual review found VM-0.2.2-A-R1 technically produced pairs but remained extremely easy, with slow falls, long safe phases, capacity waits, loss of both prior platforms, and only one chute visible during paired falls.</p></div>
-        <div class="card subtle"><span class="tag hypothesis">Hypothesis</span><h3 style="margin-top:10px">Combined pacing correction</h3><p class="muted">Faster piecewise timing, capacity-independent scheduling, three-slot rolling terrain, and persistent per-can chutes may create readable positioning and jumping pressure by 15–20 seconds.</p></div>
-        <div class="card subtle"><span class="tag decision">Decision</span><h3 style="margin-top:10px">VM-0.2.3-A scope</h3><p class="muted">Evaluate the pacing, rolling-terrain, and chute changes together; do not attribute any observed difference to one component.</p></div>
-        <div class="card subtle"><span class="tag result">Result</span><h3 style="margin-top:10px">Build VM-0.2.3-A</h3><p class="muted">The deterministic natural run committed its first pair at 12.733 seconds, dropped it at 13.133 seconds, and measured a 0.117-second maximum interval with neither a fall nor warning. Manual pacing and fairness remain unverified.</p></div>
+        <div class="card subtle"><span class="tag evidence">Evidence</span><h3 style="margin-top:10px">What we know</h3><p class="muted">VM-0.2.3-A was reported as much more engaging under normal play, but wall hugging was a dominant safe-zone exploit because no lane covered the extreme reachable player positions.</p></div>
+        <div class="card subtle"><span class="tag hypothesis">Hypothesis</span><h3 style="margin-top:10px">Sustained edge targeting</h3><p class="muted">A one-second edge dwell followed by a retained, normally warned edge-containing pattern may discourage stationary camping without punishing brief ordinary wall use.</p></div>
+        <div class="card subtle"><span class="tag decision">Decision</span><h3 style="margin-top:10px">Geometry first</h3><p class="muted">Derive full lane coverage analytically from walls, player width, and can width; preserve all VM-0.2.3-A pacing and terrain values.</p></div>
+        <div class="card subtle"><span class="tag result">Result</span><h3 style="margin-top:10px">Build VM-0.2.3-A-R1</h3><p class="muted">Fourteen derived lanes cover the full 112–1040 player-center interval. Natural edge tests launched after 1.117 seconds on the left and 3.500 seconds on the right after threshold activation. Manual fairness remains unverified.</p></div>
       </div>
     </section>
 
@@ -776,6 +776,38 @@
     text: 'Implemented exported piecewise telegraph, target fall-duration, and post-drop-delay curves; fall speed is derived from the 372 px chute-to-floor distance. Singles run before 12 seconds and pairs are selected from 12 seconds onward. Scheduling can overlap single falls and no longer depends on landed capacity. Terrain now has a three-platform cap, a two-second natural lifetime, a 0.35-second final warning, and deterministic warned oldest-first overflow removal that avoids the player support when another platform is eligible. Each falling can owns one aligned chute until landing. Under the deterministic natural test, the first pair committed at 12.733 seconds and dropped at 13.133 seconds; the longest interval with neither a falling can nor active warning was 0.117 seconds. Automated movement, arena, platform, eviction, pattern, restart, and chute checks passed. Manual pacing, challenge, jump usage, and perceived fairness remain unverified.'
   };
 
+  const edgeCampingExploitEvidence = {
+    id: 'evidence-vm-0.2.3-a-wall-camping',
+    type: 'Evidence',
+    date: '2026-07-28',
+    source: 'Manual review, Build VM-0.2.3-A',
+    text: 'VM-0.2.3-A was reported as much more engaging during normal play, but hugging either extreme wall was a dominant safe-zone exploit because the existing falling-can lanes never covered the player’s wall-touching position. This is a manual internal observation, not broader retention evidence.'
+  };
+
+  const edgeCoverageDecision = {
+    id: 'decision-vm-0.2.3-a-r1-edge-coverage',
+    type: 'Decision',
+    date: '2026-07-28',
+    source: 'Startup Lab decision',
+    text: 'Before freezing Prototype A, derive symmetric lane geometry from the 96 and 1056 inner wall boundaries, 32 px player width, and 72 px can width. Preserve the VM-0.2.3-A controller, pacing, pattern progression, platform cap, lifetime, and rolling eviction behavior.'
+  };
+
+  const edgeTargetingHypothesis = {
+    id: 'hypothesis-vm-0.2.3-a-r1-edge-targeting',
+    type: 'Hypothesis',
+    date: '2026-07-28',
+    source: 'Startup Lab approved experiment',
+    text: 'Tracking approximately one second of continuous dwell inside a 72 px edge zone and retaining an upcoming normally warned edge-containing pattern may discourage stationary wall hugging without making brief ordinary use of a wall automatically lethal. This remains pending manual review.'
+  };
+
+  const edgeCoverageResult = {
+    id: 'result-vm-0.2.3-a-r1',
+    type: 'Result',
+    date: '2026-07-28',
+    source: 'Build VM-0.2.3-A-R1 implementation and automated validation',
+    text: 'The prior seven 72 px footprints left untargetable player-center intervals at 112–156, 228–284, 356–412, 484–540, 612–668, 740–796, 868–924, and 996–1040 px. VM-0.2.3-A-R1 derives fourteen symmetric lanes from the actual arena and can geometry. Centers run from 132 to 1020 px at approximately 68.308 px spacing; outer footprints are 96–168 and 984–1056 px, flush with the inner walls, and analytical plus 0.5 px sampling found no coverage gap across the playable 112–1040 px center interval. The exported edge zone is 72 px and dwell threshold is one second. Requests retain normal warning, timing, single/pair phase, lane, terrain, overlap, and inward-safe-region validation. Deterministic natural tests measured 1.117 seconds from threshold activation to left launch and 3.500 seconds to right launch, the latter waiting while earlier states made targeting invalid. Automated edge, movement, arena, platform, pattern, restart, chute, and headless launch checks passed. Perceived anti-camping fairness remains unverified.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -802,7 +834,11 @@
     reservedPairPacingEvidence,
     aggressiveRollingCorrectionDecision,
     aggressiveRollingCorrectionHypothesis,
-    aggressiveRollingCorrectionResult
+    aggressiveRollingCorrectionResult,
+    edgeCampingExploitEvidence,
+    edgeCoverageDecision,
+    edgeTargetingHypothesis,
+    edgeCoverageResult
   ];
 
   const defaultFindings = [
@@ -814,7 +850,7 @@
   ];
 
   const defaultState = {
-    version: 10,
+    version: 11,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

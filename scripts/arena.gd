@@ -9,9 +9,17 @@ signal pattern_retry_scheduled
 signal paired_pattern_reserved(reserved_at_time: float)
 signal platform_eviction_started(product: FallingProduct)
 signal falling_product_landed(product: FallingProduct)
+signal edge_request_reserved(edge_side: int, reserved_at_time: float)
+signal edge_pattern_launched(edge_side: int, launched_at_time: float)
 signal player_died
 
-const BUILD_ID := "VM-0.2.3-A"
+enum EdgeSide {
+	NONE,
+	LEFT,
+	RIGHT,
+}
+
+const BUILD_ID := "VM-0.2.3-A-R1"
 const FALLING_PRODUCT_SCENE := preload("res://scenes/hazards/falling_product.tscn")
 const PLAYER_COLLISION_WIDTH := 32.0
 const PLAYER_COLLISION_HEIGHT := 48.0
@@ -19,11 +27,11 @@ const ARENA_LEFT := 96.0
 const ARENA_RIGHT := 1056.0
 
 @export_category("Drop Layout")
-@export var drop_lane_positions: PackedFloat32Array = PackedFloat32Array([
-	192.0, 320.0, 448.0, 576.0, 704.0, 832.0, 960.0
-])
+@export var derive_drop_lanes_from_geometry: bool = true
+@export_range(2, 32, 1) var requested_drop_lane_count: int = 14
+@export var drop_lane_positions: PackedFloat32Array = PackedFloat32Array()
 @export var drop_lane_sequence: PackedInt32Array = PackedInt32Array([
-	3, 1, 5, 2, 4, 0, 6, 4, 2, 5, 1, 3
+	6, 7, 4, 9, 2, 11, 0, 13, 5, 8, 3, 10, 1, 12
 ])
 @export var product_spawn_y: float = 176.0
 @export var floor_y: float = 584.0
@@ -71,6 +79,10 @@ const ARENA_RIGHT := 1056.0
 @export var pattern_retry_delay: float = 0.10
 @export var pattern_random_seed: int = 2203
 
+@export_category("Edge Anti-Camping")
+@export var edge_zone_width: float = 72.0
+@export var edge_dwell_threshold: float = 1.0
+
 @export_category("Fairness Validation")
 @export var clearance_margin: float = 12.0
 @export var minimum_safe_region_width: float = 64.0
@@ -84,6 +96,10 @@ var _landed_products: Array[FallingProduct] = []
 var _eviction_pending_products: Array[FallingProduct] = []
 var _pending_pattern_lanes := PackedInt32Array()
 var _pending_chute_slots := PackedInt32Array()
+var _pending_edge_request: EdgeSide = EdgeSide.NONE
+var _committed_edge_request: EdgeSide = EdgeSide.NONE
+var _left_edge_dwell: float = 0.0
+var _right_edge_dwell: float = 0.0
 var _reserved_pattern_size: int = 0
 var _pair_reservation_started_at: float = -1.0
 var _cooldown_remaining: float = 0.0
@@ -118,6 +134,8 @@ var _chute_lane_indices := PackedInt32Array([-1, -1])
 
 
 func _ready() -> void:
+	if derive_drop_lanes_from_geometry:
+		_derive_drop_lane_positions()
 	_rng.seed = pattern_random_seed
 	_cooldown_remaining = initial_drop_delay
 	_chute_products.resize(_source_carriages.size())
@@ -134,6 +152,7 @@ func _physics_process(delta: float) -> void:
 
 	survival_time += delta
 	_update_timer_label()
+	_update_edge_dwell(delta)
 
 	if not _pending_pattern_lanes.is_empty():
 		_telegraph_remaining -= delta
@@ -150,6 +169,74 @@ func _physics_process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("restart"):
 		get_tree().reload_current_scene()
+
+
+func player_minimum_center_x() -> float:
+	return ARENA_LEFT + PLAYER_COLLISION_WIDTH * 0.5
+
+
+func player_maximum_center_x() -> float:
+	return ARENA_RIGHT - PLAYER_COLLISION_WIDTH * 0.5
+
+
+func minimum_coverage_lane_count() -> int:
+	var left_center := ARENA_LEFT + product_size.x * 0.5
+	var right_center := ARENA_RIGHT - product_size.x * 0.5
+	if product_size.x <= 0.0 or right_center <= left_center:
+		return 2
+	return ceili((right_center - left_center) / product_size.x) + 1
+
+
+func lane_footprint(lane_index: int) -> Vector2:
+	if lane_index < 0 or lane_index >= drop_lane_positions.size():
+		return Vector2(NAN, NAN)
+	var half_width := product_size.x * 0.5
+	return Vector2(
+		drop_lane_positions[lane_index] - half_width,
+		drop_lane_positions[lane_index] + half_width
+	)
+
+
+func has_complete_player_center_coverage() -> bool:
+	if drop_lane_positions.is_empty():
+		return false
+	var covered_until := player_minimum_center_x()
+	for lane_index in range(drop_lane_positions.size()):
+		var footprint := lane_footprint(lane_index)
+		if footprint.x > covered_until + 0.001:
+			return false
+		covered_until = maxf(covered_until, footprint.y)
+	return covered_until + 0.001 >= player_maximum_center_x()
+
+
+func edge_lane_index(edge_side: EdgeSide) -> int:
+	if drop_lane_positions.is_empty():
+		return -1
+	if edge_side == EdgeSide.LEFT:
+		return 0
+	if edge_side == EdgeSide.RIGHT:
+		return drop_lane_positions.size() - 1
+	return -1
+
+
+func edge_zone_contains(edge_side: EdgeSide, center_x: float) -> bool:
+	if edge_side == EdgeSide.LEFT:
+		return center_x <= player_minimum_center_x() + edge_zone_width
+	if edge_side == EdgeSide.RIGHT:
+		return center_x >= player_maximum_center_x() - edge_zone_width
+	return false
+
+
+func pending_edge_request() -> EdgeSide:
+	return _pending_edge_request
+
+
+func edge_dwell_time(edge_side: EdgeSide) -> float:
+	if edge_side == EdgeSide.LEFT:
+		return _left_edge_dwell
+	if edge_side == EdgeSide.RIGHT:
+		return _right_edge_dwell
+	return 0.0
 
 
 func telegraph_duration_at(time_seconds: float) -> float:
@@ -472,6 +559,102 @@ func warning_position_for_lane(lane_index: int) -> float:
 	return _source_carriages[slot].position.x
 
 
+func edge_pattern_has_reachable_inward_escape(
+	lane_indices: PackedInt32Array,
+	edge_side: EdgeSide
+) -> bool:
+	var target_lane := edge_lane_index(edge_side)
+	if target_lane < 0 or not lane_indices.has(target_lane):
+		return false
+
+	var centers: Array[float] = []
+	for product in _falling_products:
+		if is_instance_valid(product) and not centers.has(product.position.x):
+			centers.append(product.position.x)
+	for lane_index in lane_indices:
+		var lane_x := drop_lane_positions[lane_index]
+		if not centers.has(lane_x):
+			centers.append(lane_x)
+	centers.sort()
+
+	var reaction_distance := player.maximum_speed * (
+		telegraph_duration_at(survival_time)
+		+ target_fall_duration_at(survival_time)
+	)
+	var danger_half_width := product_size.x * 0.5
+	var intervals: Array[Vector2] = []
+	var interval_start := ARENA_LEFT
+	for center in centers:
+		var danger_left := center - danger_half_width
+		if danger_left > interval_start:
+			intervals.append(Vector2(interval_start, danger_left))
+		interval_start = maxf(interval_start, center + danger_half_width)
+	if interval_start < ARENA_RIGHT:
+		intervals.append(Vector2(interval_start, ARENA_RIGHT))
+
+	for interval in intervals:
+		if interval.y - interval.x < minimum_safe_region_width:
+			continue
+		var center_margin := PLAYER_COLLISION_WIDTH * 0.5 + clearance_margin
+		var target_left := interval.x + center_margin
+		var target_right := interval.y - center_margin
+		if target_left > target_right:
+			continue
+		if edge_side == EdgeSide.LEFT and target_right <= player.position.x:
+			continue
+		if edge_side == EdgeSide.RIGHT and target_left >= player.position.x:
+			continue
+		var target_x := (
+			target_left
+			if edge_side == EdgeSide.LEFT
+			else target_right
+		)
+		if absf(target_x - player.position.x) <= reaction_distance:
+			return true
+	return false
+
+
+func _derive_drop_lane_positions() -> void:
+	var lane_count := maxi(requested_drop_lane_count, minimum_coverage_lane_count())
+	var left_center := ARENA_LEFT + product_size.x * 0.5
+	var right_center := ARENA_RIGHT - product_size.x * 0.5
+	drop_lane_positions = PackedFloat32Array()
+	for lane_index in range(lane_count):
+		var ratio := float(lane_index) / float(lane_count - 1)
+		drop_lane_positions.append(lerpf(left_center, right_center, ratio))
+
+
+func _update_edge_dwell(delta: float) -> void:
+	var in_left_zone := edge_zone_contains(EdgeSide.LEFT, player.position.x)
+	var in_right_zone := edge_zone_contains(EdgeSide.RIGHT, player.position.x)
+	_left_edge_dwell = _left_edge_dwell + delta if in_left_zone else 0.0
+	_right_edge_dwell = _right_edge_dwell + delta if in_right_zone else 0.0
+
+	if _pending_edge_request != EdgeSide.NONE:
+		return
+	if _left_edge_dwell >= edge_dwell_threshold:
+		_reserve_edge_request(EdgeSide.LEFT)
+	elif _right_edge_dwell >= edge_dwell_threshold:
+		_reserve_edge_request(EdgeSide.RIGHT)
+
+
+func _reserve_edge_request(edge_side: EdgeSide) -> void:
+	if edge_side == EdgeSide.NONE or _pending_edge_request != EdgeSide.NONE:
+		return
+	_pending_edge_request = edge_side
+	edge_request_reserved.emit(edge_side, survival_time)
+
+
+func _clear_launched_edge_request(edge_side: EdgeSide) -> void:
+	if _pending_edge_request == edge_side:
+		_pending_edge_request = EdgeSide.NONE
+	if edge_side == EdgeSide.LEFT:
+		_left_edge_dwell = 0.0
+	elif edge_side == EdgeSide.RIGHT:
+		_right_edge_dwell = 0.0
+	_committed_edge_request = EdgeSide.NONE
+
+
 func _ramp_between(
 	time_seconds: float,
 	start_time: float,
@@ -512,7 +695,11 @@ func _start_pattern_telegraph() -> void:
 		_reserve_paired_pattern()
 		requested_pattern_size = 2
 
-	var selected_pattern := _select_valid_pattern(requested_pattern_size)
+	var required_edge_lane := edge_lane_index(_pending_edge_request)
+	var selected_pattern := _select_valid_pattern(
+		requested_pattern_size,
+		required_edge_lane
+	)
 	if selected_pattern.is_empty():
 		_cooldown_remaining = pattern_retry_delay
 		pattern_retry_scheduled.emit()
@@ -521,6 +708,11 @@ func _start_pattern_telegraph() -> void:
 	var free_slots := _free_chute_slots()
 	_pending_chute_slots = PackedInt32Array(free_slots.slice(0, requested_pattern_size))
 	_begin_rolling_evictions(_select_platform_evictions(requested_pattern_size))
+	_committed_edge_request = (
+		_pending_edge_request
+		if required_edge_lane >= 0 and selected_pattern.has(required_edge_lane)
+		else EdgeSide.NONE
+	)
 	if requested_pattern_size == 2:
 		_clear_pair_reservation()
 	_pending_pattern_lanes = selected_pattern
@@ -541,16 +733,33 @@ func _clear_pair_reservation() -> void:
 	_pair_reservation_started_at = -1.0
 
 
-func _select_valid_pattern(pattern_size: int) -> PackedInt32Array:
-	var valid_patterns := _collect_valid_patterns(pattern_size)
+func _select_valid_pattern(
+	pattern_size: int,
+	required_edge_lane: int = -1
+) -> PackedInt32Array:
+	var valid_patterns := _collect_valid_patterns(pattern_size, required_edge_lane)
 	if not valid_patterns.is_empty():
 		return valid_patterns[_rng.randi_range(0, valid_patterns.size() - 1)]
 	return PackedInt32Array()
 
 
-func _collect_valid_patterns(pattern_size: int) -> Array[PackedInt32Array]:
+func _collect_valid_patterns(
+	pattern_size: int,
+	required_edge_lane: int = -1
+) -> Array[PackedInt32Array]:
 	var valid_patterns: Array[PackedInt32Array] = []
 	if pattern_size == 1:
+		if required_edge_lane >= 0:
+			var edge_pattern := PackedInt32Array([required_edge_lane])
+			if (
+				is_pattern_valid(edge_pattern)
+				and edge_pattern_has_reachable_inward_escape(
+					edge_pattern,
+					_pending_edge_request
+				)
+			):
+				valid_patterns.append(edge_pattern)
+			return valid_patterns
 		for sequence_offset in range(drop_lane_sequence.size()):
 			var sequence_value := drop_lane_sequence[
 				(_sequence_cursor + sequence_offset) % drop_lane_sequence.size()
@@ -563,8 +772,19 @@ func _collect_valid_patterns(pattern_size: int) -> Array[PackedInt32Array]:
 		for first_lane in range(drop_lane_positions.size()):
 			for second_lane in range(first_lane + 1, drop_lane_positions.size()):
 				var pattern := PackedInt32Array([first_lane, second_lane])
-				if is_pattern_valid(pattern):
-					valid_patterns.append(pattern)
+				if required_edge_lane >= 0 and not pattern.has(required_edge_lane):
+					continue
+				if not is_pattern_valid(pattern):
+					continue
+				if (
+					required_edge_lane >= 0
+					and not edge_pattern_has_reachable_inward_escape(
+						pattern,
+						_pending_edge_request
+					)
+				):
+					continue
+				valid_patterns.append(pattern)
 	_sequence_cursor = (_sequence_cursor + 1) % drop_lane_sequence.size()
 	return valid_patterns
 
@@ -610,6 +830,7 @@ func _clear_pattern_warnings() -> void:
 func _drop_pending_pattern() -> void:
 	var dropped_lanes := _pending_pattern_lanes.duplicate()
 	var dropped_slots := _pending_chute_slots.duplicate()
+	var launched_edge_request := _committed_edge_request
 	var speed := fall_speed_at(survival_time)
 	for pattern_index in range(dropped_lanes.size()):
 		var lane_index := dropped_lanes[pattern_index]
@@ -639,6 +860,9 @@ func _drop_pending_pattern() -> void:
 	_cooldown_remaining = drop_cooldown_at(survival_time)
 	_clear_pattern_warnings()
 	pattern_dropped.emit(dropped_lanes)
+	if launched_edge_request != EdgeSide.NONE:
+		_clear_launched_edge_request(launched_edge_request)
+		edge_pattern_launched.emit(launched_edge_request, survival_time)
 
 
 func _select_platform_evictions(incoming_count: int) -> Array[FallingProduct]:
@@ -778,6 +1002,10 @@ func _on_product_hit(product: FallingProduct) -> void:
 		landed_product.stop()
 	_pending_pattern_lanes = PackedInt32Array()
 	_pending_chute_slots = PackedInt32Array()
+	_pending_edge_request = EdgeSide.NONE
+	_committed_edge_request = EdgeSide.NONE
+	_left_edge_dwell = 0.0
+	_right_edge_dwell = 0.0
 	_clear_pair_reservation()
 	for slot in range(_chute_products.size()):
 		_chute_products[slot] = null
