@@ -892,6 +892,38 @@
     text: 'The former unconditional player-x <= 280 death check was removed. Conveyor support now ends at x=160; an explicit Area2D covers x=0–160 and y=584–712 below that end. Tests confirmed that touching the supported edge, contacting the unrelated right wall, and standing on a landed can near the edge are non-lethal, while a can can carry the player beyond support and into the recessed region. Passive failure from the default start measured 3.667 seconds. The new single air_sweeper is a non-solid lethal Area2D sized 96×28 px, centered at y=460, entering at x=-48 and moving right at 520 px/s; visible-entry-to-screen-center time is 1.20 seconds and a 0.20-second aligned entry cue precedes spawn. The scheduler uses the explicit sequence can-only, sweeper-only, sweeper-then-can, and can-then-sweeper with offsets of 1.35 and 1.60 seconds. Geometry checks prove the sweeper collision band is above grounded belt and can-top boxes while intersecting the normal jump-height interval. Kinematic checks include telegraph, fall, conveyor travel to earliest possible can contact, normal jump duration, and a 0.30-second margin; current player intent and subjective readability remain heuristic or unverified. All movement, Prototype A, persistence, A-pattern, edge, conveyor, physical-support, sweeper-pattern, restart, and both headless scene-launch checks passed. No shared controller or Prototype A file changed.'
   };
 
+  const insufficientDecisionDensityEvidence = {
+    id: 'evidence-vm-0.3.2-b-insufficient-decision-density',
+    type: 'Evidence',
+    date: '2026-07-29',
+    source: 'Manual review, Build VM-0.3.2-B',
+    text: 'The conveyor, cans, airborne sweeper, and explicit off-belt failure were accepted as a coherent and structurally complete conveyor prototype. Manual testing nevertheless found sweeper-related patterns too infrequent, so most play still reduced to holding right and occasionally jumping over a can. This is an internal pacing observation, not evidence that the existing hazard vocabulary is insufficient.'
+  };
+
+  const intensityDirectorDecision = {
+    id: 'decision-vm-0.3.3-b-final-internal-tuning',
+    type: 'Decision',
+    date: '2026-07-29',
+    source: 'Startup Lab tuning decision',
+    text: 'Use VM-0.3.3-B as the final planned internal tuning pass before Prototype A/B external playtesting. Increase compound frequency and reduce downtime using the existing can-and-sweeper vocabulary; do not add a third hazard or another mechanic during this experiment.'
+  };
+
+  const intensityDirectorHypothesis = {
+    id: 'hypothesis-vm-0.3.3-b-intensity-director',
+    type: 'Hypothesis',
+    date: '2026-07-29',
+    source: 'Startup Lab approved experiment',
+    text: 'The existing can and sweeper vocabulary may create sufficient decision pressure if teaching is guaranteed, compound early-versus-delayed jump patterns become dominant, empty cooldown narrows, and only a modest late hazard-speed ramp is applied. Whether this defeats blind hold-right-and-jump play while retaining readable and avoidable deaths remains pending manual review.'
+  };
+
+  const intensityDirectorResult = {
+    id: 'result-vm-0.3.3-b',
+    type: 'Result',
+    date: '2026-07-29',
+    source: 'Build VM-0.3.3-B implementation and automated validation',
+    text: 'Prototype B now uses a deterministic four-phase director without changing the shared controller, Prototype A, conveyor support, can states, sweeper altitude, or off-belt geometry. Phase thresholds are 5, 12, and 20 seconds. Phase 1 guarantees can-only then sweeper-only. Pattern weights [can-only, sweeper-only, sweeper-then-can, can-then-sweeper] are [20,20,30,30] in Phase 2, [10,10,40,40] in Phase 3, and [0,0,50,50] in Phase 4. Ten-thousand-selection deterministic samples measured 59.07% compound in Phase 2, 79.26% in Phase 3, and 100% in Phase 4; short natural runs may differ because guarantees, the one-sweeper cap, and reservations constrain their small number of commits. A natural 25-second lifecycle measured first interaction at 1.000 seconds, first compound at 5.850 seconds, maximum sweeper-related pattern gap at 2.767 seconds, maximum reservation wait at 0.800 seconds, and five compound commits by 20 seconds. Configured compound margins at 5/12/20/40 seconds are 1.100/0.825/0.600/0.500 seconds; cooldowns are 1.600/0.900/0.700/0.500 seconds. Conveyor speed stays 140 px/s. Sweeper speeds are 520/520/532.480/582.400 px/s and falling-can speeds are 676.364/676.364/692.596/757.527 px/s at the same checkpoints. Geometry and constant-velocity timing checks are deterministic; player intent, action choice, readability, perceived fairness, and the effect on the dominant strategy remain heuristic or manually unverified. Nine automated suites and both headless scenes passed.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -932,7 +964,11 @@
     physicalConveyorResult,
     holdRightAndBoundaryEvidence,
     opposingHeightHazardHypothesis,
-    opposingHeightHazardResult
+    opposingHeightHazardResult,
+    insufficientDecisionDensityEvidence,
+    intensityDirectorDecision,
+    intensityDirectorHypothesis,
+    intensityDirectorResult
   ];
 
   const defaultFindings = [
@@ -944,7 +980,7 @@
   ];
 
   const defaultState = {
-    version: 14,
+    version: 15,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

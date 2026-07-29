@@ -303,12 +303,12 @@ func _test_natural_early_engagement_timings() -> void:
 		if observation.impact >= 0.0 and observation.overlap:
 			break
 	_check(
-		observation.warning >= 0.75 and observation.warning <= 1.0,
-		"Actual first warning begins inside 0.75–1.0 seconds"
+		observation.warning >= 0.9 and observation.warning <= 1.1,
+		"Actual first warning begins near one second"
 	)
 	_check(
-		observation.impact >= 1.5 and observation.impact <= 2.0,
-		"Actual first can impact occurs inside 1.5–2.0 seconds"
+		observation.impact >= 1.8 and observation.impact <= 2.1,
+		"Actual first can impact occurs near two seconds"
 	)
 	_check(
 		observation.overlap,

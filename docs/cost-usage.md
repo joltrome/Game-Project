@@ -31,6 +31,7 @@ Codex authentication mode, model identity, remaining subscription allowance, and
 | 2026-07-28 22:37:54 JST | Freeze and publish Prototype A; build VM-0.3.0-B minimum conveyor prototype | Unknown | GPT-5 family; exact variant not exposed | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | GitHub Git push used existing repository authentication; local Godot implementation, automated tests, documentation, and headless validation used no paid API or hosting. |
 | 2026-07-29 18:37:14 JST | Build VM-0.3.1-B physical conveyor and early-engagement correction | Unknown | GPT-5 family; exact variant not exposed | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Local Godot platform-velocity implementation, timing separation, automated physics regressions, documentation, and headless validation only. |
 | 2026-07-29 19:18:19 JST | Build VM-0.3.2-B left-boundary correction and opposing-height hazard experiment | Unknown | GPT-5 family; exact variant not exposed | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Local Godot boundary geometry, air-sweeper hazard, controlled scheduler, automated regressions, documentation, and headless validation only. |
+| 2026-07-29 20:13:39 JST | Build VM-0.3.3-B intensity-director and compound-pattern tuning | Unknown | GPT-5 family; exact variant not exposed | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Local phase director, timing-margin derivation, modest hazard ramp, deterministic regressions, documentation, and headless validation only. |
 
 ## Paid API session fields
 

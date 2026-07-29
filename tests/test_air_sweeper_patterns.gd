@@ -234,8 +234,14 @@ func _test_all_controlled_patterns_and_solvability() -> void:
 		)
 		var wait_seconds := (
 			maxf(
-				conveyor.sweeper_then_can_offset,
-				conveyor.can_then_sweeper_offset
+				conveyor.compound_offset_for_pattern(
+					ConveyorPrototype.PatternType.SWEEPER_THEN_CAN,
+					conveyor.survival_time
+				),
+				conveyor.compound_offset_for_pattern(
+					ConveyorPrototype.PatternType.CAN_THEN_SWEEPER,
+					conveyor.survival_time
+				)
 			)
 			+ conveyor.sweeper_entry_cue_duration
 			+ 0.2
@@ -255,32 +261,21 @@ func _test_all_controlled_patterns_and_solvability() -> void:
 		await _free_conveyor(conveyor)
 
 	var timing_conveyor := await _make_conveyor(false)
-	var sweeper_center_time := (
-		timing_conveyor.sweeper_entry_cue_duration
-		+ timing_conveyor.sweeper_center_arrival_time()
-	)
-	var sweeper_then_can_contact := (
-		timing_conveyor.sweeper_then_can_offset
-		+ timing_conveyor.earliest_can_contact_delay_from_event()
-	)
-	var can_contact := (
-		timing_conveyor.earliest_can_contact_delay_from_event()
-	)
-	var can_then_sweeper_center := (
-		timing_conveyor.can_then_sweeper_offset
-		+ sweeper_center_time
-	)
+	var timing_checkpoint := 5.0
 	_check(
-		sweeper_then_can_contact
-			>= sweeper_center_time
-				+ timing_conveyor.compound_response_margin,
+		timing_conveyor.compound_response_margin_for_pattern(
+			ConveyorPrototype.PatternType.SWEEPER_THEN_CAN,
+			timing_checkpoint
+		) + 0.0001
+			>= timing_conveyor.compound_margin_at(timing_checkpoint),
 		"Sweeper-then-can leaves time to wait before the can response"
 	)
 	_check(
-		can_then_sweeper_center
-			>= can_contact
-				+ timing_conveyor.normal_jump_duration()
-				+ timing_conveyor.compound_response_margin,
+		timing_conveyor.compound_response_margin_for_pattern(
+			ConveyorPrototype.PatternType.CAN_THEN_SWEEPER,
+			timing_checkpoint
+		) + 0.0001
+			>= timing_conveyor.compound_margin_at(timing_checkpoint),
 		"Can-then-sweeper leaves time for one normal jump and landing"
 	)
 	_check(
@@ -346,7 +341,6 @@ func _make_conveyor(failure_enabled: bool) -> ConveyorPrototype:
 	var scene := load(CONVEYOR_SCENE_PATH) as PackedScene
 	var conveyor := scene.instantiate() as ConveyorPrototype
 	conveyor.initial_warning_delay = 999.0
-	conveyor.pattern_cadence = 999.0
 	conveyor.left_failure_enabled = failure_enabled
 	root.add_child(conveyor)
 	await _wait_physics_frames(3)

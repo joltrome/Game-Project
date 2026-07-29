@@ -67,11 +67,11 @@ func _test_independent_scene_loading_and_configuration() -> void:
 		"Initial player-center control band is x=280 through x=760"
 	)
 	_check(
-		conveyor.initial_warning_delay == 0.85
+		conveyor.initial_warning_delay == 1.00
 		and conveyor.telegraph_duration == 0.45
 		and conveyor.target_fall_duration == 0.55
-		and conveyor.pattern_cadence == 1.80,
-		"Initial warning, telegraph, fall, and recurring cadence are separate"
+		and conveyor.pattern_cooldown_at(0.0) == 2.20,
+		"Initial warning, telegraph, fall, and director cooldown are separate"
 	)
 	_check(
 		conveyor.maximum_concurrent_falling_cans == 1
@@ -85,10 +85,10 @@ func _test_independent_scene_loading_and_configuration() -> void:
 		"Locked normal jump height exceeds the landed-can height"
 	)
 	_check(
-		conveyor.first_warning_time_estimate() >= 0.75
-		and conveyor.first_warning_time_estimate() <= 1.0
-		and conveyor.first_impact_time_estimate() >= 1.5
-		and conveyor.first_impact_time_estimate() <= 2.0
+		conveyor.first_warning_time_estimate() >= 1.0
+		and conveyor.first_warning_time_estimate() <= 2.0
+		and conveyor.first_impact_time_estimate() >= 1.8
+		and conveyor.first_impact_time_estimate() <= 2.1
 		and conveyor.passive_failure_time_estimate() >= 3.0
 		and conveyor.passive_failure_time_estimate() <= 4.0,
 		"Configured first warning, impact, and passive-response estimates meet the approved windows"
@@ -276,11 +276,11 @@ func _test_natural_stationary_pressure_and_overlapping_lifecycle() -> void:
 			break
 
 	_check(
-		observation.warning >= 0.75 and observation.warning <= 1.0,
+		observation.warning >= 0.9 and observation.warning <= 1.1,
 		"Natural first warning begins inside the approved early window"
 	)
 	_check(
-		observation.impact >= 1.5 and observation.impact <= 2.0,
+		observation.impact >= 1.8 and observation.impact <= 2.1,
 		"Natural first can reaches the belt inside the approved early window"
 	)
 	_check(
@@ -325,7 +325,6 @@ func _test_restart_cleanup() -> void:
 	await scene_changed
 	await physics_frame
 	var conveyor := current_scene as ConveyorPrototype
-	conveyor.pattern_cadence = 999.0
 	conveyor.force_pattern_for_test(
 		ConveyorPrototype.PatternType.SWEEPER_ONLY
 	)

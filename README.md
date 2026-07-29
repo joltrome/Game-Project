@@ -11,12 +11,12 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 ## Current state
 
-**Build:** VM-0.3.2-B
+**Build:** VM-0.3.3-B
 
-**Phase:** Prototype B — opposing-height hazard experiment
-**Gameplay evidence:** VM-0.3.1-B had a dominant hold-right-and-jump strategy; VM-0.3.2-B is pending manual review
+**Phase:** Prototype B — final internal intensity tuning
+**Gameplay evidence:** VM-0.3.2-B is structurally coherent but its sweeper patterns were too infrequent to displace the hold-right-and-jump strategy
 
-The Prototype B branch defaults to a separate fixed-camera conveyor scene using the unchanged VM-0.1.2 `CharacterBody2D` player. The belt and landed cans retain the same -140 px/s physical support velocity. VM-0.3.2-B replaces the old x=280 instant-death check with a visible conveyor end at x=160 and an explicit recessed off-belt kill region. It also adds one fixed-height left-to-right service arm: its 96×28 px collision band is centered at y=460, clears grounded players, intersects the ordinary jump arc, and reaches screen center 1.20 seconds after visible entry at 520 px/s. A deterministic scheduler cycles can-only, sweeper-only, sweeper-then-can, and can-then-sweeper patterns. Automated checks pass; the effect on decision quality and perceived fairness remains a hypothesis pending manual review.
+The Prototype B branch defaults to a separate fixed-camera conveyor scene using the unchanged VM-0.1.2 `CharacterBody2D` player. VM-0.3.3-B replaces the fixed pattern cycle with a deterministic four-phase intensity director. The 0–5 second teaching phase guarantees can-only and sweeper-only patterns. The 5–12 second phase weights patterns 20/20/30/30 across can-only, sweeper-only, sweeper-then-can, and can-then-sweeper; 12–20 seconds uses 10/10/40/40; 20+ uses 0/0/50/50. Compound response margins narrow continuously from 1.10 seconds at 5 seconds to a 0.50-second floor at 40 seconds. Empty cooldown narrows from 1.60 to 0.50 seconds over the same checkpoints. Conveyor speed remains 140 px/s; can and sweeper speeds begin a continuous 12% maximum ramp after 15 seconds. These are intensity hypotheses, not validated balance results.
 
 Prototype A is frozen on `master` and tag `VM-0.2.3-A-R1`. Its scene remains available at `scenes/prototypes/arena.tscn`.
 
@@ -42,7 +42,7 @@ Prototype A is frozen on `master` and tag `VM-0.2.3-A-R1`. Its scene remains ava
 
 ## Next validation task
 
-Play Build VM-0.3.2-B without changing parameters. Hold right continuously and note whether the service arm actually interrupts the previous automatic-jump strategy. Stay grounded beneath one arm, then deliberately jump early into another; grounded passage should be safe and airborne contact should kill once. During sweeper-then-can, wait for the arm before jumping the can. During can-then-sweeper, try jumping early enough to land before the arm arrives. At the left edge, confirm touching the orange conveyor-end lip is non-lethal and standing on a can there is safe; allow the can to leave so the player visibly falls into the recessed retrieval opening before death. Record readability, unavoidable states, and whether early versus delayed jumps are distinguishable. Do not tune offsets or add hazards before Startup Lab review.
+Play Build VM-0.3.3-B without changing parameters. On the first run, blindly hold right and jump whenever a can approaches; record whether and when that strategy fails. On later runs, deliberately wait grounded for sweeper-then-can patterns, and jump early enough to land during can-then-sweeper patterns. Continue beyond 20 seconds and note whether the tighter cadence remains readable. Record the time and cause of every death that feels unavoidable or visually unclear. Do not tune values or begin external playtesting until Startup Lab reviews this internal result.
 
 ## Automated movement test
 
@@ -92,6 +92,12 @@ godot --headless --log-file /tmp/vms-physical-conveyor-test.log --path . --scrip
 
 ```bash
 godot --headless --log-file /tmp/vms-air-sweeper-test.log --path . --script res://tests/test_air_sweeper_patterns.gd
+```
+
+## Automated intensity-director test
+
+```bash
+godot --headless --log-file /tmp/vms-intensity-director-test.log --path . --script res://tests/test_intensity_director.gd
 ```
 
 ## Cost

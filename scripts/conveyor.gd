@@ -23,7 +23,7 @@ enum PatternEventType {
 	SWEEPER,
 }
 
-const BUILD_ID := "VM-0.3.2-B"
+const BUILD_ID := "VM-0.3.3-B"
 const CONVEYOR_PRODUCT_SCENE := preload(
 	"res://scenes/hazards/conveyor_product.tscn"
 )
@@ -52,10 +52,9 @@ const PLAYER_COLLISION_SIZE := Vector2(32.0, 48.0)
 @export var landed_product_size: Vector2 = Vector2(72.0, 48.0)
 
 @export_category("Timing")
-@export var initial_warning_delay: float = 0.85
+@export var initial_warning_delay: float = 1.00
 @export var telegraph_duration: float = 0.45
 @export var target_fall_duration: float = 0.55
-@export var pattern_cadence: float = 1.80
 @export var landed_lifetime: float = 30.0
 @export var despawn_warning_duration: float = 0.35
 
@@ -68,17 +67,39 @@ const PLAYER_COLLISION_SIZE := Vector2(32.0, 48.0)
 @export var sweeper_entry_cue_duration: float = 0.20
 @export var maximum_active_sweepers: int = 1
 
-@export_category("Controlled Patterns")
-@export var pattern_sequence := PackedInt32Array([
-	PatternType.CAN_ONLY,
-	PatternType.SWEEPER_ONLY,
-	PatternType.SWEEPER_THEN_CAN,
-	PatternType.CAN_THEN_SWEEPER,
-])
-@export var sweeper_then_can_offset: float = 1.35
-@export var can_then_sweeper_offset: float = 1.60
+@export_category("Intensity Director Phases")
+@export var teaching_phase_end: float = 5.0
+@export var conflict_phase_end: float = 12.0
+@export var dominant_phase_end: float = 20.0
+@export var second_compound_template_deadline: float = 9.0
+@export var phase_two_pattern_weights := PackedInt32Array([20, 20, 30, 30])
+@export var phase_three_pattern_weights := PackedInt32Array([10, 10, 40, 40])
+@export var phase_four_pattern_weights := PackedInt32Array([0, 0, 50, 50])
+@export var maximum_sweeper_gap_phase_two: float = 4.0
+@export var maximum_sweeper_gap_phase_three: float = 3.5
+@export var maximum_sweeper_gap_phase_four: float = 3.0
+@export var director_seed: int = 3303
+
+@export_category("Pattern Cooldown")
+@export var teaching_cooldown_start: float = 2.20
+@export var teaching_cooldown_end: float = 1.60
+@export var conflict_cooldown_end: float = 0.90
+@export var dominant_cooldown_end: float = 0.70
+@export var minimum_pattern_cooldown: float = 0.50
+@export var cooldown_floor_time: float = 40.0
 @export var pattern_retry_delay: float = 0.10
-@export var compound_response_margin: float = 0.30
+
+@export_category("Compound Safe Window")
+@export var early_compound_margin: float = 1.10
+@export var medium_compound_margin: float = 0.825
+@export var later_compound_margin: float = 0.60
+@export var minimum_compound_margin: float = 0.50
+@export var margin_floor_time: float = 40.0
+
+@export_category("Modest Hazard Speed Ramp")
+@export var speed_ramp_start: float = 15.0
+@export var speed_ramp_end: float = 40.0
+@export var maximum_hazard_speed_multiplier: float = 1.12
 
 var survival_time: float = 0.0
 var is_dead: bool = false
@@ -86,6 +107,7 @@ var is_dead: bool = false
 var _pattern_cooldown_remaining: float = 0.0
 var _telegraph_remaining: float = 0.0
 var _pending_lane_index: int = -1
+var _pending_fall_duration: float = 0.55
 var _sequence_cursor: int = 0
 var _falling_products: Array[ConveyorProduct] = []
 var _landed_products: Array[ConveyorProduct] = []
@@ -94,10 +116,22 @@ var _active_sweepers: Array[AirSweeper] = []
 var _reserved_pattern_type: int = -1
 var _active_pattern_type: int = -1
 var _active_pattern_elapsed: float = 0.0
+var _active_pattern_started_at: float = 0.0
 var _active_pattern_events: Array[Dictionary] = []
-var _pattern_sequence_cursor: int = 0
 var _sweeper_spawn_pending: bool = false
 var _sweeper_cue_remaining: float = 0.0
+var _pending_sweeper_speed: float = 520.0
+var _director_rng_state: int = 3303
+var _last_pattern_type: int = -1
+var _last_compound_pattern_type: int = -1
+var _last_sweeper_pattern_time: float = -INF
+var _first_compound_pattern_time: float = -1.0
+var _teaching_can_presented: bool = false
+var _teaching_sweeper_presented: bool = false
+var _sweeper_then_can_presented: bool = false
+var _can_then_sweeper_presented: bool = false
+var _consecutive_simple_patterns: int = 0
+var _consecutive_compound_patterns: int = 0
 
 @onready var player: SharedPlayerController = $Player
 @onready var _hazard_container: Node2D = $Hazards
@@ -118,6 +152,9 @@ var _sweeper_cue_remaining: float = 0.0
 
 func _ready() -> void:
 	_pattern_cooldown_remaining = initial_warning_delay
+	_pending_fall_duration = target_fall_duration_at(0.0)
+	_pending_sweeper_speed = sweeper_speed_at(0.0)
+	_director_rng_state = director_seed
 	_apply_conveyor_support_velocity()
 	_build_label.text = "BUILD %s" % BUILD_ID
 	_update_timer_label()
@@ -169,9 +206,146 @@ func fall_distance() -> float:
 
 
 func fall_speed() -> float:
-	if target_fall_duration <= 0.0:
+	return fall_speed_at(survival_time)
+
+
+func fall_speed_at(time_seconds: float) -> float:
+	var duration := target_fall_duration_at(time_seconds)
+	if duration <= 0.0:
 		return INF
-	return fall_distance() / target_fall_duration
+	return fall_distance() / duration
+
+
+func director_phase_at(time_seconds: float) -> int:
+	if time_seconds < teaching_phase_end:
+		return 0
+	if time_seconds < conflict_phase_end:
+		return 1
+	if time_seconds < dominant_phase_end:
+		return 2
+	return 3
+
+
+func pattern_weights_at(time_seconds: float) -> PackedInt32Array:
+	match director_phase_at(time_seconds):
+		1:
+			return phase_two_pattern_weights
+		2:
+			return phase_three_pattern_weights
+		3:
+			return phase_four_pattern_weights
+	return PackedInt32Array([50, 50, 0, 0])
+
+
+func pattern_cooldown_at(time_seconds: float) -> float:
+	if time_seconds <= teaching_phase_end:
+		return _interpolate_between(
+			time_seconds,
+			0.0,
+			teaching_phase_end,
+			teaching_cooldown_start,
+			teaching_cooldown_end
+		)
+	if time_seconds <= conflict_phase_end:
+		return _interpolate_between(
+			time_seconds,
+			teaching_phase_end,
+			conflict_phase_end,
+			teaching_cooldown_end,
+			conflict_cooldown_end
+		)
+	if time_seconds <= dominant_phase_end:
+		return _interpolate_between(
+			time_seconds,
+			conflict_phase_end,
+			dominant_phase_end,
+			conflict_cooldown_end,
+			dominant_cooldown_end
+		)
+	return _interpolate_between(
+		time_seconds,
+		dominant_phase_end,
+		cooldown_floor_time,
+		dominant_cooldown_end,
+		minimum_pattern_cooldown
+	)
+
+
+func compound_margin_at(time_seconds: float) -> float:
+	if time_seconds <= teaching_phase_end:
+		return early_compound_margin
+	if time_seconds <= conflict_phase_end:
+		return _interpolate_between(
+			time_seconds,
+			teaching_phase_end,
+			conflict_phase_end,
+			early_compound_margin,
+			medium_compound_margin
+		)
+	if time_seconds <= dominant_phase_end:
+		return _interpolate_between(
+			time_seconds,
+			conflict_phase_end,
+			dominant_phase_end,
+			medium_compound_margin,
+			later_compound_margin
+		)
+	return _interpolate_between(
+		time_seconds,
+		dominant_phase_end,
+		margin_floor_time,
+		later_compound_margin,
+		minimum_compound_margin
+	)
+
+
+func hazard_speed_multiplier_at(time_seconds: float) -> float:
+	return _interpolate_between(
+		time_seconds,
+		speed_ramp_start,
+		speed_ramp_end,
+		1.0,
+		maximum_hazard_speed_multiplier
+	)
+
+
+func sweeper_speed_at(time_seconds: float) -> float:
+	return sweeper_speed * hazard_speed_multiplier_at(time_seconds)
+
+
+func target_fall_duration_at(time_seconds: float) -> float:
+	var multiplier := hazard_speed_multiplier_at(time_seconds)
+	if multiplier <= 0.0:
+		return INF
+	return target_fall_duration / multiplier
+
+
+func maximum_sweeper_gap_at(time_seconds: float) -> float:
+	match director_phase_at(time_seconds):
+		1:
+			return maximum_sweeper_gap_phase_two
+		2:
+			return maximum_sweeper_gap_phase_three
+		3:
+			return maximum_sweeper_gap_phase_four
+	return INF
+
+
+func _interpolate_between(
+	time_seconds: float,
+	start_time: float,
+	end_time: float,
+	start_value: float,
+	end_value: float
+) -> float:
+	if end_time <= start_time:
+		return end_value
+	var weight := clampf(
+		(time_seconds - start_time) / (end_time - start_time),
+		0.0,
+		1.0
+	)
+	return lerpf(start_value, end_value, weight)
 
 
 func conveyor_support_velocity() -> Vector2:
@@ -207,7 +381,11 @@ func first_warning_time_estimate() -> float:
 
 
 func first_impact_time_estimate() -> float:
-	return initial_warning_delay + telegraph_duration + target_fall_duration
+	return (
+		initial_warning_delay
+		+ telegraph_duration
+		+ target_fall_duration_at(initial_warning_delay)
+	)
 
 
 func passive_failure_time_estimate(start_x: float = NAN) -> float:
@@ -275,10 +453,14 @@ func sweeper_intersects_jump_arc() -> bool:
 	)
 
 
-func sweeper_center_arrival_time() -> float:
-	if sweeper_speed <= 0.0:
+func sweeper_center_arrival_time(time_seconds: float = NAN) -> float:
+	var evaluation_time := (
+		survival_time if is_nan(time_seconds) else time_seconds
+	)
+	var evaluated_speed := sweeper_speed_at(evaluation_time)
+	if evaluated_speed <= 0.0:
 		return INF
-	return (576.0 - sweeper_spawn_x) / sweeper_speed
+	return (576.0 - sweeper_spawn_x) / evaluated_speed
 
 
 func normal_jump_duration() -> float:
@@ -287,9 +469,14 @@ func normal_jump_duration() -> float:
 	return 2.0 * absf(player.jump_velocity) / player.gravity
 
 
-func earliest_can_contact_delay_from_event() -> float:
+func earliest_can_contact_delay_from_event(
+	time_seconds: float = NAN
+) -> float:
 	if drop_lane_positions.is_empty() or conveyor_speed <= 0.0:
 		return INF
+	var evaluation_time := (
+		survival_time if is_nan(time_seconds) else time_seconds
+	)
 	var earliest_lane_x := drop_lane_positions[0]
 	for lane_x in drop_lane_positions:
 		earliest_lane_x = minf(earliest_lane_x, lane_x)
@@ -304,47 +491,109 @@ func earliest_can_contact_delay_from_event() -> float:
 	)
 	return (
 		telegraph_duration
-		+ target_fall_duration
+		+ target_fall_duration_at(evaluation_time)
 		+ conveyor_travel_time
 	)
 
 
-func pattern_is_solvable(pattern_type: int) -> bool:
+func compound_offset_for_pattern(
+	pattern_type: int,
+	start_time: float
+) -> float:
+	var target_margin := compound_margin_at(start_time)
+	var offset := 0.0
+	for _iteration in range(4):
+		match pattern_type:
+			PatternType.SWEEPER_THEN_CAN:
+				var sweeper_center_time := (
+					sweeper_entry_cue_duration
+					+ sweeper_center_arrival_time(start_time)
+				)
+				offset = maxf(
+					target_margin
+						+ sweeper_center_time
+						- earliest_can_contact_delay_from_event(
+							start_time + offset
+						),
+					0.0
+				)
+			PatternType.CAN_THEN_SWEEPER:
+				offset = maxf(
+					target_margin
+						+ earliest_can_contact_delay_from_event(start_time)
+						+ normal_jump_duration()
+						- sweeper_entry_cue_duration
+						- sweeper_center_arrival_time(
+							start_time + offset
+						),
+					0.0
+				)
+			_:
+				return 0.0
+	return offset
+
+
+func compound_response_margin_for_pattern(
+	pattern_type: int,
+	start_time: float
+) -> float:
+	var offset := compound_offset_for_pattern(pattern_type, start_time)
+	match pattern_type:
+		PatternType.SWEEPER_THEN_CAN:
+			return (
+				offset
+				+ earliest_can_contact_delay_from_event(start_time + offset)
+				- sweeper_entry_cue_duration
+				- sweeper_center_arrival_time(start_time)
+			)
+		PatternType.CAN_THEN_SWEEPER:
+			return (
+				offset
+				+ sweeper_entry_cue_duration
+				+ sweeper_center_arrival_time(start_time + offset)
+				- earliest_can_contact_delay_from_event(start_time)
+				- normal_jump_duration()
+			)
+	return INF
+
+
+func pattern_is_solvable(
+	pattern_type: int,
+	start_time: float = NAN
+) -> bool:
+	var evaluation_time := (
+		survival_time if is_nan(start_time) else start_time
+	)
 	if pattern_type == PatternType.CAN_ONLY:
 		return landed_can_is_jump_clearable()
 	if not sweeper_clears_grounded_player() or not sweeper_intersects_jump_arc():
 		return false
 	match pattern_type:
 		PatternType.SWEEPER_ONLY:
-			var visible_arrival_time := sweeper_center_arrival_time()
+			var visible_arrival_time := sweeper_center_arrival_time(
+				evaluation_time
+			)
 			return (
 				visible_arrival_time >= 0.8
 				and visible_arrival_time <= 1.2
 			)
 		PatternType.SWEEPER_THEN_CAN:
-			var sweeper_center_time := (
-				sweeper_entry_cue_duration + sweeper_center_arrival_time()
-			)
-			var can_contact_time := (
-				sweeper_then_can_offset
-				+ earliest_can_contact_delay_from_event()
-			)
 			return (
-				can_contact_time
-				>= sweeper_center_time + compound_response_margin
+				compound_response_margin_for_pattern(
+					pattern_type,
+					evaluation_time
+				)
+				+ 0.0001
+				>= compound_margin_at(evaluation_time)
 			)
 		PatternType.CAN_THEN_SWEEPER:
-			var can_contact_time := earliest_can_contact_delay_from_event()
-			var sweeper_center_time := (
-				can_then_sweeper_offset
-				+ sweeper_entry_cue_duration
-				+ sweeper_center_arrival_time()
-			)
 			return (
-				sweeper_center_time
-				>= can_contact_time
-					+ normal_jump_duration()
-					+ compound_response_margin
+				compound_response_margin_for_pattern(
+					pattern_type,
+					evaluation_time
+				)
+				+ 0.0001
+				>= compound_margin_at(evaluation_time)
 			)
 	return false
 
@@ -375,6 +624,54 @@ func reserved_pattern_type() -> int:
 
 func has_pending_pattern_events() -> bool:
 	return not _active_pattern_events.is_empty() or _sweeper_spawn_pending
+
+
+func first_compound_pattern_time() -> float:
+	return _first_compound_pattern_time
+
+
+func last_pattern_type() -> int:
+	return _last_pattern_type
+
+
+func consecutive_simple_patterns() -> int:
+	return _consecutive_simple_patterns
+
+
+func consecutive_compound_patterns() -> int:
+	return _consecutive_compound_patterns
+
+
+func teaching_patterns_presented() -> bool:
+	return _teaching_can_presented and _teaching_sweeper_presented
+
+
+func both_compound_templates_presented() -> bool:
+	return _sweeper_then_can_presented and _can_then_sweeper_presented
+
+
+func director_distribution_sample(
+	time_seconds: float,
+	sample_count: int
+) -> PackedInt32Array:
+	var counts := PackedInt32Array([0, 0, 0, 0])
+	var preview_state := director_seed
+	var previous_pattern := -1
+	var weights := pattern_weights_at(time_seconds)
+	for _sample_index in range(maxi(sample_count, 0)):
+		preview_state = _next_rng_state(preview_state)
+		var pattern_type := _weighted_pattern_from_roll(
+			weights,
+			preview_state
+		)
+		if (
+			pattern_type == PatternType.CAN_ONLY
+			and previous_pattern == PatternType.CAN_ONLY
+		):
+			pattern_type = PatternType.SWEEPER_ONLY
+		counts[pattern_type] += 1
+		previous_pattern = pattern_type
+	return counts
 
 
 func force_pattern_for_test(pattern_type: int) -> bool:
@@ -468,6 +765,7 @@ func force_warning_for_test(lane_index: int) -> void:
 		return
 	_pending_lane_index = lane_index
 	_telegraph_remaining = telegraph_duration
+	_pending_fall_duration = target_fall_duration_at(survival_time)
 	_show_warning()
 
 
@@ -476,6 +774,7 @@ func force_drop_for_test(lane_index: int) -> ConveyorProduct:
 		return null
 	_pending_lane_index = lane_index
 	_telegraph_remaining = 0.0
+	_pending_fall_duration = target_fall_duration_at(survival_time)
 	return _drop_pending_product()
 
 
@@ -512,39 +811,199 @@ func _enforce_control_band() -> void:
 
 func _try_start_reserved_pattern() -> bool:
 	if _reserved_pattern_type < 0:
-		if pattern_sequence.is_empty():
+		_reserved_pattern_type = _select_director_pattern(survival_time)
+		if _reserved_pattern_type < 0:
+			_pattern_cooldown_remaining = maxf(
+				teaching_phase_end - survival_time,
+				pattern_retry_delay
+			)
 			return false
-		_reserved_pattern_type = pattern_sequence[
-			_pattern_sequence_cursor % pattern_sequence.size()
-		]
 
 	if not _pattern_can_start(_reserved_pattern_type):
-		_pattern_cooldown_remaining = pattern_retry_delay
-		return false
+		if _pattern_is_compound(_reserved_pattern_type):
+			var reserved_template_is_required := (
+				(
+					_reserved_pattern_type
+					== PatternType.SWEEPER_THEN_CAN
+					and not _sweeper_then_can_presented
+				)
+				or (
+					_reserved_pattern_type
+					== PatternType.CAN_THEN_SWEEPER
+					and not _can_then_sweeper_presented
+				)
+			)
+			if reserved_template_is_required:
+				_pattern_cooldown_remaining = pattern_retry_delay
+				return false
+			var alternative := _alternate_compound_pattern(
+				_reserved_pattern_type
+			)
+			if _pattern_can_start(alternative):
+				_reserved_pattern_type = alternative
+			else:
+				_pattern_cooldown_remaining = pattern_retry_delay
+				return false
+		else:
+			_pattern_cooldown_remaining = pattern_retry_delay
+			return false
 
-	_active_pattern_type = _reserved_pattern_type
+	var committed_pattern := _reserved_pattern_type
+	_active_pattern_type = committed_pattern
 	_reserved_pattern_type = -1
 	_active_pattern_elapsed = 0.0
-	_active_pattern_events = _events_for_pattern(_active_pattern_type)
-	_pattern_sequence_cursor = (
-		(_pattern_sequence_cursor + 1)
-		% maxi(pattern_sequence.size(), 1)
+	_active_pattern_started_at = survival_time
+	_active_pattern_events = _events_for_pattern(
+		committed_pattern,
+		_active_pattern_started_at
 	)
-	_pattern_cooldown_remaining = pattern_cadence
-	pattern_started.emit(_active_pattern_type, survival_time)
+	_record_pattern_commit(committed_pattern, _active_pattern_started_at)
+	pattern_started.emit(committed_pattern, survival_time)
 	_trigger_due_pattern_events()
 	return true
 
 
+func _select_director_pattern(time_seconds: float) -> int:
+	if not _teaching_can_presented:
+		return PatternType.CAN_ONLY
+	if not _teaching_sweeper_presented:
+		return PatternType.SWEEPER_ONLY
+	if time_seconds < teaching_phase_end:
+		return -1
+	if _first_compound_pattern_time < 0.0:
+		return _preferred_compound_pattern()
+	if (
+		time_seconds >= second_compound_template_deadline
+		and not both_compound_templates_presented()
+	):
+		return _missing_compound_pattern()
+	var maximum_gap := maximum_sweeper_gap_at(time_seconds)
+	var projected_gap := (
+		time_seconds
+		- _last_sweeper_pattern_time
+		+ pattern_cooldown_at(time_seconds)
+	)
+	if projected_gap >= maximum_gap:
+		return _preferred_compound_pattern()
+
+	_director_rng_state = _next_rng_state(_director_rng_state)
+	var candidate := _weighted_pattern_from_roll(
+		pattern_weights_at(time_seconds),
+		_director_rng_state
+	)
+	if (
+		candidate == PatternType.CAN_ONLY
+		and _last_pattern_type == PatternType.CAN_ONLY
+	):
+		candidate = PatternType.SWEEPER_ONLY
+	if not pattern_is_solvable(candidate, time_seconds):
+		if _pattern_is_compound(candidate):
+			var alternative := _alternate_compound_pattern(candidate)
+			if pattern_is_solvable(alternative, time_seconds):
+				return alternative
+		return _preferred_compound_pattern()
+	return candidate
+
+
+func _next_rng_state(state: int) -> int:
+	return (state * 1103515245 + 12345) & 0x7fffffff
+
+
+func _weighted_pattern_from_roll(
+	weights: PackedInt32Array,
+	roll_source: int
+) -> int:
+	if weights.size() < 4:
+		return PatternType.SWEEPER_ONLY
+	var total_weight := 0
+	for weight in weights:
+		total_weight += maxi(weight, 0)
+	if total_weight <= 0:
+		return PatternType.SWEEPER_ONLY
+	var roll := posmod(roll_source, total_weight)
+	var cumulative := 0
+	for pattern_type in range(4):
+		cumulative += maxi(weights[pattern_type], 0)
+		if roll < cumulative:
+			return pattern_type
+	return PatternType.CAN_THEN_SWEEPER
+
+
+func _preferred_compound_pattern() -> int:
+	if not _sweeper_then_can_presented:
+		return PatternType.SWEEPER_THEN_CAN
+	if not _can_then_sweeper_presented:
+		return PatternType.CAN_THEN_SWEEPER
+	return _alternate_compound_pattern(_last_compound_pattern_type)
+
+
+func _missing_compound_pattern() -> int:
+	if not _sweeper_then_can_presented:
+		return PatternType.SWEEPER_THEN_CAN
+	return PatternType.CAN_THEN_SWEEPER
+
+
+func _alternate_compound_pattern(pattern_type: int) -> int:
+	if pattern_type == PatternType.SWEEPER_THEN_CAN:
+		return PatternType.CAN_THEN_SWEEPER
+	return PatternType.SWEEPER_THEN_CAN
+
+
+func _pattern_is_simple(pattern_type: int) -> bool:
+	return (
+		pattern_type == PatternType.CAN_ONLY
+		or pattern_type == PatternType.SWEEPER_ONLY
+	)
+
+
+func _pattern_is_compound(pattern_type: int) -> bool:
+	return (
+		pattern_type == PatternType.SWEEPER_THEN_CAN
+		or pattern_type == PatternType.CAN_THEN_SWEEPER
+	)
+
+
+func _pattern_has_sweeper(pattern_type: int) -> bool:
+	return pattern_type != PatternType.CAN_ONLY
+
+
+func _record_pattern_commit(pattern_type: int, started_at: float) -> void:
+	_last_pattern_type = pattern_type
+	if _pattern_is_simple(pattern_type):
+		_consecutive_simple_patterns += 1
+		_consecutive_compound_patterns = 0
+	else:
+		_consecutive_compound_patterns += 1
+		_consecutive_simple_patterns = 0
+		_last_compound_pattern_type = pattern_type
+		if _first_compound_pattern_time < 0.0:
+			_first_compound_pattern_time = started_at
+	if _pattern_has_sweeper(pattern_type):
+		_last_sweeper_pattern_time = started_at
+	match pattern_type:
+		PatternType.CAN_ONLY:
+			_teaching_can_presented = true
+		PatternType.SWEEPER_ONLY:
+			_teaching_sweeper_presented = true
+		PatternType.SWEEPER_THEN_CAN:
+			_sweeper_then_can_presented = true
+		PatternType.CAN_THEN_SWEEPER:
+			_can_then_sweeper_presented = true
+
+
 func _pattern_can_start(pattern_type: int) -> bool:
-	if not pattern_is_solvable(pattern_type):
+	if not pattern_is_solvable(pattern_type, survival_time):
 		return false
 	var includes_can := (
 		pattern_type == PatternType.CAN_ONLY
 		or pattern_type == PatternType.SWEEPER_THEN_CAN
 		or pattern_type == PatternType.CAN_THEN_SWEEPER
 	)
-	var includes_sweeper := pattern_type != PatternType.CAN_ONLY
+	var includes_sweeper := _pattern_has_sweeper(pattern_type)
+	var sweeper_event_is_immediate := (
+		pattern_type == PatternType.SWEEPER_ONLY
+		or pattern_type == PatternType.SWEEPER_THEN_CAN
+	)
 	if (
 		includes_can
 		and (
@@ -555,6 +1014,7 @@ func _pattern_can_start(pattern_type: int) -> bool:
 		return false
 	if (
 		includes_sweeper
+		and sweeper_event_is_immediate
 		and (
 			_active_sweepers.size() >= maximum_active_sweepers
 			or _sweeper_spawn_pending
@@ -564,33 +1024,65 @@ func _pattern_can_start(pattern_type: int) -> bool:
 	return true
 
 
-func _events_for_pattern(pattern_type: int) -> Array[Dictionary]:
+func _events_for_pattern(
+	pattern_type: int,
+	pattern_start_time: float
+) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	var compound_offset := compound_offset_for_pattern(
+		pattern_type,
+		pattern_start_time
+	)
 	match pattern_type:
 		PatternType.CAN_ONLY:
-			events.append(_pattern_event(PatternEventType.CAN, 0.0))
-		PatternType.SWEEPER_ONLY:
-			events.append(_pattern_event(PatternEventType.SWEEPER, 0.0))
-		PatternType.SWEEPER_THEN_CAN:
-			events.append(_pattern_event(PatternEventType.SWEEPER, 0.0))
 			events.append(_pattern_event(
 				PatternEventType.CAN,
-				sweeper_then_can_offset
+				0.0,
+				pattern_start_time
 			))
-		PatternType.CAN_THEN_SWEEPER:
-			events.append(_pattern_event(PatternEventType.CAN, 0.0))
+		PatternType.SWEEPER_ONLY:
 			events.append(_pattern_event(
 				PatternEventType.SWEEPER,
-				can_then_sweeper_offset
+				0.0,
+				pattern_start_time
+			))
+		PatternType.SWEEPER_THEN_CAN:
+			events.append(_pattern_event(
+				PatternEventType.SWEEPER,
+				0.0,
+				pattern_start_time
+			))
+			events.append(_pattern_event(
+				PatternEventType.CAN,
+				compound_offset,
+				pattern_start_time
+			))
+		PatternType.CAN_THEN_SWEEPER:
+			events.append(_pattern_event(
+				PatternEventType.CAN,
+				0.0,
+				pattern_start_time
+			))
+			events.append(_pattern_event(
+				PatternEventType.SWEEPER,
+				compound_offset,
+				pattern_start_time
 			))
 	return events
 
 
-func _pattern_event(event_type: int, offset: float) -> Dictionary:
+func _pattern_event(
+	event_type: int,
+	offset: float,
+	pattern_start_time: float
+) -> Dictionary:
+	var event_time := pattern_start_time + maxf(offset, 0.0)
 	return {
 		"event_type": event_type,
 		"offset": maxf(offset, 0.0),
 		"triggered": false,
+		"fall_duration": target_fall_duration_at(event_time),
+		"sweeper_speed": sweeper_speed_at(event_time),
 	}
 
 
@@ -608,10 +1100,10 @@ func _trigger_due_pattern_events() -> void:
 			triggered = (
 				_pending_lane_index < 0
 				and _falling_products.size() < maximum_concurrent_falling_cans
-				and _start_next_telegraph()
+				and _start_next_telegraph(event.fall_duration)
 			)
 		elif event.event_type == PatternEventType.SWEEPER:
-			triggered = _start_sweeper_entry_cue()
+			triggered = _start_sweeper_entry_cue(event.sweeper_speed)
 		if not triggered:
 			continue
 		event.triggered = true
@@ -627,9 +1119,11 @@ func _trigger_due_pattern_events() -> void:
 	_active_pattern_events.clear()
 	_active_pattern_type = -1
 	_active_pattern_elapsed = 0.0
+	_active_pattern_started_at = 0.0
+	_pattern_cooldown_remaining = pattern_cooldown_at(survival_time)
 
 
-func _start_sweeper_entry_cue() -> bool:
+func _start_sweeper_entry_cue(event_sweeper_speed: float = NAN) -> bool:
 	if (
 		_sweeper_spawn_pending
 		or _active_sweepers.size() >= maximum_active_sweepers
@@ -637,6 +1131,11 @@ func _start_sweeper_entry_cue() -> bool:
 		return false
 	_sweeper_spawn_pending = true
 	_sweeper_cue_remaining = sweeper_entry_cue_duration
+	_pending_sweeper_speed = (
+		sweeper_speed_at(survival_time)
+		if is_nan(event_sweeper_speed)
+		else event_sweeper_speed
+	)
 	_sweeper_entry.position.y = sweeper_altitude
 	_sweeper_entry_cue.visible = true
 	sweeper_entry_cue_started.emit(
@@ -665,7 +1164,7 @@ func _spawn_sweeper() -> AirSweeper:
 	var sweeper := AIR_SWEEPER_SCENE.instantiate() as AirSweeper
 	sweeper.position = Vector2(sweeper_spawn_x, sweeper_altitude)
 	sweeper.configure(
-		sweeper_speed,
+		_pending_sweeper_speed,
 		sweeper_altitude,
 		sweeper_size,
 		sweeper_exit_x
@@ -678,7 +1177,7 @@ func _spawn_sweeper() -> AirSweeper:
 	return sweeper
 
 
-func _start_next_telegraph() -> bool:
+func _start_next_telegraph(event_fall_duration: float = NAN) -> bool:
 	if drop_lane_positions.is_empty():
 		return false
 	var selected_lane := -1
@@ -699,6 +1198,11 @@ func _start_next_telegraph() -> bool:
 		return false
 	_pending_lane_index = selected_lane
 	_telegraph_remaining = telegraph_duration
+	_pending_fall_duration = (
+		target_fall_duration_at(survival_time)
+		if is_nan(event_fall_duration)
+		else event_fall_duration
+	)
 	_show_warning()
 	telegraph_started.emit(_pending_lane_index, telegraph_duration)
 	return true
@@ -719,7 +1223,9 @@ func _drop_pending_product() -> ConveyorProduct:
 	var product := CONVEYOR_PRODUCT_SCENE.instantiate() as ConveyorProduct
 	product.position = Vector2(drop_lane_positions[lane_index], product_spawn_y)
 	product.configure_conveyor(
-		fall_speed(),
+		fall_distance() / _pending_fall_duration
+			if _pending_fall_duration > 0.0
+			else INF,
 		floor_y,
 		landed_lifetime,
 		despawn_warning_duration,
@@ -830,6 +1336,7 @@ func _kill_player() -> void:
 func _clear_warning_state() -> void:
 	_pending_lane_index = -1
 	_telegraph_remaining = 0.0
+	_pending_fall_duration = target_fall_duration_at(survival_time)
 	_chute_product = null
 	_update_source_visuals()
 
@@ -838,10 +1345,12 @@ func _clear_pattern_state() -> void:
 	_reserved_pattern_type = -1
 	_active_pattern_type = -1
 	_active_pattern_elapsed = 0.0
+	_active_pattern_started_at = 0.0
 	_active_pattern_events.clear()
 	_pattern_cooldown_remaining = 0.0
 	_sweeper_spawn_pending = false
 	_sweeper_cue_remaining = 0.0
+	_pending_sweeper_speed = sweeper_speed_at(survival_time)
 	_sweeper_entry_cue.visible = false
 
 
