@@ -11,12 +11,12 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 ## Current state
 
-**Build:** VM-0.3.1-B
+**Build:** VM-0.3.2-B
 
-**Phase:** Prototype B — minimum fixed-camera conveyor
-**Gameplay evidence:** Physical conveyor pressure pending manual review
+**Phase:** Prototype B — opposing-height hazard experiment
+**Gameplay evidence:** VM-0.3.1-B had a dominant hold-right-and-jump strategy; VM-0.3.2-B is pending manual review
 
-The Prototype B branch defaults to a separate fixed-camera conveyor scene using the unchanged VM-0.1.2 `CharacterBody2D` player. Build VM-0.3.1-B gives the belt and landed cans the same physical support velocity. Grounded input remains direct and relative to that support: no input moves left at 140 px/s, right input moves right at a net 160 px/s, and left input moves left at a net 440 px/s. Jump takeoff inherits the support velocity once, then remains independent while airborne. Single warned drops remain the only hazard. Deterministic tests measured the first warning at 0.850 seconds, first belt impact at 1.867 seconds, and passive left-boundary failure at 2.683 seconds. Gameplay pressure and fairness remain hypotheses pending manual review.
+The Prototype B branch defaults to a separate fixed-camera conveyor scene using the unchanged VM-0.1.2 `CharacterBody2D` player. The belt and landed cans retain the same -140 px/s physical support velocity. VM-0.3.2-B replaces the old x=280 instant-death check with a visible conveyor end at x=160 and an explicit recessed off-belt kill region. It also adds one fixed-height left-to-right service arm: its 96×28 px collision band is centered at y=460, clears grounded players, intersects the ordinary jump arc, and reaches screen center 1.20 seconds after visible entry at 520 px/s. A deterministic scheduler cycles can-only, sweeper-only, sweeper-then-can, and can-then-sweeper patterns. Automated checks pass; the effect on decision quality and perceived fairness remains a hypothesis pending manual review.
 
 Prototype A is frozen on `master` and tag `VM-0.2.3-A-R1`. Its scene remains available at `scenes/prototypes/arena.tscn`.
 
@@ -42,7 +42,7 @@ Prototype A is frozen on `master` and tag `VM-0.2.3-A-R1`. Its scene remains ava
 
 ## Next validation task
 
-Play Build VM-0.3.1-B without changing parameters. First release all input and confirm the belt physically carries the grounded player left toward failure. Confirm right input recovers position and left input combines with the belt. Jump without horizontal input from both the belt and a landed can; horizontal motion should continue naturally while airborne, and a vertical jump from a can should return near the same relative can position. Check belt-to-can and can-to-belt transitions for jitter or speed resets. Record the first-warning, first-impact, and first-required-response feel. Observe the possible hold-right-and-jump exploit, but do not tune or add paired drops before manual review.
+Play Build VM-0.3.2-B without changing parameters. Hold right continuously and note whether the service arm actually interrupts the previous automatic-jump strategy. Stay grounded beneath one arm, then deliberately jump early into another; grounded passage should be safe and airborne contact should kill once. During sweeper-then-can, wait for the arm before jumping the can. During can-then-sweeper, try jumping early enough to land before the arm arrives. At the left edge, confirm touching the orange conveyor-end lip is non-lethal and standing on a can there is safe; allow the can to leave so the player visibly falls into the recessed retrieval opening before death. Record readability, unavoidable states, and whether early versus delayed jumps are distinguishable. Do not tune offsets or add hazards before Startup Lab review.
 
 ## Automated movement test
 
@@ -86,6 +86,12 @@ godot --headless --log-file /tmp/vms-conveyor-test.log --path . --script res://t
 
 ```bash
 godot --headless --log-file /tmp/vms-physical-conveyor-test.log --path . --script res://tests/test_physical_conveyor.gd
+```
+
+## Automated sweeper and controlled-pattern test
+
+```bash
+godot --headless --log-file /tmp/vms-air-sweeper-test.log --path . --script res://tests/test_air_sweeper_patterns.gd
 ```
 
 ## Cost

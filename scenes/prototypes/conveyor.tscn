@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
-size = Vector2(960, 48)
+size = Vector2(896, 48)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_band_wall"]
 size = Vector2(16, 208)
@@ -21,8 +21,8 @@ corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_world_wall"]
-size = Vector2(48, 520)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_off_belt"]
+size = Vector2(160, 128)
 
 [node name="ConveyorPrototype" type="Node2D"]
 script = ExtResource("1_conveyor")
@@ -36,29 +36,19 @@ position_smoothing_enabled = false
 polygon = PackedVector2Array(96, 150, 1056, 150, 1056, 584, 96, 584)
 color = Color(0.075, 0.09, 0.11, 1)
 
-[node name="LeftWorldWall" type="StaticBody2D" parent="."]
-position = Vector2(72, 324)
-
-[node name="Visual" type="Polygon2D" parent="LeftWorldWall"]
-polygon = PackedVector2Array(-24, -260, 24, -260, 24, 260, -24, 260)
-color = Color(0.25, 0.28, 0.32, 1)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="LeftWorldWall"]
-shape = SubResource("RectangleShape2D_world_wall")
-
 [node name="ConveyorBelt" type="Node2D" parent="."]
 
 [node name="Floor" type="AnimatableBody2D" parent="ConveyorBelt"]
-position = Vector2(576, 608)
+position = Vector2(608, 608)
 constant_linear_velocity = Vector2(-140, 0)
 sync_to_physics = true
 
 [node name="Visual" type="Polygon2D" parent="ConveyorBelt/Floor"]
-polygon = PackedVector2Array(-480, -24, 480, -24, 480, 24, -480, 24)
+polygon = PackedVector2Array(-448, -24, 448, -24, 448, 24, -448, 24)
 color = Color(0.25, 0.29, 0.33, 1)
 
 [node name="TopSurface" type="Polygon2D" parent="ConveyorBelt/Floor"]
-polygon = PackedVector2Array(-480, -24, 480, -24, 480, -15, -480, -15)
+polygon = PackedVector2Array(-448, -24, 448, -24, 448, -15, -448, -15)
 color = Color(0.48, 0.55, 0.61, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="ConveyorBelt/Floor"]
@@ -67,22 +57,22 @@ shape = SubResource("RectangleShape2D_floor")
 [node name="Stripes" type="Node2D" parent="ConveyorBelt"]
 
 [node name="Stripe0" type="Polygon2D" parent="ConveyorBelt/Stripes"]
-position = Vector2(128, 608)
+position = Vector2(192, 608)
 polygon = PackedVector2Array(-18, -24, 6, -24, 30, 24, 6, 24)
 color = Color(0.11, 0.14, 0.17, 1)
 
 [node name="Stripe1" type="Polygon2D" parent="ConveyorBelt/Stripes"]
-position = Vector2(256, 608)
+position = Vector2(304, 608)
 polygon = PackedVector2Array(-18, -24, 6, -24, 30, 24, 6, 24)
 color = Color(0.11, 0.14, 0.17, 1)
 
 [node name="Stripe2" type="Polygon2D" parent="ConveyorBelt/Stripes"]
-position = Vector2(384, 608)
+position = Vector2(416, 608)
 polygon = PackedVector2Array(-18, -24, 6, -24, 30, 24, 6, 24)
 color = Color(0.11, 0.14, 0.17, 1)
 
 [node name="Stripe3" type="Polygon2D" parent="ConveyorBelt/Stripes"]
-position = Vector2(512, 608)
+position = Vector2(528, 608)
 polygon = PackedVector2Array(-18, -24, 6, -24, 30, 24, 6, 24)
 color = Color(0.11, 0.14, 0.17, 1)
 
@@ -92,17 +82,17 @@ polygon = PackedVector2Array(-18, -24, 6, -24, 30, 24, 6, 24)
 color = Color(0.11, 0.14, 0.17, 1)
 
 [node name="Stripe5" type="Polygon2D" parent="ConveyorBelt/Stripes"]
-position = Vector2(768, 608)
+position = Vector2(752, 608)
 polygon = PackedVector2Array(-18, -24, 6, -24, 30, 24, 6, 24)
 color = Color(0.11, 0.14, 0.17, 1)
 
 [node name="Stripe6" type="Polygon2D" parent="ConveyorBelt/Stripes"]
-position = Vector2(896, 608)
+position = Vector2(864, 608)
 polygon = PackedVector2Array(-18, -24, 6, -24, 30, 24, 6, 24)
 color = Color(0.11, 0.14, 0.17, 1)
 
 [node name="Stripe7" type="Polygon2D" parent="ConveyorBelt/Stripes"]
-position = Vector2(1024, 608)
+position = Vector2(976, 608)
 polygon = PackedVector2Array(-18, -24, 6, -24, 30, 24, 6, 24)
 color = Color(0.11, 0.14, 0.17, 1)
 
@@ -118,6 +108,50 @@ position = Vector2(272, 480)
 [node name="Visual" type="Polygon2D" parent="ControlBand/LeftMarker"]
 polygon = PackedVector2Array(-8, -104, 8, -104, 8, 104, -8, 104)
 color = Color(0.78, 0.32, 0.20, 0.48)
+
+[node name="ConveyorEnd" type="Node2D" parent="."]
+
+[node name="Opening" type="Polygon2D" parent="ConveyorEnd"]
+polygon = PackedVector2Array(0, 584, 160, 584, 160, 648, 0, 648)
+color = Color(0.025, 0.03, 0.038, 1)
+
+[node name="Lip" type="Polygon2D" parent="ConveyorEnd"]
+polygon = PackedVector2Array(152, 560, 168, 560, 168, 648, 152, 648)
+color = Color(0.82, 0.39, 0.18, 1)
+
+[node name="Label" type="Label" parent="ConveyorEnd"]
+offset_left = 12.0
+offset_top = 598.0
+offset_right = 148.0
+offset_bottom = 624.0
+theme_override_colors/font_color = Color(0.82, 0.48, 0.30, 1)
+theme_override_font_sizes/font_size = 12
+text = "RETRIEVAL DROP"
+horizontal_alignment = 1
+
+[node name="OffBeltKillRegion" type="Area2D" parent="."]
+position = Vector2(80, 648)
+collision_layer = 0
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="OffBeltKillRegion"]
+shape = SubResource("RectangleShape2D_off_belt")
+
+[node name="SweeperEntry" type="Node2D" parent="."]
+position = Vector2(96, 460)
+
+[node name="Housing" type="Polygon2D" parent="SweeperEntry"]
+polygon = PackedVector2Array(-32, -34, 12, -34, 28, -18, 28, 18, 12, 34, -32, 34)
+color = Color(0.24, 0.27, 0.31, 1)
+
+[node name="Slot" type="Polygon2D" parent="SweeperEntry"]
+polygon = PackedVector2Array(-20, -16, 28, -16, 28, 16, -20, 16)
+color = Color(0.055, 0.065, 0.078, 1)
+
+[node name="ActivationCue" type="Polygon2D" parent="SweeperEntry"]
+visible = false
+polygon = PackedVector2Array(-28, -28, -18, -28, -18, 28, -28, 28)
+color = Color(1, 0.48, 0.16, 1)
 
 [node name="RightWall" type="StaticBody2D" parent="ControlBand"]
 position = Vector2(784, 480)
@@ -189,7 +223,7 @@ offset_right = 260.0
 offset_bottom = 42.0
 theme_override_colors/font_color = Color(0.68, 0.72, 0.78, 1)
 theme_override_font_sizes/font_size = 16
-text = "BUILD VM-0.3.1-B"
+text = "BUILD VM-0.3.2-B"
 
 [node name="Timer" type="Label" parent="HUD"]
 offset_left = 900.0
@@ -234,3 +268,5 @@ text = "CRUSHED
 PRESS R TO RESTART"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[connection signal="body_entered" from="OffBeltKillRegion" to="." method="_on_off_belt_kill_region_body_entered"]

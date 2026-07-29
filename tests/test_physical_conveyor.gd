@@ -91,8 +91,8 @@ func _test_rightward_recovery_and_passive_failure() -> void:
 			failure_time = conveyor.survival_time
 			break
 	_check(
-		failure_time >= 2.0 and failure_time <= 3.0,
-		"Passive conveyor drift reaches the left failure boundary deterministically"
+		failure_time >= 3.0 and failure_time <= 4.0,
+		"Passive conveyor drift reaches the explicit off-belt region deterministically"
 	)
 	print("PHYSICAL_CONVEYOR_FAILURE_TIME %.3fs" % failure_time)
 	await _free_conveyor(conveyor)
@@ -293,7 +293,7 @@ func _test_natural_early_engagement_timings() -> void:
 			if observation.impact < 0.0:
 				observation.impact = conveyor.survival_time
 	)
-	for _frame in range(300):
+	for _frame in range(480):
 		await physics_frame
 		if (
 			conveyor.landed_product_count() > 0

@@ -70,7 +70,7 @@ func _test_independent_scene_loading_and_configuration() -> void:
 		conveyor.initial_warning_delay == 0.85
 		and conveyor.telegraph_duration == 0.45
 		and conveyor.target_fall_duration == 0.55
-		and conveyor.recurring_drop_cadence == 1.80,
+		and conveyor.pattern_cadence == 1.80,
 		"Initial warning, telegraph, fall, and recurring cadence are separate"
 	)
 	_check(
@@ -89,8 +89,8 @@ func _test_independent_scene_loading_and_configuration() -> void:
 		and conveyor.first_warning_time_estimate() <= 1.0
 		and conveyor.first_impact_time_estimate() >= 1.5
 		and conveyor.first_impact_time_estimate() <= 2.0
-		and conveyor.passive_failure_time_estimate() >= 2.0
-		and conveyor.passive_failure_time_estimate() <= 3.0,
+		and conveyor.passive_failure_time_estimate() >= 3.0
+		and conveyor.passive_failure_time_estimate() <= 4.0,
 		"Configured first warning, impact, and passive-response estimates meet the approved windows"
 	)
 
@@ -122,8 +122,9 @@ func _test_belt_scroll_and_control_band() -> void:
 	conveyor.player.position.x = 100.0
 	conveyor._enforce_control_band()
 	_check(
-		conveyor.player.position.x == conveyor.control_band_left,
-		"Player center is constrained at the left control-band bound"
+		conveyor.player.position.x
+			== conveyor.conveyor_support_left_x + _player_half_width(),
+		"Failure-disabled tests constrain the player at the last supported center"
 	)
 	conveyor.player.position.x = 1000.0
 	conveyor._enforce_control_band()
@@ -263,7 +264,7 @@ func _test_natural_stationary_pressure_and_overlapping_lifecycle() -> void:
 			if observation.impact < 0.0:
 				observation.impact = conveyor.survival_time
 	)
-	var maximum_frames := ceili(5.0 * Engine.physics_ticks_per_second)
+	var maximum_frames := ceili(8.0 * Engine.physics_ticks_per_second)
 	for _frame in range(maximum_frames):
 		await physics_frame
 		if (
@@ -308,12 +309,12 @@ func _test_offscreen_cleanup_and_left_failure() -> void:
 	)
 
 	conveyor.left_failure_enabled = true
-	conveyor.player.position.x = conveyor.left_failure_x - 1.0
-	conveyor._enforce_control_band()
+	conveyor.player.position = Vector2(80.0, 620.0)
+	await _wait_physics_frames(3)
 	_check(
 		conveyor.is_dead
 		and conveyor.get_node("HUD/DeathMessage").visible,
-		"Configured left-side failure boundary triggers the death flow"
+		"Explicit off-belt kill region triggers the death flow"
 	)
 	_free_conveyor(conveyor)
 
@@ -324,8 +325,16 @@ func _test_restart_cleanup() -> void:
 	await scene_changed
 	await physics_frame
 	var conveyor := current_scene as ConveyorPrototype
+	conveyor.pattern_cadence = 999.0
+	conveyor.force_pattern_for_test(
+		ConveyorPrototype.PatternType.SWEEPER_ONLY
+	)
 	conveyor.force_warning_for_test(0)
 	var product := conveyor.force_drop_for_test(0)
+	_check(
+		conveyor.has_pending_pattern_events(),
+		"Restart fixture contains a pending sweeper cue"
+	)
 	conveyor.survival_time = 4.0
 	var previous_instance_id := conveyor.get_instance_id()
 	var restart_event := InputEventAction.new()
@@ -344,13 +353,28 @@ func _test_restart_cleanup() -> void:
 		restarted.current_warning_lane() == -1
 		and restarted.falling_product_count() == 0
 		and restarted.landed_product_count() == 0
+		and restarted.active_sweeper_count() == 0
+		and restarted.active_pattern_type() == -1
+		and restarted.reserved_pattern_type() == -1
+		and not restarted.has_pending_pattern_events()
 		and restarted.survival_time < 0.1
 		and not restarted.is_dead,
-		"Restart clears warnings, chute, all can states, scroll session, and timer"
+		"Restart clears warnings, chute, cans, sweepers, patterns, scroll session, and timer"
 	)
 	_check(
 		not is_instance_valid(product),
 		"Restart frees products from the previous conveyor session"
+	)
+	restarted.player.position = Vector2(
+		restarted.conveyor_support_left_x + _player_half_width(),
+		552.0
+	)
+	await _wait_physics_frames(3)
+	_check(
+		not restarted.is_dead
+		and restarted.belt_support_velocity()
+			== restarted.conveyor_support_velocity(),
+		"Restart restores non-lethal belt edge and conveyor support state"
 	)
 
 
@@ -391,3 +415,7 @@ func _release_movement_actions() -> void:
 
 func _player_half_height() -> float:
 	return 24.0
+
+
+func _player_half_width() -> float:
+	return 16.0
