@@ -5,9 +5,9 @@ signal player_hit(sweeper: AirSweeper)
 signal cleared(sweeper: AirSweeper)
 
 @export var travel_speed: float = 520.0
-@export var fixed_altitude: float = 460.0
+@export var fixed_altitude: float = 518.0
 @export var hazard_size: Vector2 = Vector2(96.0, 28.0)
-@export var exit_x: float = 1200.0
+@export var exit_x: float = 800.0
 
 var _hit_emitted: bool = false
 var _stopped: bool = false

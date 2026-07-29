@@ -11,12 +11,12 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 ## Current state
 
-**Build:** VM-0.3.3-B
+**Build:** VM-0.3.4-B
 
-**Phase:** Prototype B — final internal intensity tuning
-**Gameplay evidence:** VM-0.3.2-B is structurally coherent but its sweeper patterns were too infrequent to displace the hold-right-and-jump strategy
+**Phase:** Prototype B — final elevated-state and right-edge correction
+**Gameplay evidence:** Manual VM-0.3.3-B testing found that can-top camping remained safe and player-relevant Sweeper Arm encounters were too infrequent to displace right-edge hold-and-jump play
 
-The Prototype B branch defaults to a separate fixed-camera conveyor scene using the unchanged VM-0.1.2 `CharacterBody2D` player. VM-0.3.3-B replaces the fixed pattern cycle with a deterministic four-phase intensity director. The 0–5 second teaching phase guarantees can-only and sweeper-only patterns. The 5–12 second phase weights patterns 20/20/30/30 across can-only, sweeper-only, sweeper-then-can, and can-then-sweeper; 12–20 seconds uses 10/10/40/40; 20+ uses 0/0/50/50. Compound response margins narrow continuously from 1.10 seconds at 5 seconds to a 0.50-second floor at 40 seconds. Empty cooldown narrows from 1.60 to 0.50 seconds over the same checkpoints. Conveyor speed remains 140 px/s; can and sweeper speeds begin a continuous 12% maximum ramp after 15 seconds. These are intensity hypotheses, not validated balance results.
+The Prototype B branch defaults to a separate fixed-camera conveyor scene using the unchanged VM-0.1.2 `CharacterBody2D` player. VM-0.3.4-B derives one fixed Sweeper Arm band from actual player and can collision dimensions: the grounded player remains below it, while can-top standing and 0.300 seconds of the normal jump overlap it. The scheduler now records physical player-region arrivals rather than treating pattern selection as an encounter. A 72 px right-edge zone reserves a normally telegraphed compound pressure pattern after 1.0 second of continuous dwell. Constant-velocity geometry and timing checks pass; whether the correction is readable, fair, and sufficient against the observed dominant strategies remains a hypothesis pending manual review.
 
 Prototype A is frozen on `master` and tag `VM-0.2.3-A-R1`. Its scene remains available at `scenes/prototypes/arena.tscn`.
 
@@ -42,7 +42,7 @@ Prototype A is frozen on `master` and tag `VM-0.2.3-A-R1`. Its scene remains ava
 
 ## Next validation task
 
-Play Build VM-0.3.3-B without changing parameters. On the first run, blindly hold right and jump whenever a can approaches; record whether and when that strategy fails. On later runs, deliberately wait grounded for sweeper-then-can patterns, and jump early enough to land during can-then-sweeper patterns. Continue beyond 20 seconds and note whether the tighter cadence remains readable. Record the time and cause of every death that feels unavoidable or visually unclear. Do not tune values or begin external playtesting until Startup Lab reviews this internal result.
+Play Build VM-0.3.4-B without changing parameters. Verify that an arm passes over a grounded player, kills a player standing on a can, and can be avoided by stepping down before it arrives. Try ordinary jumps through the arm band. Briefly visit the right edge, then leave; no targeted pressure should follow. On a separate run, remain at the right edge for more than one second and test blind immediate jumping, moving left, and delaying until the arm passes. Record the exact time and pattern for every unclear or apparently unavoidable death. Do not tune further or begin external playtesting until Startup Lab reviews this final correction.
 
 ## Automated movement test
 
@@ -98,6 +98,12 @@ godot --headless --log-file /tmp/vms-air-sweeper-test.log --path . --script res:
 
 ```bash
 godot --headless --log-file /tmp/vms-intensity-director-test.log --path . --script res://tests/test_intensity_director.gd
+```
+
+## Automated elevated-state and right-edge correction test
+
+```bash
+godot --headless --log-file /tmp/vms-elevated-right-edge-test.log --path . --script res://tests/test_elevated_right_edge_correction.gd
 ```
 
 ## Cost

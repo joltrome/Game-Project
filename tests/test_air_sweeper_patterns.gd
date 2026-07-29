@@ -250,12 +250,18 @@ func _test_all_controlled_patterns_and_solvability() -> void:
 			ceili(wait_seconds * Engine.physics_ticks_per_second)
 		)
 		_check(
-			started_types == [pattern_type],
-			"Selected pattern %d executes as the same pattern type"
+			not started_types.is_empty()
+			and started_types[0] == pattern_type,
+			"Selected pattern %d executes first as the same pattern type"
 			% pattern_type
 		)
+		var expected_pattern_events: Array = expected_events[pattern_type]
 		_check(
-			triggered_events == expected_events[pattern_type],
+			triggered_events.size() >= expected_pattern_events.size()
+			and triggered_events.slice(
+				0,
+				expected_pattern_events.size()
+			) == expected_pattern_events,
 			"Pattern %d triggers its exact ordered events" % pattern_type
 		)
 		await _free_conveyor(conveyor)
@@ -280,8 +286,9 @@ func _test_all_controlled_patterns_and_solvability() -> void:
 	)
 	_check(
 		timing_conveyor.sweeper_clears_grounded_player()
+		and timing_conveyor.sweeper_overlaps_player_on_can()
 		and timing_conveyor.sweeper_intersects_jump_arc(),
-		"Fixed sweeper band clears grounded boxes and intersects the tested jump arc"
+		"Fixed arm clears ground, threatens can-top standing, and intersects the jump arc"
 	)
 	await _free_conveyor(timing_conveyor)
 

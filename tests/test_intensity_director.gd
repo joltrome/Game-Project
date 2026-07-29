@@ -312,6 +312,23 @@ func _test_restart_resets_director() -> void:
 		and conveyor.last_pattern_type() >= 0,
 		"Restart fixture records director history"
 	)
+	conveyor.maximum_active_sweepers = 0
+	conveyor.player.position.x = conveyor.control_band_right
+	Input.action_press("move_right")
+	for _frame in range(
+		ceili(
+			(conveyor.right_edge_dwell_threshold + 0.1)
+			* Engine.physics_ticks_per_second
+		)
+	):
+		await physics_frame
+	Input.action_release("move_right")
+	_check(
+		conveyor.right_pressure_is_requested()
+		or conveyor.reserved_pattern_type()
+			== ConveyorPrototype.PatternType.RIGHT_EDGE_PRESSURE,
+		"Restart fixture contains right-edge dwell or a reserved pressure pattern"
+	)
 
 	var prior_instance_id := conveyor.get_instance_id()
 	var restart_event := InputEventAction.new()
@@ -334,8 +351,11 @@ func _test_restart_resets_director() -> void:
 		and not restarted.has_pending_pattern_events()
 		and restarted.active_product_count() == 0
 		and restarted.active_sweeper_count() == 0
+		and restarted.right_edge_dwell_time() == 0.0
+		and not restarted.right_pressure_is_requested()
+		and restarted.encounter_log().is_empty()
 		and restarted.survival_time < 0.1,
-		"Restart clears director phase history, reservations, warnings, and hazards"
+		"Restart clears director, edge dwell, encounter logs, warnings, and hazards"
 	)
 
 

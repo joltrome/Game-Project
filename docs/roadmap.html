@@ -924,6 +924,38 @@
     text: 'Prototype B now uses a deterministic four-phase director without changing the shared controller, Prototype A, conveyor support, can states, sweeper altitude, or off-belt geometry. Phase thresholds are 5, 12, and 20 seconds. Phase 1 guarantees can-only then sweeper-only. Pattern weights [can-only, sweeper-only, sweeper-then-can, can-then-sweeper] are [20,20,30,30] in Phase 2, [10,10,40,40] in Phase 3, and [0,0,50,50] in Phase 4. Ten-thousand-selection deterministic samples measured 59.07% compound in Phase 2, 79.26% in Phase 3, and 100% in Phase 4; short natural runs may differ because guarantees, the one-sweeper cap, and reservations constrain their small number of commits. A natural 25-second lifecycle measured first interaction at 1.000 seconds, first compound at 5.850 seconds, maximum sweeper-related pattern gap at 2.767 seconds, maximum reservation wait at 0.800 seconds, and five compound commits by 20 seconds. Configured compound margins at 5/12/20/40 seconds are 1.100/0.825/0.600/0.500 seconds; cooldowns are 1.600/0.900/0.700/0.500 seconds. Conveyor speed stays 140 px/s. Sweeper speeds are 520/520/532.480/582.400 px/s and falling-can speeds are 676.364/676.364/692.596/757.527 px/s at the same checkpoints. Geometry and constant-velocity timing checks are deterministic; player intent, action choice, readability, perceived fairness, and the effect on the dominant strategy remain heuristic or manually unverified. Nine automated suites and both headless scenes passed.'
   };
 
+  const elevatedCampingEvidence = {
+    id: 'evidence-vm-0.3.3-b-elevated-and-right-edge',
+    type: 'Evidence',
+    date: '2026-07-29',
+    source: 'Manual review, Build VM-0.3.3-B',
+    text: 'Manual testing found two blocking dominant strategies. The Sweeper Arm passed above the player while the player stood on a landed can, making can-top camping safe. The player could also remain at the right edge, hold right, and jump cans because sweeper encounters that physically reached the player were too infrequent. Pattern-selection frequency alone did not describe the experienced encounter cadence.'
+  };
+
+  const elevatedRightEdgeDecision = {
+    id: 'decision-vm-0.3.4-b-final-correction',
+    type: 'Decision',
+    date: '2026-07-29',
+    source: 'Startup Lab correction decision',
+    text: 'Use VM-0.3.4-B as the final approved internal design correction before external Prototype A/B testing. Derive one fixed Sweeper Arm band that clears grounded play but threatens can-top standing and normal jumping; measure physical player-region arrivals; and reserve one readable compound pressure pattern after sustained right-edge dwell. Do not add another height, hazard, movement ability, or broad speed change.'
+  };
+
+  const elevatedRightEdgeHypothesis = {
+    id: 'hypothesis-vm-0.3.4-b-elevated-and-right-edge',
+    type: 'Hypothesis',
+    date: '2026-07-29',
+    source: 'Startup Lab approved experiment',
+    text: 'A collision-derived Sweeper Arm band plus retained, normally telegraphed right-edge pressure may make can-top camping and blind hold-right-and-jump unreliable while preserving grounded, step-down, delayed, and left-repositioning responses. Whether players read these responses, perceive deaths as fair, and stop using the dominant strategies remains pending manual review.'
+  };
+
+  const elevatedRightEdgeResult = {
+    id: 'result-vm-0.3.4-b',
+    type: 'Result',
+    date: '2026-07-29',
+    source: 'Build VM-0.3.4-B implementation and automated validation',
+    text: 'Prototype B now derives the fixed Sweeper Arm from the 32×48 px player collision box, 48 px landed-can height, 28 px arm height, floor y=584, and a configurable 4 px grounded clearance. The resulting grounded-player, can-top-player, and arm intervals are y=536–584, 488–536, and 504–532. The normal jump overlaps the arm for 0.300 seconds across ascent 0.006–0.156 seconds and descent 0.427–0.578 seconds. Physical tests confirmed grounded passage, lethal can-top contact, and a non-lethal step-down response. Selection, spawn, current-player-region arrival, and compound-decision times are logged separately. A real 25-second hold-right lifecycle measured first player-relevant arm arrival at 3.383 seconds, first compound decision at 6.550 seconds, and a maximum post-teaching relevant-arm gap of 2.917 seconds. The 72 px right-edge zone reserves pressure after 1.000 second; its targeted warning retained a 0.527-second analytically validated delayed-ground response margin, while the configured 0.100-second blind-jump intercept lies inside the actual jump/arm overlap. Arm speed remains 520 px/s initially; cleanup now occurs after the arm passes the playable right band so the single-arm cap does not create false encounter gaps. Ten automated suites and both headless scenes passed. Constant-velocity geometry, collision intervals, timing, corridor occupancy, off-belt bounds, and restart state are deterministic checks; player recognition, execution tolerance, perceived fairness, and dominant-strategy removal remain unverified hypotheses. The shared player and Prototype A were unchanged.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -968,7 +1000,11 @@
     insufficientDecisionDensityEvidence,
     intensityDirectorDecision,
     intensityDirectorHypothesis,
-    intensityDirectorResult
+    intensityDirectorResult,
+    elevatedCampingEvidence,
+    elevatedRightEdgeDecision,
+    elevatedRightEdgeHypothesis,
+    elevatedRightEdgeResult
   ];
 
   const defaultFindings = [
@@ -980,7 +1016,7 @@
   ];
 
   const defaultState = {
-    version: 15,
+    version: 16,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

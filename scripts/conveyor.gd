@@ -6,9 +6,18 @@ signal product_dropped(lane_index: int, fall_speed: float)
 signal conveyor_product_landed(product: ConveyorProduct)
 signal conveyor_product_cleared(product: ConveyorProduct)
 signal pattern_started(pattern_type: int, started_at: float)
+signal pattern_selected(pattern_type: int, selected_at: float)
 signal pattern_event_triggered(pattern_type: int, event_type: int, offset: float)
 signal sweeper_entry_cue_started(altitude: float, duration: float)
 signal sweeper_spawned(sweeper: AirSweeper)
+signal sweeper_reached_player_region(
+	pattern_type: int,
+	reached_at: float,
+	player_region_x: float
+)
+signal compound_decision_reached(pattern_type: int, reached_at: float)
+signal right_pressure_reserved(target_x: float, reserved_at: float)
+signal right_pressure_launched(target_x: float, launched_at: float)
 signal player_died
 
 enum PatternType {
@@ -16,6 +25,7 @@ enum PatternType {
 	SWEEPER_ONLY,
 	SWEEPER_THEN_CAN,
 	CAN_THEN_SWEEPER,
+	RIGHT_EDGE_PRESSURE,
 }
 
 enum PatternEventType {
@@ -23,12 +33,12 @@ enum PatternEventType {
 	SWEEPER,
 }
 
-const BUILD_ID := "VM-0.3.3-B"
+const BUILD_ID := "VM-0.3.4-B"
 const CONVEYOR_PRODUCT_SCENE := preload(
 	"res://scenes/hazards/conveyor_product.tscn"
 )
 const AIR_SWEEPER_SCENE := preload("res://scenes/hazards/air_sweeper.tscn")
-const PLAYER_COLLISION_SIZE := Vector2(32.0, 48.0)
+const DEFAULT_PLAYER_COLLISION_SIZE := Vector2(32.0, 48.0)
 
 @export_category("Conveyor")
 @export var conveyor_speed: float = 140.0
@@ -60,12 +70,27 @@ const PLAYER_COLLISION_SIZE := Vector2(32.0, 48.0)
 
 @export_category("Air Sweeper")
 @export var sweeper_spawn_x: float = -48.0
-@export var sweeper_exit_x: float = 1200.0
-@export var sweeper_altitude: float = 460.0
+@export var sweeper_exit_x: float = 800.0
+@export var grounded_sweeper_clearance: float = 4.0
+var sweeper_altitude: float = 518.0
 @export var sweeper_speed: float = 520.0
 @export var sweeper_size: Vector2 = Vector2(96.0, 28.0)
 @export var sweeper_entry_cue_duration: float = 0.20
 @export var maximum_active_sweepers: int = 1
+
+@export_category("Player-Relevant Encounters")
+@export var first_relevant_sweeper_target_min: float = 3.0
+@export var first_relevant_sweeper_target_max: float = 4.0
+@export var first_compound_decision_target_min: float = 5.0
+@export var first_compound_decision_target_max: float = 7.0
+@export var maximum_relevant_sweeper_gap: float = 3.0
+@export var teaching_followup_cooldown: float = 0.95
+
+@export_category("Right-Edge Pressure")
+@export var right_edge_zone_width: float = 72.0
+@export var right_edge_dwell_threshold: float = 1.0
+@export var right_pressure_minimum_margin: float = 0.30
+@export var right_pressure_jump_intercept_time: float = 0.10
 
 @export_category("Intensity Director Phases")
 @export var teaching_phase_end: float = 5.0
@@ -107,6 +132,8 @@ var is_dead: bool = false
 var _pattern_cooldown_remaining: float = 0.0
 var _telegraph_remaining: float = 0.0
 var _pending_lane_index: int = -1
+var _pending_drop_x: float = NAN
+var _pending_drop_pattern_type: int = -1
 var _pending_fall_duration: float = 0.55
 var _sequence_cursor: int = 0
 var _falling_products: Array[ConveyorProduct] = []
@@ -121,6 +148,12 @@ var _active_pattern_events: Array[Dictionary] = []
 var _sweeper_spawn_pending: bool = false
 var _sweeper_cue_remaining: float = 0.0
 var _pending_sweeper_speed: float = 520.0
+var _pending_sweeper_pattern_type: int = -1
+var _sweeper_contexts: Dictionary = {}
+var _encounter_log: Array[Dictionary] = []
+var _first_relevant_sweeper_time: float = -1.0
+var _first_compound_decision_time: float = -1.0
+var _last_relevant_sweeper_time: float = -1.0
 var _director_rng_state: int = 3303
 var _last_pattern_type: int = -1
 var _last_compound_pattern_type: int = -1
@@ -132,6 +165,10 @@ var _sweeper_then_can_presented: bool = false
 var _can_then_sweeper_presented: bool = false
 var _consecutive_simple_patterns: int = 0
 var _consecutive_compound_patterns: int = 0
+var _right_edge_dwell_time: float = 0.0
+var _right_pressure_requested: bool = false
+var _right_pressure_target_x: float = NAN
+var _right_pressure_reserved_at: float = -1.0
 
 @onready var player: SharedPlayerController = $Player
 @onready var _hazard_container: Node2D = $Hazards
@@ -151,6 +188,7 @@ var _consecutive_compound_patterns: int = 0
 
 
 func _ready() -> void:
+	_refresh_sweeper_geometry()
 	_pattern_cooldown_remaining = initial_warning_delay
 	_pending_fall_duration = target_fall_duration_at(0.0)
 	_pending_sweeper_speed = sweeper_speed_at(0.0)
@@ -172,9 +210,11 @@ func _physics_process(delta: float) -> void:
 	_enforce_control_band()
 	if is_dead:
 		return
+	_update_right_edge_dwell(delta)
+	_update_sweeper_encounters()
 
 	_update_sweeper_entry_cue(delta)
-	if _pending_lane_index >= 0:
+	if _has_pending_drop():
 		_telegraph_remaining = maxf(_telegraph_remaining - delta, 0.0)
 		if _telegraph_remaining <= 0.0:
 			_drop_pending_product()
@@ -393,12 +433,44 @@ func passive_failure_time_estimate(start_x: float = NAN) -> float:
 		return INF
 	var player_start_x := player.position.x if is_nan(start_x) else start_x
 	var last_supported_center_x := (
-		conveyor_support_left_x + PLAYER_COLLISION_SIZE.x * 0.5
+		conveyor_support_left_x + player_collision_size().x * 0.5
 	)
 	return (
 		maxf(player_start_x - last_supported_center_x, 0.0)
 		/ conveyor_speed
 	)
+
+
+func player_collision_size() -> Vector2:
+	var player_node := player
+	if player_node == null:
+		player_node = get_node_or_null("Player") as SharedPlayerController
+	if player_node == null:
+		return DEFAULT_PLAYER_COLLISION_SIZE
+	var collision_shape := (
+		player_node.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	)
+	if collision_shape == null:
+		return DEFAULT_PLAYER_COLLISION_SIZE
+	var rectangle := collision_shape.shape as RectangleShape2D
+	if rectangle == null:
+		return DEFAULT_PLAYER_COLLISION_SIZE
+	return rectangle.size
+
+
+func derived_sweeper_altitude() -> float:
+	var grounded_top := floor_y - player_collision_size().y
+	return (
+		grounded_top
+		- maxf(grounded_sweeper_clearance, 0.0)
+		- sweeper_size.y * 0.5
+	)
+
+
+func _refresh_sweeper_geometry() -> void:
+	sweeper_altitude = derived_sweeper_altitude()
+	if is_node_ready():
+		_sweeper_entry.position.y = sweeper_altitude
 
 
 func sweeper_collision_band() -> Vector2:
@@ -410,7 +482,7 @@ func sweeper_collision_band() -> Vector2:
 
 func grounded_player_band_on_belt() -> Vector2:
 	return Vector2(
-		floor_y - PLAYER_COLLISION_SIZE.y,
+		floor_y - player_collision_size().y,
 		floor_y
 	)
 
@@ -418,7 +490,7 @@ func grounded_player_band_on_belt() -> Vector2:
 func grounded_player_band_on_can() -> Vector2:
 	var can_top := floor_y - landed_product_size.y
 	return Vector2(
-		can_top - PLAYER_COLLISION_SIZE.y,
+		can_top - player_collision_size().y,
 		can_top
 	)
 
@@ -426,19 +498,29 @@ func grounded_player_band_on_can() -> Vector2:
 func jump_apex_player_band() -> Vector2:
 	var apex_center_y := (
 		floor_y
-		- PLAYER_COLLISION_SIZE.y * 0.5
+		- player_collision_size().y * 0.5
 		- calculated_jump_height()
 	)
 	return Vector2(
-		apex_center_y - PLAYER_COLLISION_SIZE.y * 0.5,
-		apex_center_y + PLAYER_COLLISION_SIZE.y * 0.5
+		apex_center_y - player_collision_size().y * 0.5,
+		apex_center_y + player_collision_size().y * 0.5
 	)
 
 
 func sweeper_clears_grounded_player() -> bool:
 	return (
 		sweeper_collision_band().y < grounded_player_band_on_belt().x
-		and sweeper_collision_band().y < grounded_player_band_on_can().x
+	)
+
+
+func grounded_sweeper_clearance_actual() -> float:
+	return grounded_player_band_on_belt().x - sweeper_collision_band().y
+
+
+func sweeper_overlaps_player_on_can() -> bool:
+	return _bands_overlap(
+		sweeper_collision_band(),
+		grounded_player_band_on_can()
 	)
 
 
@@ -453,6 +535,68 @@ func sweeper_intersects_jump_arc() -> bool:
 	)
 
 
+func normal_jump_sweeper_overlap_intervals() -> Array[Vector2]:
+	var intervals: Array[Vector2] = []
+	if player.gravity <= 0.0 or player.jump_velocity >= 0.0:
+		return intervals
+	var half_player_height := player_collision_size().y * 0.5
+	var start_center_y := floor_y - half_player_height
+	var center_min_y := sweeper_collision_band().x - half_player_height
+	var center_max_y := sweeper_collision_band().y + half_player_height
+	var total_duration := normal_jump_duration()
+	var ascent_start := _first_jump_time_at_center_y(
+		start_center_y,
+		center_max_y
+	)
+	var ascent_end := _first_jump_time_at_center_y(
+		start_center_y,
+		center_min_y
+	)
+	var descent_start := total_duration - ascent_end
+	var descent_end := total_duration - ascent_start
+	if ascent_end > ascent_start:
+		intervals.append(Vector2(ascent_start, ascent_end))
+	if descent_end > descent_start:
+		intervals.append(Vector2(descent_start, descent_end))
+	return intervals
+
+
+func normal_jump_sweeper_overlap_duration() -> float:
+	var duration := 0.0
+	for interval in normal_jump_sweeper_overlap_intervals():
+		duration += maxf(interval.y - interval.x, 0.0)
+	return duration
+
+
+func jump_time_overlaps_sweeper(time_after_takeoff: float) -> bool:
+	for interval in normal_jump_sweeper_overlap_intervals():
+		if (
+			time_after_takeoff + 0.0001 >= interval.x
+			and time_after_takeoff <= interval.y + 0.0001
+		):
+			return true
+	return false
+
+
+func _first_jump_time_at_center_y(
+	start_center_y: float,
+	target_center_y: float
+) -> float:
+	var displacement_up := start_center_y - target_center_y
+	var launch_speed := absf(player.jump_velocity)
+	var discriminant := (
+		launch_speed * launch_speed
+		- 2.0 * player.gravity * displacement_up
+	)
+	if discriminant < 0.0:
+		return normal_jump_duration() * 0.5
+	return (launch_speed - sqrt(discriminant)) / player.gravity
+
+
+func _bands_overlap(first: Vector2, second: Vector2) -> bool:
+	return first.x < second.y and first.y > second.x
+
+
 func sweeper_center_arrival_time(time_seconds: float = NAN) -> float:
 	var evaluation_time := (
 		survival_time if is_nan(time_seconds) else time_seconds
@@ -461,6 +605,65 @@ func sweeper_center_arrival_time(time_seconds: float = NAN) -> float:
 	if evaluated_speed <= 0.0:
 		return INF
 	return (576.0 - sweeper_spawn_x) / evaluated_speed
+
+
+func sweeper_player_region_arrival_delay(
+	target_player_x: float,
+	time_seconds: float = NAN
+) -> float:
+	var evaluation_time := (
+		survival_time if is_nan(time_seconds) else time_seconds
+	)
+	var evaluated_speed := sweeper_speed_at(evaluation_time)
+	if evaluated_speed <= 0.0:
+		return INF
+	var player_left := target_player_x - player_collision_size().x * 0.5
+	var required_sweeper_center := player_left - sweeper_size.x * 0.5
+	return (
+		sweeper_entry_cue_duration
+		+ maxf(required_sweeper_center - sweeper_spawn_x, 0.0)
+			/ evaluated_speed
+	)
+
+
+func predicted_relevant_sweeper_time(
+	pattern_type: int,
+	start_time: float,
+	target_player_x: float
+) -> float:
+	var event_offset := (
+		compound_offset_for_pattern(pattern_type, start_time)
+		if pattern_type == PatternType.CAN_THEN_SWEEPER
+		else 0.0
+	)
+	return (
+		start_time
+		+ event_offset
+		+ sweeper_player_region_arrival_delay(
+			target_player_x,
+			start_time + event_offset
+		)
+	)
+
+
+func _would_exceed_relevant_sweeper_gap(
+	pattern_type: int,
+	start_time: float
+) -> bool:
+	if (
+		_last_relevant_sweeper_time < 0.0
+		or not _pattern_has_sweeper(pattern_type)
+	):
+		return false
+	return (
+		predicted_relevant_sweeper_time(
+			pattern_type,
+			start_time,
+			player.position.x
+		)
+		- _last_relevant_sweeper_time
+		> maximum_relevant_sweeper_gap
+	)
 
 
 func normal_jump_duration() -> float:
@@ -482,7 +685,7 @@ func earliest_can_contact_delay_from_event(
 		earliest_lane_x = minf(earliest_lane_x, lane_x)
 	var contact_center_x := (
 		control_band_right
-		+ PLAYER_COLLISION_SIZE.x * 0.5
+		+ player_collision_size().x * 0.5
 		+ landed_product_size.x * 0.5
 	)
 	var conveyor_travel_time := (
@@ -557,6 +760,166 @@ func compound_response_margin_for_pattern(
 	return INF
 
 
+func right_edge_zone_left() -> float:
+	return control_band_right - maxf(right_edge_zone_width, 0.0)
+
+
+func is_player_in_right_edge_zone() -> bool:
+	return (
+		player.position.x >= right_edge_zone_left()
+		and player.position.x <= control_band_right + 0.01
+	)
+
+
+func right_pressure_can_warning_offset(
+	start_time: float,
+	target_x: float
+) -> float:
+	return maxf(
+		sweeper_player_region_arrival_delay(target_x, start_time)
+			- right_pressure_jump_intercept_time,
+		0.0
+	)
+
+
+func right_pressure_response_metrics(
+	start_time: float,
+	target_x: float
+) -> Dictionary:
+	var speed := sweeper_speed_at(start_time)
+	var warning_offset := right_pressure_can_warning_offset(
+		start_time,
+		target_x
+	)
+	var sweeper_arrival := sweeper_player_region_arrival_delay(
+		target_x,
+		start_time
+	)
+	var horizontal_overlap_duration := (
+		(sweeper_size.x + player_collision_size().x) / speed
+		if speed > 0.0
+		else INF
+	)
+	var sweeper_clear_time := sweeper_arrival + horizontal_overlap_duration
+	var fall_duration := target_fall_duration_at(
+		start_time + warning_offset
+	)
+	var can_impact_time := (
+		warning_offset + telegraph_duration + fall_duration
+	)
+	var required_escape_distance := (
+		product_size.x * 0.5
+		+ player_collision_size().x * 0.5
+		+ grounded_sweeper_clearance
+	)
+	var escape_x := target_x - required_escape_distance
+	var left_world_speed := absf(net_left_input_world_speed())
+	var escape_move_time := (
+		required_escape_distance / left_world_speed
+		if left_world_speed > 0.0
+		else INF
+	)
+	var delayed_ground_response_margin := (
+		can_impact_time - sweeper_clear_time - escape_move_time
+	)
+	return {
+		"target_x": target_x,
+		"warning_offset": warning_offset,
+		"sweeper_arrival": sweeper_arrival,
+		"sweeper_clear": sweeper_clear_time,
+		"can_impact": can_impact_time,
+		"escape_x": escape_x,
+		"escape_move_time": escape_move_time,
+		"delayed_ground_response_margin": delayed_ground_response_margin,
+		"blind_jump_intercept": (
+			sweeper_arrival - warning_offset
+		),
+	}
+
+
+func right_pressure_pattern_is_solvable(
+	start_time: float,
+	target_x: float
+) -> bool:
+	if is_nan(target_x):
+		return false
+	var half_product_width := product_size.x * 0.5
+	if (
+		target_x - half_product_width < belt_left_x
+		or target_x + half_product_width > belt_right_x
+	):
+		return false
+	var metrics := right_pressure_response_metrics(start_time, target_x)
+	var last_supported_center := (
+		conveyor_support_left_x + player_collision_size().x * 0.5
+	)
+	if metrics.escape_x < last_supported_center:
+		return false
+	if (
+		not sweeper_clears_grounded_player()
+		or not sweeper_overlaps_player_on_can()
+		or not jump_time_overlaps_sweeper(metrics.blind_jump_intercept)
+		or metrics.delayed_ground_response_margin
+			+ 0.0001 < right_pressure_minimum_margin
+	):
+		return false
+	if _right_pressure_landing_overlaps_existing_can(
+		target_x,
+		metrics.can_impact
+	):
+		return false
+	return not _right_pressure_escape_corridor_is_blocked(
+		metrics.escape_x,
+		target_x,
+		metrics.sweeper_clear
+	)
+
+
+func _right_pressure_landing_overlaps_existing_can(
+	target_x: float,
+	time_until_impact: float
+) -> bool:
+	var required_spacing := (
+		product_size.x * 0.5 + landed_product_size.x * 0.5
+	)
+	for product in _landed_products:
+		if not is_instance_valid(product):
+			continue
+		var predicted_x := (
+			product.conveyor_center_x()
+			- conveyor_speed * maxf(time_until_impact, 0.0)
+		)
+		if absf(predicted_x - target_x) < required_spacing:
+			return true
+	return false
+
+
+func _right_pressure_escape_corridor_is_blocked(
+	escape_x: float,
+	target_x: float,
+	prediction_time: float
+) -> bool:
+	var corridor_left := minf(escape_x, target_x)
+	var corridor_right := maxf(escape_x, target_x)
+	var half_spacing := (
+		landed_product_size.x * 0.5
+		+ player_collision_size().x * 0.5
+	)
+	for product in _landed_products:
+		if not is_instance_valid(product):
+			continue
+		var predicted_x := (
+			product.conveyor_center_x()
+			- conveyor_speed * maxf(prediction_time, 0.0)
+		)
+		if (
+			predicted_x + half_spacing > corridor_left
+			and predicted_x - half_spacing < corridor_right
+		):
+			return true
+	return false
+
+
 func pattern_is_solvable(
 	pattern_type: int,
 	start_time: float = NAN
@@ -566,7 +929,16 @@ func pattern_is_solvable(
 	)
 	if pattern_type == PatternType.CAN_ONLY:
 		return landed_can_is_jump_clearable()
-	if not sweeper_clears_grounded_player() or not sweeper_intersects_jump_arc():
+	if pattern_type == PatternType.RIGHT_EDGE_PRESSURE:
+		return right_pressure_pattern_is_solvable(
+			evaluation_time,
+			_right_pressure_target_x
+		)
+	if (
+		not sweeper_clears_grounded_player()
+		or not sweeper_overlaps_player_on_can()
+		or not sweeper_intersects_jump_arc()
+	):
 		return false
 	match pattern_type:
 		PatternType.SWEEPER_ONLY:
@@ -630,6 +1002,34 @@ func first_compound_pattern_time() -> float:
 	return _first_compound_pattern_time
 
 
+func first_relevant_sweeper_time() -> float:
+	return _first_relevant_sweeper_time
+
+
+func first_compound_decision_time() -> float:
+	return _first_compound_decision_time
+
+
+func last_relevant_sweeper_time() -> float:
+	return _last_relevant_sweeper_time
+
+
+func encounter_log() -> Array[Dictionary]:
+	return _encounter_log.duplicate(true)
+
+
+func right_edge_dwell_time() -> float:
+	return _right_edge_dwell_time
+
+
+func right_pressure_is_requested() -> bool:
+	return _right_pressure_requested
+
+
+func right_pressure_target_x() -> float:
+	return _right_pressure_target_x
+
+
 func last_pattern_type() -> int:
 	return _last_pattern_type
 
@@ -675,9 +1075,20 @@ func director_distribution_sample(
 
 
 func force_pattern_for_test(pattern_type: int) -> bool:
-	if pattern_type < PatternType.CAN_ONLY or pattern_type > PatternType.CAN_THEN_SWEEPER:
+	if (
+		pattern_type < PatternType.CAN_ONLY
+		or pattern_type > PatternType.RIGHT_EDGE_PRESSURE
+	):
 		return false
+	if pattern_type == PatternType.RIGHT_EDGE_PRESSURE:
+		_right_pressure_requested = true
+		_right_pressure_target_x = clampf(
+			player.position.x,
+			right_edge_zone_left(),
+			control_band_right
+		)
 	_reserved_pattern_type = pattern_type
+	_record_pattern_selection(pattern_type, survival_time)
 	_pattern_cooldown_remaining = 0.0
 	return _try_start_reserved_pattern()
 
@@ -686,16 +1097,20 @@ func current_warning_lane() -> int:
 	return _pending_lane_index
 
 
+func current_warning_x() -> float:
+	return _pending_drop_x
+
+
 func warning_is_visible() -> bool:
-	return _pending_lane_index >= 0 and _warning_column.visible
+	return _has_pending_drop() and _warning_column.visible
 
 
 func warning_is_aligned() -> bool:
-	if _pending_lane_index < 0:
+	if not _has_pending_drop():
 		return false
 	return is_equal_approx(
 		_source_carriage.position.x,
-		drop_lane_positions[_pending_lane_index]
+		_pending_drop_x
 	)
 
 
@@ -764,6 +1179,8 @@ func force_warning_for_test(lane_index: int) -> void:
 	if lane_index < 0 or lane_index >= drop_lane_positions.size():
 		return
 	_pending_lane_index = lane_index
+	_pending_drop_x = drop_lane_positions[lane_index]
+	_pending_drop_pattern_type = PatternType.CAN_ONLY
 	_telegraph_remaining = telegraph_duration
 	_pending_fall_duration = target_fall_duration_at(survival_time)
 	_show_warning()
@@ -773,6 +1190,8 @@ func force_drop_for_test(lane_index: int) -> ConveyorProduct:
 	if lane_index < 0 or lane_index >= drop_lane_positions.size():
 		return null
 	_pending_lane_index = lane_index
+	_pending_drop_x = drop_lane_positions[lane_index]
+	_pending_drop_pattern_type = PatternType.CAN_ONLY
 	_telegraph_remaining = 0.0
 	_pending_fall_duration = target_fall_duration_at(survival_time)
 	return _drop_pending_product()
@@ -798,7 +1217,7 @@ func _apply_conveyor_support_velocity() -> void:
 
 func _enforce_control_band() -> void:
 	var last_supported_center_x := (
-		conveyor_support_left_x + PLAYER_COLLISION_SIZE.x * 0.5
+		conveyor_support_left_x + player_collision_size().x * 0.5
 	)
 	if not left_failure_enabled and player.position.x < last_supported_center_x:
 		player.position.x = last_supported_center_x
@@ -807,6 +1226,92 @@ func _enforce_control_band() -> void:
 		player.position.x = control_band_right
 	if player.position.x >= control_band_right and player.velocity.x > 0.0:
 		player.velocity.x = 0.0
+
+
+func _update_right_edge_dwell(delta: float) -> void:
+	if _right_pressure_requested:
+		return
+	if not is_player_in_right_edge_zone():
+		_right_edge_dwell_time = 0.0
+		return
+	_right_edge_dwell_time += delta
+	if _right_edge_dwell_time + 0.0001 < right_edge_dwell_threshold:
+		return
+	_right_pressure_requested = true
+	_right_pressure_target_x = clampf(
+		player.position.x,
+		right_edge_zone_left(),
+		control_band_right
+	)
+	_right_pressure_reserved_at = survival_time
+	right_pressure_reserved.emit(
+		_right_pressure_target_x,
+		_right_pressure_reserved_at
+	)
+
+
+func _update_sweeper_encounters() -> void:
+	for sweeper in _active_sweepers:
+		if not is_instance_valid(sweeper):
+			continue
+		var instance_id := sweeper.get_instance_id()
+		if not _sweeper_contexts.has(instance_id):
+			continue
+		var context: Dictionary = _sweeper_contexts[instance_id]
+		if context.reached_player_region:
+			continue
+		var player_left := player.position.x - player_collision_size().x * 0.5
+		var sweeper_right := (
+			sweeper.position.x + sweeper.hazard_size.x * 0.5
+		)
+		if sweeper_right < player_left:
+			continue
+		context.reached_player_region = true
+		context.reached_at = survival_time
+		context.player_region_x = player.position.x
+		_sweeper_contexts[instance_id] = context
+		_record_encounter({
+			"event": "sweeper_player_region",
+			"pattern_type": context.pattern_type,
+			"time": survival_time,
+			"player_x": player.position.x,
+			"spawned_at": context.spawned_at,
+		})
+		if _first_relevant_sweeper_time < 0.0:
+			_first_relevant_sweeper_time = survival_time
+		_last_relevant_sweeper_time = survival_time
+		sweeper_reached_player_region.emit(
+			context.pattern_type,
+			survival_time,
+			player.position.x
+		)
+
+
+func _record_pattern_selection(pattern_type: int, selected_at: float) -> void:
+	_record_encounter({
+		"event": "pattern_selection",
+		"pattern_type": pattern_type,
+		"time": selected_at,
+	})
+	pattern_selected.emit(pattern_type, selected_at)
+
+
+func _record_compound_decision(pattern_type: int) -> void:
+	if not _pattern_is_compound(pattern_type):
+		return
+	_record_encounter({
+		"event": "compound_decision",
+		"pattern_type": pattern_type,
+		"time": survival_time,
+		"player_x": player.position.x,
+	})
+	if _first_compound_decision_time < 0.0:
+		_first_compound_decision_time = survival_time
+	compound_decision_reached.emit(pattern_type, survival_time)
+
+
+func _record_encounter(record: Dictionary) -> void:
+	_encounter_log.append(record)
 
 
 func _try_start_reserved_pattern() -> bool:
@@ -818,8 +1323,12 @@ func _try_start_reserved_pattern() -> bool:
 				pattern_retry_delay
 			)
 			return false
+		_record_pattern_selection(_reserved_pattern_type, survival_time)
 
 	if not _pattern_can_start(_reserved_pattern_type):
+		if _reserved_pattern_type == PatternType.RIGHT_EDGE_PRESSURE:
+			_pattern_cooldown_remaining = pattern_retry_delay
+			return false
 		if _pattern_is_compound(_reserved_pattern_type):
 			var reserved_template_is_required := (
 				(
@@ -839,7 +1348,13 @@ func _try_start_reserved_pattern() -> bool:
 			var alternative := _alternate_compound_pattern(
 				_reserved_pattern_type
 			)
-			if _pattern_can_start(alternative):
+			if (
+				not _would_exceed_relevant_sweeper_gap(
+					alternative,
+					survival_time
+				)
+				and _pattern_can_start(alternative)
+			):
 				_reserved_pattern_type = alternative
 			else:
 				_pattern_cooldown_remaining = pattern_retry_delay
@@ -858,6 +1373,13 @@ func _try_start_reserved_pattern() -> bool:
 		_active_pattern_started_at
 	)
 	_record_pattern_commit(committed_pattern, _active_pattern_started_at)
+	if committed_pattern == PatternType.RIGHT_EDGE_PRESSURE:
+		_right_pressure_requested = false
+		_right_edge_dwell_time = 0.0
+		right_pressure_launched.emit(
+			_right_pressure_target_x,
+			survival_time
+		)
 	pattern_started.emit(committed_pattern, survival_time)
 	_trigger_due_pattern_events()
 	return true
@@ -870,21 +1392,33 @@ func _select_director_pattern(time_seconds: float) -> int:
 		return PatternType.SWEEPER_ONLY
 	if time_seconds < teaching_phase_end:
 		return -1
+	if _right_pressure_requested:
+		return PatternType.RIGHT_EDGE_PRESSURE
 	if _first_compound_pattern_time < 0.0:
 		return _preferred_compound_pattern()
 	if (
 		time_seconds >= second_compound_template_deadline
 		and not both_compound_templates_presented()
 	):
-		return _missing_compound_pattern()
-	var maximum_gap := maximum_sweeper_gap_at(time_seconds)
-	var projected_gap := (
-		time_seconds
-		- _last_sweeper_pattern_time
-		+ pattern_cooldown_at(time_seconds)
-	)
-	if projected_gap >= maximum_gap:
-		return _preferred_compound_pattern()
+		var missing_pattern := _missing_compound_pattern()
+		if _would_exceed_relevant_sweeper_gap(
+			missing_pattern,
+			time_seconds
+		):
+			return PatternType.SWEEPER_THEN_CAN
+		return missing_pattern
+	if (
+		_last_relevant_sweeper_time >= 0.0
+		and (
+			time_seconds
+			+ sweeper_player_region_arrival_delay(
+				control_band_right,
+				time_seconds
+			)
+			- _last_relevant_sweeper_time
+		) >= maximum_relevant_sweeper_gap
+	):
+		return PatternType.SWEEPER_THEN_CAN
 
 	_director_rng_state = _next_rng_state(_director_rng_state)
 	var candidate := _weighted_pattern_from_roll(
@@ -902,6 +1436,8 @@ func _select_director_pattern(time_seconds: float) -> int:
 			if pattern_is_solvable(alternative, time_seconds):
 				return alternative
 		return _preferred_compound_pattern()
+	if _would_exceed_relevant_sweeper_gap(candidate, time_seconds):
+		return PatternType.SWEEPER_THEN_CAN
 	return candidate
 
 
@@ -960,6 +1496,7 @@ func _pattern_is_compound(pattern_type: int) -> bool:
 	return (
 		pattern_type == PatternType.SWEEPER_THEN_CAN
 		or pattern_type == PatternType.CAN_THEN_SWEEPER
+		or pattern_type == PatternType.RIGHT_EDGE_PRESSURE
 	)
 
 
@@ -998,16 +1535,18 @@ func _pattern_can_start(pattern_type: int) -> bool:
 		pattern_type == PatternType.CAN_ONLY
 		or pattern_type == PatternType.SWEEPER_THEN_CAN
 		or pattern_type == PatternType.CAN_THEN_SWEEPER
+		or pattern_type == PatternType.RIGHT_EDGE_PRESSURE
 	)
 	var includes_sweeper := _pattern_has_sweeper(pattern_type)
 	var sweeper_event_is_immediate := (
 		pattern_type == PatternType.SWEEPER_ONLY
 		or pattern_type == PatternType.SWEEPER_THEN_CAN
+		or pattern_type == PatternType.RIGHT_EDGE_PRESSURE
 	)
 	if (
 		includes_can
 		and (
-			_pending_lane_index >= 0
+			_has_pending_drop()
 			or _falling_products.size() >= maximum_concurrent_falling_cans
 		)
 	):
@@ -1055,7 +1594,8 @@ func _events_for_pattern(
 			events.append(_pattern_event(
 				PatternEventType.CAN,
 				compound_offset,
-				pattern_start_time
+				pattern_start_time,
+				true
 			))
 		PatternType.CAN_THEN_SWEEPER:
 			events.append(_pattern_event(
@@ -1066,7 +1606,24 @@ func _events_for_pattern(
 			events.append(_pattern_event(
 				PatternEventType.SWEEPER,
 				compound_offset,
+				pattern_start_time,
+				true
+			))
+		PatternType.RIGHT_EDGE_PRESSURE:
+			events.append(_pattern_event(
+				PatternEventType.SWEEPER,
+				0.0,
 				pattern_start_time
+			))
+			events.append(_pattern_event(
+				PatternEventType.CAN,
+				right_pressure_can_warning_offset(
+					pattern_start_time,
+					_right_pressure_target_x
+				),
+				pattern_start_time,
+				true,
+				_right_pressure_target_x
 			))
 	return events
 
@@ -1074,13 +1631,17 @@ func _events_for_pattern(
 func _pattern_event(
 	event_type: int,
 	offset: float,
-	pattern_start_time: float
+	pattern_start_time: float,
+	decision_event: bool = false,
+	target_x: float = NAN
 ) -> Dictionary:
 	var event_time := pattern_start_time + maxf(offset, 0.0)
 	return {
 		"event_type": event_type,
 		"offset": maxf(offset, 0.0),
 		"triggered": false,
+		"decision_event": decision_event,
+		"target_x": target_x,
 		"fall_duration": target_fall_duration_at(event_time),
 		"sweeper_speed": sweeper_speed_at(event_time),
 	}
@@ -1098,15 +1659,24 @@ func _trigger_due_pattern_events() -> void:
 		var triggered := false
 		if event.event_type == PatternEventType.CAN:
 			triggered = (
-				_pending_lane_index < 0
+				not _has_pending_drop()
 				and _falling_products.size() < maximum_concurrent_falling_cans
-				and _start_next_telegraph(event.fall_duration)
+				and _start_next_telegraph(
+					event.fall_duration,
+					event.target_x,
+					_active_pattern_type
+				)
 			)
 		elif event.event_type == PatternEventType.SWEEPER:
-			triggered = _start_sweeper_entry_cue(event.sweeper_speed)
+			triggered = _start_sweeper_entry_cue(
+				event.sweeper_speed,
+				_active_pattern_type
+			)
 		if not triggered:
 			continue
 		event.triggered = true
+		if event.decision_event:
+			_record_compound_decision(_active_pattern_type)
 		pattern_event_triggered.emit(
 			_active_pattern_type,
 			event.event_type,
@@ -1120,10 +1690,36 @@ func _trigger_due_pattern_events() -> void:
 	_active_pattern_type = -1
 	_active_pattern_elapsed = 0.0
 	_active_pattern_started_at = 0.0
-	_pattern_cooldown_remaining = pattern_cooldown_at(survival_time)
+	_pattern_cooldown_remaining = _bounded_pattern_cooldown(
+		pattern_cooldown_at(survival_time)
+	)
 
 
-func _start_sweeper_entry_cue(event_sweeper_speed: float = NAN) -> bool:
+func _bounded_pattern_cooldown(requested_cooldown: float) -> float:
+	if _teaching_can_presented and not _teaching_sweeper_presented:
+		return minf(requested_cooldown, teaching_followup_cooldown)
+	if (
+		survival_time < teaching_phase_end
+		or _last_relevant_sweeper_time < 0.0
+	):
+		return requested_cooldown
+	var next_arrival_delay := sweeper_player_region_arrival_delay(
+		control_band_right,
+		survival_time
+	)
+	var latest_start_delay := (
+		_last_relevant_sweeper_time
+		+ maximum_relevant_sweeper_gap
+		- survival_time
+		- next_arrival_delay
+	)
+	return minf(requested_cooldown, maxf(latest_start_delay, 0.0))
+
+
+func _start_sweeper_entry_cue(
+	event_sweeper_speed: float = NAN,
+	pattern_type: int = -1
+) -> bool:
 	if (
 		_sweeper_spawn_pending
 		or _active_sweepers.size() >= maximum_active_sweepers
@@ -1136,6 +1732,7 @@ func _start_sweeper_entry_cue(event_sweeper_speed: float = NAN) -> bool:
 		if is_nan(event_sweeper_speed)
 		else event_sweeper_speed
 	)
+	_pending_sweeper_pattern_type = pattern_type
 	_sweeper_entry.position.y = sweeper_altitude
 	_sweeper_entry_cue.visible = true
 	sweeper_entry_cue_started.emit(
@@ -1173,30 +1770,63 @@ func _spawn_sweeper() -> AirSweeper:
 	sweeper.cleared.connect(_on_sweeper_cleared)
 	_hazard_container.add_child(sweeper)
 	_active_sweepers.append(sweeper)
+	_sweeper_contexts[sweeper.get_instance_id()] = {
+		"pattern_type": _pending_sweeper_pattern_type,
+		"spawned_at": survival_time,
+		"reached_player_region": false,
+		"reached_at": -1.0,
+		"player_region_x": NAN,
+	}
+	_record_encounter({
+		"event": "sweeper_spawn",
+		"pattern_type": _pending_sweeper_pattern_type,
+		"time": survival_time,
+		"x": sweeper.position.x,
+	})
+	_pending_sweeper_pattern_type = -1
 	sweeper_spawned.emit(sweeper)
 	return sweeper
 
 
-func _start_next_telegraph(event_fall_duration: float = NAN) -> bool:
-	if drop_lane_positions.is_empty():
-		return false
+func _start_next_telegraph(
+	event_fall_duration: float = NAN,
+	target_x: float = NAN,
+	pattern_type: int = -1
+) -> bool:
 	var selected_lane := -1
-	for offset in range(maxi(drop_lane_sequence.size(), drop_lane_positions.size())):
-		var sequence_value := (
-			drop_lane_sequence[
-				(_sequence_cursor + offset) % drop_lane_sequence.size()
-			]
-			if not drop_lane_sequence.is_empty()
-			else _sequence_cursor + offset
-		)
-		var lane_index := posmod(sequence_value, drop_lane_positions.size())
-		if drop_lane_is_geometrically_valid(lane_index):
-			selected_lane = lane_index
-			_sequence_cursor += offset + 1
-			break
-	if selected_lane < 0:
+	var selected_x := target_x
+	if is_nan(target_x):
+		if drop_lane_positions.is_empty():
+			return false
+		for offset in range(
+			maxi(drop_lane_sequence.size(), drop_lane_positions.size())
+		):
+			var sequence_value := (
+				drop_lane_sequence[
+					(_sequence_cursor + offset) % drop_lane_sequence.size()
+				]
+				if not drop_lane_sequence.is_empty()
+				else _sequence_cursor + offset
+			)
+			var lane_index := posmod(
+				sequence_value,
+				drop_lane_positions.size()
+			)
+			if drop_lane_is_geometrically_valid(lane_index):
+				selected_lane = lane_index
+				selected_x = drop_lane_positions[lane_index]
+				_sequence_cursor += offset + 1
+				break
+		if selected_lane < 0:
+			return false
+	elif not _targeted_drop_is_currently_valid(
+		target_x,
+		event_fall_duration
+	):
 		return false
 	_pending_lane_index = selected_lane
+	_pending_drop_x = selected_x
+	_pending_drop_pattern_type = pattern_type
 	_telegraph_remaining = telegraph_duration
 	_pending_fall_duration = (
 		target_fall_duration_at(survival_time)
@@ -1205,11 +1835,57 @@ func _start_next_telegraph(event_fall_duration: float = NAN) -> bool:
 	)
 	_show_warning()
 	telegraph_started.emit(_pending_lane_index, telegraph_duration)
+	_record_encounter({
+		"event": "can_warning",
+		"pattern_type": pattern_type,
+		"time": survival_time,
+		"target_x": _pending_drop_x,
+		"lane_index": _pending_lane_index,
+	})
 	return true
 
 
+func _targeted_drop_is_currently_valid(
+	target_x: float,
+	event_fall_duration: float
+) -> bool:
+	var half_product_width := product_size.x * 0.5
+	if (
+		is_nan(target_x)
+		or target_x - half_product_width < belt_left_x
+		or target_x + half_product_width > belt_right_x
+	):
+		return false
+	var remaining_fall_duration := (
+		target_fall_duration_at(survival_time)
+		if is_nan(event_fall_duration)
+		else event_fall_duration
+	)
+	var time_until_impact := telegraph_duration + remaining_fall_duration
+	if _right_pressure_landing_overlaps_existing_can(
+		target_x,
+		time_until_impact
+	):
+		return false
+	var required_escape_distance := (
+		product_size.x * 0.5
+		+ player_collision_size().x * 0.5
+		+ grounded_sweeper_clearance
+	)
+	var escape_x := target_x - required_escape_distance
+	return not _right_pressure_escape_corridor_is_blocked(
+		escape_x,
+		target_x,
+		0.0
+	)
+
+
+func _has_pending_drop() -> bool:
+	return not is_nan(_pending_drop_x)
+
+
 func _show_warning() -> void:
-	_source_carriage.position.x = drop_lane_positions[_pending_lane_index]
+	_source_carriage.position.x = _pending_drop_x
 	_source_carriage.visible = true
 	_warning_column.visible = true
 	_warning_text.visible = true
@@ -1217,11 +1893,13 @@ func _show_warning() -> void:
 
 
 func _drop_pending_product() -> ConveyorProduct:
-	if _pending_lane_index < 0:
+	if not _has_pending_drop():
 		return null
 	var lane_index := _pending_lane_index
+	var drop_x := _pending_drop_x
+	var drop_pattern_type := _pending_drop_pattern_type
 	var product := CONVEYOR_PRODUCT_SCENE.instantiate() as ConveyorProduct
-	product.position = Vector2(drop_lane_positions[lane_index], product_spawn_y)
+	product.position = Vector2(drop_x, product_spawn_y)
 	product.configure_conveyor(
 		fall_distance() / _pending_fall_duration
 			if _pending_fall_duration > 0.0
@@ -1241,9 +1919,17 @@ func _drop_pending_product() -> ConveyorProduct:
 	_falling_products.append(product)
 	_chute_product = product
 	_pending_lane_index = -1
+	_pending_drop_x = NAN
+	_pending_drop_pattern_type = -1
 	_telegraph_remaining = 0.0
 	_update_source_visuals()
 	product_dropped.emit(lane_index, product.fall_speed)
+	_record_encounter({
+		"event": "can_spawn",
+		"pattern_type": drop_pattern_type,
+		"time": survival_time,
+		"target_x": drop_x,
+	})
 	return product
 
 
@@ -1252,7 +1938,7 @@ func _update_source_visuals() -> void:
 		is_instance_valid(_chute_product)
 		and _chute_product.is_falling()
 	)
-	var warning_visible := _pending_lane_index >= 0
+	var warning_visible := _has_pending_drop()
 	_source_carriage.visible = warning_visible or falling_visible
 	_warning_column.visible = warning_visible
 	_warning_text.visible = warning_visible
@@ -1304,6 +1990,7 @@ func _on_sweeper_hit(_sweeper: AirSweeper) -> void:
 
 func _on_sweeper_cleared(sweeper: AirSweeper) -> void:
 	_active_sweepers.erase(sweeper)
+	_sweeper_contexts.erase(sweeper.get_instance_id())
 
 
 func _on_off_belt_kill_region_body_entered(body: Node2D) -> void:
@@ -1335,6 +2022,8 @@ func _kill_player() -> void:
 
 func _clear_warning_state() -> void:
 	_pending_lane_index = -1
+	_pending_drop_x = NAN
+	_pending_drop_pattern_type = -1
 	_telegraph_remaining = 0.0
 	_pending_fall_duration = target_fall_duration_at(survival_time)
 	_chute_product = null
@@ -1351,7 +2040,13 @@ func _clear_pattern_state() -> void:
 	_sweeper_spawn_pending = false
 	_sweeper_cue_remaining = 0.0
 	_pending_sweeper_speed = sweeper_speed_at(survival_time)
+	_pending_sweeper_pattern_type = -1
+	_sweeper_contexts.clear()
 	_sweeper_entry_cue.visible = false
+	_right_edge_dwell_time = 0.0
+	_right_pressure_requested = false
+	_right_pressure_target_x = NAN
+	_right_pressure_reserved_at = -1.0
 
 
 func _update_timer_label() -> void:
