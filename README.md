@@ -11,12 +11,12 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 ## Current state
 
-**Build:** VM-0.3.0-B
+**Build:** VM-0.3.1-B
 
 **Phase:** Prototype B — minimum fixed-camera conveyor
-**Gameplay evidence:** Prototype B has not yet been manually reviewed
+**Gameplay evidence:** Physical conveyor pressure pending manual review
 
-The Prototype B branch defaults to a separate fixed-camera conveyor scene using the unchanged VM-0.1.2 `CharacterBody2D` player. Build VM-0.3.0-B uses single warned drops from one visible source. Falling cans are lethal; valid conveyor landings become solid, non-lethal moving platforms that carry a standing player left and clean up after leaving the playable area. The player-center control band is x=280–760. A deterministic automated run measured first stationary-player obstacle contact at 10.033 seconds. Whether this removes low-decision waiting without creating perceived unfairness remains a hypothesis pending manual review.
+The Prototype B branch defaults to a separate fixed-camera conveyor scene using the unchanged VM-0.1.2 `CharacterBody2D` player. Build VM-0.3.1-B gives the belt and landed cans the same physical support velocity. Grounded input remains direct and relative to that support: no input moves left at 140 px/s, right input moves right at a net 160 px/s, and left input moves left at a net 440 px/s. Jump takeoff inherits the support velocity once, then remains independent while airborne. Single warned drops remain the only hazard. Deterministic tests measured the first warning at 0.850 seconds, first belt impact at 1.867 seconds, and passive left-boundary failure at 2.683 seconds. Gameplay pressure and fairness remain hypotheses pending manual review.
 
 Prototype A is frozen on `master` and tag `VM-0.2.3-A-R1`. Its scene remains available at `scenes/prototypes/arena.tscn`.
 
@@ -42,7 +42,7 @@ Prototype A is frozen on `master` and tag `VM-0.2.3-A-R1`. Its scene remains ava
 
 ## Next validation task
 
-Play Build VM-0.3.0-B without changing parameters. First remain stationary and record when the first moving obstacle requires a response. Check the warning/chute alignment, falling lethality, landed solidity, leftward motion, standing carry, normal jumping, control-band limits, offscreen cleanup, survival timer, death message, and `R` restart. Then compare against the frozen Prototype A scene using **F6**. Do not tune or add paired drops before recording the manual comparison.
+Play Build VM-0.3.1-B without changing parameters. First release all input and confirm the belt physically carries the grounded player left toward failure. Confirm right input recovers position and left input combines with the belt. Jump without horizontal input from both the belt and a landed can; horizontal motion should continue naturally while airborne, and a vertical jump from a can should return near the same relative can position. Check belt-to-can and can-to-belt transitions for jitter or speed resets. Record the first-warning, first-impact, and first-required-response feel. Observe the possible hold-right-and-jump exploit, but do not tune or add paired drops before manual review.
 
 ## Automated movement test
 
@@ -80,6 +80,12 @@ godot --headless --log-file /tmp/vms-edge-coverage-test.log --path . --script re
 
 ```bash
 godot --headless --log-file /tmp/vms-conveyor-test.log --path . --script res://tests/test_conveyor_prototype.gd
+```
+
+## Automated physical-conveyor test
+
+```bash
+godot --headless --log-file /tmp/vms-physical-conveyor-test.log --path . --script res://tests/test_physical_conveyor.gd
 ```
 
 ## Cost

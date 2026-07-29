@@ -844,6 +844,30 @@
     text: 'Implemented Prototype B as a separate fixed-camera scene on its own branch without changing the Prototype A scene, arena scheduler, shared player controller, or original falling-product files. The initial exported values are 140 px/s conveyor speed, player-center control band x=280–760, 0.65-second warning, 0.65-second target fall duration, 6.5-second initial delay, and 1.80-second post-drop interval. Single cans inherit the existing falling-lethal to landed-solid state logic; the B-only subclass moves its landed AnimatableBody2D left, carries a standing player, and clears offscreen. A deterministic natural test measured first stationary-player contact at 10.033 seconds versus a 10.001-second geometric estimate and observed a new falling can while an earlier landed can remained active. Automated movement, Prototype A, platform, pattern, edge, conveyor, restart, and headless scene checks passed. Manual pressure, fairness, and comparative value remain unverified.'
   };
 
+  const visualOnlyConveyorEvidence = {
+    id: 'evidence-vm-0.3.0-b-visual-only-belt',
+    type: 'Evidence',
+    date: '2026-07-29',
+    source: 'Manual review, Build VM-0.3.0-B',
+    text: 'The belt scrolled visually but did not physically move a player grounded directly on it. Only landed cans carried or pushed the player, so the observed loop reduced to waiting for a can, occasionally jumping it, and eventually being pushed toward the left failure boundary. The first meaningful can interaction was reported at approximately five seconds or later. VM-0.3.0-B therefore did not validly test continuous conveyor pressure.'
+  };
+
+  const physicalConveyorHypothesis = {
+    id: 'hypothesis-vm-0.3.1-b-physical-pressure',
+    type: 'Hypothesis',
+    date: '2026-07-29',
+    source: 'Startup Lab approved correction',
+    text: 'A belt that physically carries the grounded player left at the same support velocity as landed cans may create continuous position-management pressure and make the existing single-can loop more meaningful without adding hazards. A likely future exploit is holding right continuously and jumping occasionally; record it during manual review, but do not implement a solution without evidence.'
+  };
+
+  const physicalConveyorResult = {
+    id: 'result-vm-0.3.1-b',
+    type: 'Result',
+    date: '2026-07-29',
+    source: 'Build VM-0.3.1-B implementation and automated validation',
+    text: 'Prototype B’s floor is now an AnimatableBody2D treadmill reporting the same -140 px/s support velocity as landed cans. The unchanged shared controller continues assigning direct grounded relative velocity; Godot combines this with support motion and inherits support velocity once when leaving a platform. Measured world speeds were -139.999 px/s with no input, +160.001 px/s with right input, and -439.999 px/s with left input. Airborne tests changed former-support velocities and confirmed the player retained its inherited velocity instead of remaining linked. A no-input can jump landed within 5 px of its initial relative can position. Initial timing is separated into 0.85-second warning delay, 0.45-second telegraph, 0.55-second target fall duration, and 1.80-second drop cadence. Deterministic tests measured first warning at 0.850 seconds, first belt impact at 1.867 seconds, and passive failure at 2.683 seconds. Prototype A retained zero support velocity and stationary no-input behavior. Manual pressure, fairness, transition feel, and the hold-right risk remain unverified.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -878,7 +902,10 @@
     prototypeALowDecisionEvidence,
     prototypeAFreezeDecision,
     conveyorPrototypeHypothesis,
-    conveyorPrototypeResult
+    conveyorPrototypeResult,
+    visualOnlyConveyorEvidence,
+    physicalConveyorHypothesis,
+    physicalConveyorResult
   ];
 
   const defaultFindings = [
@@ -890,7 +917,7 @@
   ];
 
   const defaultState = {
-    version: 12,
+    version: 13,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

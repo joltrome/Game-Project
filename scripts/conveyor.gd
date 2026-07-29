@@ -7,11 +7,10 @@ signal conveyor_product_landed(product: ConveyorProduct)
 signal conveyor_product_cleared(product: ConveyorProduct)
 signal player_died
 
-const BUILD_ID := "VM-0.3.0-B"
+const BUILD_ID := "VM-0.3.1-B"
 const CONVEYOR_PRODUCT_SCENE := preload(
 	"res://scenes/hazards/conveyor_product.tscn"
 )
-const PLAYER_COLLISION_WIDTH := 32.0
 
 @export_category("Conveyor")
 @export var conveyor_speed: float = 140.0
@@ -23,7 +22,7 @@ const PLAYER_COLLISION_WIDTH := 32.0
 @export var control_band_left: float = 280.0
 @export var control_band_right: float = 760.0
 @export var left_failure_enabled: bool = true
-@export var left_failure_x: float = 232.0
+@export var left_failure_x: float = 280.0
 
 @export_category("Single Drop Layout")
 @export var drop_lane_positions := PackedFloat32Array([880.0, 952.0, 1020.0])
@@ -35,10 +34,10 @@ const PLAYER_COLLISION_WIDTH := 32.0
 @export var landed_product_size: Vector2 = Vector2(72.0, 48.0)
 
 @export_category("Timing")
-@export var initial_drop_delay: float = 6.5
-@export var telegraph_duration: float = 0.65
-@export var target_fall_duration: float = 0.65
-@export var spawn_interval: float = 1.80
+@export var initial_warning_delay: float = 0.85
+@export var telegraph_duration: float = 0.45
+@export var target_fall_duration: float = 0.55
+@export var recurring_drop_cadence: float = 1.80
 @export var landed_lifetime: float = 30.0
 @export var despawn_warning_duration: float = 0.35
 
@@ -55,6 +54,7 @@ var _chute_product: ConveyorProduct = null
 
 @onready var player: SharedPlayerController = $Player
 @onready var _hazard_container: Node2D = $Hazards
+@onready var _belt_floor: AnimatableBody2D = $ConveyorBelt/Floor
 @onready var _belt_stripes: Node2D = $ConveyorBelt/Stripes
 @onready var _source_carriage: Node2D = $SourceRack/SourceCarriage
 @onready var _source_head: Polygon2D = $SourceRack/SourceCarriage/Head
@@ -68,7 +68,8 @@ var _chute_product: ConveyorProduct = null
 
 
 func _ready() -> void:
-	_cooldown_remaining = initial_drop_delay
+	_cooldown_remaining = initial_warning_delay
+	_apply_conveyor_support_velocity()
 	_build_label.text = "BUILD %s" % BUILD_ID
 	_update_timer_label()
 	_update_source_visuals()
@@ -115,6 +116,49 @@ func fall_speed() -> float:
 	if target_fall_duration <= 0.0:
 		return INF
 	return fall_distance() / target_fall_duration
+
+
+func conveyor_support_velocity() -> Vector2:
+	return Vector2(-conveyor_speed, 0.0)
+
+
+func belt_support_velocity() -> Vector2:
+	return _belt_floor.constant_linear_velocity
+
+
+func maximum_relative_player_speed() -> float:
+	return player.maximum_speed
+
+
+func net_no_input_world_speed() -> float:
+	return -conveyor_speed
+
+
+func net_left_input_world_speed() -> float:
+	return -conveyor_speed - player.maximum_speed
+
+
+func net_right_input_world_speed() -> float:
+	return -conveyor_speed + player.maximum_speed
+
+
+func can_recover_rightward() -> bool:
+	return net_right_input_world_speed() > 0.0
+
+
+func first_warning_time_estimate() -> float:
+	return initial_warning_delay
+
+
+func first_impact_time_estimate() -> float:
+	return initial_warning_delay + telegraph_duration + target_fall_duration
+
+
+func passive_failure_time_estimate(start_x: float = NAN) -> float:
+	if conveyor_speed <= 0.0:
+		return INF
+	var player_start_x := player.position.x if is_nan(start_x) else start_x
+	return maxf(player_start_x - left_failure_x, 0.0) / conveyor_speed
 
 
 func current_warning_lane() -> int:
@@ -195,28 +239,6 @@ func drop_lane_is_geometrically_valid(lane_index: int) -> bool:
 	)
 
 
-func stationary_first_contact_estimate() -> float:
-	if drop_lane_positions.is_empty() or conveyor_speed <= 0.0:
-		return INF
-	var first_sequence_value := (
-		drop_lane_sequence[0] if not drop_lane_sequence.is_empty() else 0
-	)
-	var lane_index := posmod(first_sequence_value, drop_lane_positions.size())
-	var collision_distance := (
-		product_size.x + PLAYER_COLLISION_WIDTH
-	) * 0.5
-	var travel_distance := maxf(
-		drop_lane_positions[lane_index] - player.position.x - collision_distance,
-		0.0
-	)
-	return (
-		initial_drop_delay
-		+ telegraph_duration
-		+ target_fall_duration
-		+ travel_distance / conveyor_speed
-	)
-
-
 func force_warning_for_test(lane_index: int) -> void:
 	if lane_index < 0 or lane_index >= drop_lane_positions.size():
 		return
@@ -245,24 +267,22 @@ func _scroll_belt_presentation(delta: float) -> void:
 			stripe.position.x += belt_width
 
 
+func _apply_conveyor_support_velocity() -> void:
+	if not is_node_ready():
+		return
+	_belt_floor.constant_linear_velocity = conveyor_support_velocity()
+
+
 func _enforce_control_band() -> void:
-	if left_failure_enabled and player.position.x < left_failure_x:
+	if left_failure_enabled and player.position.x <= left_failure_x:
 		_kill_player()
 		return
-	player.position.x = clampf(
-		player.position.x,
-		control_band_left,
-		control_band_right
-	)
-	if (
-		player.position.x <= control_band_left
-		and player.velocity.x < 0.0
-	):
+	if not left_failure_enabled and player.position.x < control_band_left:
+		player.position.x = control_band_left
 		player.velocity.x = 0.0
-	elif (
-		player.position.x >= control_band_right
-		and player.velocity.x > 0.0
-	):
+	if player.position.x > control_band_right:
+		player.position.x = control_band_right
+	if player.position.x >= control_band_right and player.velocity.x > 0.0:
 		player.velocity.x = 0.0
 
 
@@ -324,7 +344,10 @@ func _drop_pending_product() -> ConveyorProduct:
 	_chute_product = product
 	_pending_lane_index = -1
 	_telegraph_remaining = 0.0
-	_cooldown_remaining = spawn_interval
+	_cooldown_remaining = maxf(
+		recurring_drop_cadence - telegraph_duration,
+		0.0
+	)
 	_update_source_visuals()
 	product_dropped.emit(lane_index, product.fall_speed)
 	return product
@@ -379,16 +402,12 @@ func _on_product_cleared(product: FallingProduct) -> void:
 	conveyor_product_cleared.emit(conveyor_product)
 
 
-func _on_left_failure_body_entered(body: Node2D) -> void:
-	if left_failure_enabled and body == player:
-		_kill_player()
-
-
 func _kill_player() -> void:
 	if is_dead:
 		return
 	is_dead = true
 	player.set_physics_process(false)
+	_belt_floor.constant_linear_velocity = Vector2.ZERO
 	_clear_warning_state()
 	for product in _falling_products:
 		if is_instance_valid(product):

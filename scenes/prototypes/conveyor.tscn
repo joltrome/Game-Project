@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/conveyor.gd" id="1_conveyor"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
@@ -8,9 +8,6 @@ size = Vector2(960, 48)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_band_wall"]
 size = Vector2(16, 208)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_failure"]
-size = Vector2(32, 520)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_death"]
 bg_color = Color(0.12, 0.135, 0.16, 0.94)
@@ -51,8 +48,10 @@ shape = SubResource("RectangleShape2D_world_wall")
 
 [node name="ConveyorBelt" type="Node2D" parent="."]
 
-[node name="Floor" type="StaticBody2D" parent="ConveyorBelt"]
+[node name="Floor" type="AnimatableBody2D" parent="ConveyorBelt"]
 position = Vector2(576, 608)
+constant_linear_velocity = Vector2(-140, 0)
+sync_to_physics = true
 
 [node name="Visual" type="Polygon2D" parent="ConveyorBelt/Floor"]
 polygon = PackedVector2Array(-480, -24, 480, -24, 480, 24, -480, 24)
@@ -113,15 +112,12 @@ color = Color(0.11, 0.14, 0.17, 1)
 polygon = PackedVector2Array(280, 574, 760, 574, 760, 584, 280, 584)
 color = Color(0.96, 0.77, 0.26, 0.42)
 
-[node name="LeftWall" type="StaticBody2D" parent="ControlBand"]
-position = Vector2(256, 480)
+[node name="LeftMarker" type="Node2D" parent="ControlBand"]
+position = Vector2(272, 480)
 
-[node name="Visual" type="Polygon2D" parent="ControlBand/LeftWall"]
+[node name="Visual" type="Polygon2D" parent="ControlBand/LeftMarker"]
 polygon = PackedVector2Array(-8, -104, 8, -104, 8, 104, -8, 104)
 color = Color(0.78, 0.32, 0.20, 0.48)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="ControlBand/LeftWall"]
-shape = SubResource("RectangleShape2D_band_wall")
 
 [node name="RightWall" type="StaticBody2D" parent="ControlBand"]
 position = Vector2(784, 480)
@@ -132,14 +128,6 @@ color = Color(0.78, 0.32, 0.20, 0.48)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="ControlBand/RightWall"]
 shape = SubResource("RectangleShape2D_band_wall")
-
-[node name="LeftFailureBoundary" type="Area2D" parent="."]
-position = Vector2(232, 324)
-collision_layer = 0
-collision_mask = 1
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="LeftFailureBoundary"]
-shape = SubResource("RectangleShape2D_failure")
 
 [node name="SourceRack" type="Node2D" parent="."]
 
@@ -190,7 +178,7 @@ horizontal_alignment = 1
 [node name="Hazards" type="Node2D" parent="."]
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
-position = Vector2(520, 552)
+position = Vector2(640, 552)
 
 [node name="HUD" type="CanvasLayer" parent="."]
 
@@ -201,7 +189,7 @@ offset_right = 260.0
 offset_bottom = 42.0
 theme_override_colors/font_color = Color(0.68, 0.72, 0.78, 1)
 theme_override_font_sizes/font_size = 16
-text = "BUILD VM-0.3.0-B"
+text = "BUILD VM-0.3.1-B"
 
 [node name="Timer" type="Label" parent="HUD"]
 offset_left = 900.0
@@ -246,5 +234,3 @@ text = "CRUSHED
 PRESS R TO RESTART"
 horizontal_alignment = 1
 vertical_alignment = 1
-
-[connection signal="body_entered" from="LeftFailureBoundary" to="." method="_on_left_failure_body_entered"]

@@ -67,10 +67,11 @@ func _test_independent_scene_loading_and_configuration() -> void:
 		"Initial player-center control band is x=280 through x=760"
 	)
 	_check(
-		conveyor.telegraph_duration == 0.65
-		and conveyor.target_fall_duration == 0.65
-		and conveyor.spawn_interval == 1.80,
-		"Initial warning, fall, and spawn timings match the B hypothesis"
+		conveyor.initial_warning_delay == 0.85
+		and conveyor.telegraph_duration == 0.45
+		and conveyor.target_fall_duration == 0.55
+		and conveyor.recurring_drop_cadence == 1.80,
+		"Initial warning, telegraph, fall, and recurring cadence are separate"
 	)
 	_check(
 		conveyor.maximum_concurrent_falling_cans == 1
@@ -84,9 +85,13 @@ func _test_independent_scene_loading_and_configuration() -> void:
 		"Locked normal jump height exceeds the landed-can height"
 	)
 	_check(
-		conveyor.stationary_first_contact_estimate() >= 9.0
-		and conveyor.stationary_first_contact_estimate() <= 15.0,
-		"Geometry predicts first stationary-player pressure within 9–15 seconds"
+		conveyor.first_warning_time_estimate() >= 0.75
+		and conveyor.first_warning_time_estimate() <= 1.0
+		and conveyor.first_impact_time_estimate() >= 1.5
+		and conveyor.first_impact_time_estimate() <= 2.0
+		and conveyor.passive_failure_time_estimate() >= 2.0
+		and conveyor.passive_failure_time_estimate() <= 3.0,
+		"Configured first warning, impact, and passive-response estimates meet the approved windows"
 	)
 
 	arena.queue_free()
@@ -242,10 +247,23 @@ func _test_moving_platform_support_and_jump() -> void:
 
 func _test_natural_stationary_pressure_and_overlapping_lifecycle() -> void:
 	var conveyor := await _make_conveyor(false)
-	var initial_player_x := conveyor.player.position.x
-	var encounter_time := -1.0
+	conveyor.left_failure_enabled = false
+	var observation := {
+		"warning": -1.0,
+		"impact": -1.0,
+	}
 	var saw_new_drop_while_landed := false
-	var maximum_frames := ceili(15.0 * Engine.physics_ticks_per_second)
+	conveyor.telegraph_started.connect(
+		func(_lane_index: int, _duration: float) -> void:
+			if observation.warning < 0.0:
+				observation.warning = conveyor.survival_time
+	)
+	conveyor.conveyor_product_landed.connect(
+		func(_product: ConveyorProduct) -> void:
+			if observation.impact < 0.0:
+				observation.impact = conveyor.survival_time
+	)
+	var maximum_frames := ceili(5.0 * Engine.physics_ticks_per_second)
 	for _frame in range(maximum_frames):
 		await physics_frame
 		if (
@@ -253,29 +271,24 @@ func _test_natural_stationary_pressure_and_overlapping_lifecycle() -> void:
 			and conveyor.falling_product_count() > 0
 		):
 			saw_new_drop_while_landed = true
-		for product in conveyor.active_landed_products():
-			var product_left := (
-				product.conveyor_center_x()
-				- conveyor.landed_product_size.x * 0.5
-			)
-			var stationary_player_right := initial_player_x + 16.0
-			if product_left <= stationary_player_right:
-				encounter_time = conveyor.survival_time
-				break
-		if encounter_time >= 0.0:
+		if saw_new_drop_while_landed and observation.impact >= 0.0:
 			break
 
 	_check(
-		encounter_time >= 9.0 and encounter_time <= 15.0,
-		"A stationary player encounters a moving obstacle within 9–15 seconds"
+		observation.warning >= 0.75 and observation.warning <= 1.0,
+		"Natural first warning begins inside the approved early window"
+	)
+	_check(
+		observation.impact >= 1.5 and observation.impact <= 2.0,
+		"Natural first can reaches the belt inside the approved early window"
 	)
 	_check(
 		saw_new_drop_while_landed,
 		"Natural scheduling continues while a landed can travels"
 	)
 	print(
-		"CONVEYOR_NATURAL_METRICS encounter=%.3fs estimate=%.3fs"
-		% [encounter_time, conveyor.stationary_first_contact_estimate()]
+		"CONVEYOR_NATURAL_METRICS warning=%.3fs impact=%.3fs"
+		% [observation.warning, observation.impact]
 	)
 	_free_conveyor(conveyor)
 
@@ -345,7 +358,7 @@ func _make_conveyor(disable_scheduler: bool) -> ConveyorPrototype:
 	var scene := load(CONVEYOR_SCENE_PATH) as PackedScene
 	var conveyor := scene.instantiate() as ConveyorPrototype
 	if disable_scheduler:
-		conveyor.initial_drop_delay = 999.0
+		conveyor.initial_warning_delay = 999.0
 	root.add_child(conveyor)
 	await physics_frame
 	return conveyor
