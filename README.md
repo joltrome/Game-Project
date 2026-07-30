@@ -11,14 +11,15 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 ## Current state
 
-**Build:** VM-0.3.4-B
+**Build:** VM-EXT-AB / VM-EXT-BA browser-playtest distribution
 
-**Phase:** Prototype B — final elevated-state and right-edge correction
-**Gameplay evidence:** Manual VM-0.3.3-B testing found that can-top camping remained safe and player-relevant Sweeper Arm encounters were too infrequent to displace right-edge hold-and-jump play
+**Phase:** Frozen Prototype A/B external comparative playtest preparation
+**Gameplay evidence:** Prototype A and Prototype B are frozen for the first external comparison; the browser distribution is an implementation result, not new gameplay evidence.
 
-The Prototype B branch defaults to a separate fixed-camera conveyor scene using the unchanged VM-0.1.2 `CharacterBody2D` player. VM-0.3.4-B derives one fixed Sweeper Arm band from actual player and can collision dimensions: the grounded player remains below it, while can-top standing and 0.300 seconds of the normal jump overlap it. The scheduler now records physical player-region arrivals rather than treating pattern selection as an encounter. A 72 px right-edge zone reserves a normally telegraphed compound pressure pattern after 1.0 second of continuous dwell. Constant-velocity geometry and timing checks pass; whether the correction is readable, fair, and sufficient against the observed dominant strategies remains a hypothesis pending manual review.
+The source project still defaults to Prototype B for editor F5 testing. The Web AB and Web BA export presets instead launch one shared neutral session flow. Each game lasts 60 seconds, restarts remain available with `R`, and the order is fixed by the selected export preset rather than by the tester.
 
 Prototype A is frozen on `master` and tag `VM-0.2.3-A-R1`. Its scene remains available at `scenes/prototypes/arena.tscn`.
+Prototype B is frozen at Build VM-0.3.4-B on this branch.
 
 ## Open locally
 
@@ -33,6 +34,31 @@ Prototype A is frozen on `master` and tag `VM-0.2.3-A-R1`. Its scene remains ava
 - Prototype A: open `scenes/prototypes/arena.tscn` and press **F6**.
 - To switch back to B immediately, select the already open `conveyor.tscn` tab and press **F6** again. This does not edit either scene or require changing branches.
 
+## Browser playtest exports
+
+Install the matching Godot 4.7.1 export templates, then run:
+
+```bash
+/Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --headless --path . --export-release "Web AB" builds/web-ab/index.html
+/Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --headless --path . --export-release "Web BA" builds/web-ba/index.html
+```
+
+The generated files are ignored by Git. Each upload archive must have
+`index.html` at its root:
+
+```bash
+(cd builds/web-ab && zip -r ../vending-machine-playtest-ab.zip .)
+(cd builds/web-ba && zip -r ../vending-machine-playtest-ba.zip .)
+```
+
+The Web canvas is 1152 × 648. Serve a directory over HTTP rather than opening
+`index.html` directly:
+
+```bash
+python3 -m http.server 8123 --directory builds/web-ab
+python3 -m http.server 8124 --directory builds/web-ba
+```
+
 ## Use with Codex
 
 1. Open this repository folder in the ChatGPT desktop app's Codex view, Codex CLI, or the Codex IDE extension.
@@ -42,7 +68,10 @@ Prototype A is frozen on `master` and tag `VM-0.2.3-A-R1`. Its scene remains ava
 
 ## Next validation task
 
-Play Build VM-0.3.4-B without changing parameters. Verify that an arm passes over a grounded player, kills a player standing on a can, and can be avoided by stepping down before it arrives. Try ordinary jumps through the arm band. Briefly visit the right edge, then leave; no targeted pressure should follow. On a separate run, remain at the right edge for more than one second and test blind immediate jumping, moving left, and delaying until the arm passes. Record the exact time and pattern for every unclear or apparently unavoidable death. Do not tune further or begin external playtesting until Startup Lab reviews this final correction.
+Return to Startup Lab with the completed AB/BA distribution report before
+uploading or publishing. After approval, create two separately assigned itch.io
+HTML pages so testers cannot choose their order. Do not tune either frozen game
+between assignments.
 
 ## Automated movement test
 
@@ -104,6 +133,12 @@ godot --headless --log-file /tmp/vms-intensity-director-test.log --path . --scri
 
 ```bash
 godot --headless --log-file /tmp/vms-elevated-right-edge-test.log --path . --script res://tests/test_elevated_right_edge_correction.gd
+```
+
+## Automated browser-distribution flow test
+
+```bash
+godot --headless --log-file /tmp/vms-playtest-distribution-test.log --path . --script res://tests/test_playtest_distribution.gd
 ```
 
 ## Cost

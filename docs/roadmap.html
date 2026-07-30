@@ -198,7 +198,7 @@
       <div class="eyebrow">Game 1 · Core-loop validation</div>
       <h1>Vending Machine Survival</h1>
       <p class="pitch">A tiny person is trapped inside a malfunctioning vending machine. Dodge falling products and increasingly absurd machine failures for as long as possible.</p>
-      <p class="tiny">Roadmap version 0.1 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
+      <p class="tiny">Roadmap schema version 17 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
     </div>
     <div class="actions">
       <button class="btn primary" id="copyHandoff">Copy Codex handoff</button>
@@ -556,6 +556,7 @@
     ['p0-roadmap', 'done'],
     ['p0-baseline', 'done'],
     ['p0-inputs', 'done'],
+    ['p0-export', 'done'],
     ['p1-player', 'done'],
     ['p1-buffer', 'done'],
     ['p1-camera', 'done'],
@@ -569,7 +570,12 @@
     ['p3-conveyor', 'done'],
     ['p3-source', 'done'],
     ['p3-reposition', 'done'],
-    ['p3-fair', 'in_progress']
+    ['p3-fair', 'done'],
+    ['p3-tune', 'done'],
+    ['p4-order', 'done'],
+    ['p4-fixed', 'done'],
+    ['p4-buildid', 'done'],
+    ['p4-web', 'done']
   ]);
 
   const implementationResult = {
@@ -956,6 +962,22 @@
     text: 'Prototype B now derives the fixed Sweeper Arm from the 32×48 px player collision box, 48 px landed-can height, 28 px arm height, floor y=584, and a configurable 4 px grounded clearance. The resulting grounded-player, can-top-player, and arm intervals are y=536–584, 488–536, and 504–532. The normal jump overlaps the arm for 0.300 seconds across ascent 0.006–0.156 seconds and descent 0.427–0.578 seconds. Physical tests confirmed grounded passage, lethal can-top contact, and a non-lethal step-down response. Selection, spawn, current-player-region arrival, and compound-decision times are logged separately. A real 25-second hold-right lifecycle measured first player-relevant arm arrival at 3.383 seconds, first compound decision at 6.550 seconds, and a maximum post-teaching relevant-arm gap of 2.917 seconds. The 72 px right-edge zone reserves pressure after 1.000 second; its targeted warning retained a 0.527-second analytically validated delayed-ground response margin, while the configured 0.100-second blind-jump intercept lies inside the actual jump/arm overlap. Arm speed remains 520 px/s initially; cleanup now occurs after the arm passes the playable right band so the single-arm cap does not create false encounter gaps. Ten automated suites and both headless scenes passed. Constant-velocity geometry, collision intervals, timing, corridor occupancy, off-belt bounds, and restart state are deterministic checks; player recognition, execution tolerance, perceived fairness, and dominant-strategy removal remain unverified hypotheses. The shared player and Prototype A were unchanged.'
   };
 
+  const externalComparisonFreezeDecision = {
+    id: 'decision-vm-ext-ab-ba-freeze',
+    type: 'Decision',
+    date: '2026-07-30',
+    source: 'Startup Lab external-playtest decision',
+    text: 'Freeze Prototype A at VM-0.2.3-A-R1 and Prototype B at VM-0.3.4-B for the first external comparative playtest. Distribute fixed AB and BA orders through identical neutral instructions, timing, transition, and completion screens. Do not expose internal structural names to testers, add analytics, change balance, or publish before review.'
+  };
+
+  const webDistributionResult = {
+    id: 'result-vm-ext-ab-ba-distribution',
+    type: 'Result',
+    date: '2026-07-30',
+    source: 'VM-EXT-AB / VM-EXT-BA distribution implementation and validation',
+    text: 'Added one persistent neutral session controller and one shared screen for introduction, transition, and completion. Export-only playtest_ab and playtest_ba feature flags select fixed scene orders without duplicating gameplay code or changing either frozen prototype scene or gameplay script. Both games use the same 60-second session duration and shared instructions; R reloads the active game without resetting its distribution timer; Game 2 starts as a fresh scene. Single-thread Web AB and Web BA presets exported index.html into separate ignored directories and produced 10 MB ZIP archives with index.html at archive root. The new AB/BA flow test, all ten existing automated suites, and both original headless scene launches passed. Both 1152×648 exports loaded through local HTTP servers, displayed their neutral order build IDs, opened the expected first game, and produced no browser-console warnings or errors after the input-transition correction. No analytics, paid API, paid hosting, itch.io upload, or public deployment occurred. This is a factual distribution result, not gameplay or retention evidence.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1004,7 +1026,9 @@
     elevatedCampingEvidence,
     elevatedRightEdgeDecision,
     elevatedRightEdgeHypothesis,
-    elevatedRightEdgeResult
+    elevatedRightEdgeResult,
+    externalComparisonFreezeDecision,
+    webDistributionResult
   ];
 
   const defaultFindings = [
@@ -1016,7 +1040,7 @@
   ];
 
   const defaultState = {
-    version: 16,
+    version: 17,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []
