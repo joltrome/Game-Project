@@ -1,8 +1,9 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/conveyor.gd" id="1_conveyor"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
 [ext_resource type="Script" path="res://scripts/collectible_director.gd" id="3_collectible_director"]
+[ext_resource type="Script" path="res://scripts/fixed_round_controller.gd" id="4_round_controller"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
 size = Vector2(896, 48)
@@ -218,6 +219,9 @@ position = Vector2(640, 552)
 [node name="CollectibleDirector" type="Node2D" parent="."]
 script = ExtResource("3_collectible_director")
 
+[node name="RoundController" type="Node" parent="."]
+script = ExtResource("4_round_controller")
+
 [node name="HUD" type="CanvasLayer" parent="."]
 
 [node name="BuildId" type="Label" parent="HUD"]
@@ -236,7 +240,7 @@ offset_right = 1136.0
 offset_bottom = 44.0
 theme_override_colors/font_color = Color(0.93, 0.95, 0.98, 1)
 theme_override_font_sizes/font_size = 18
-text = "SURVIVAL  00.00 s"
+text = "SHUTDOWN: 60"
 horizontal_alignment = 2
 
 [node name="CollectibleScore" type="Label" parent="HUD"]
@@ -246,7 +250,7 @@ offset_right = 1136.0
 offset_bottom = 72.0
 theme_override_colors/font_color = Color(0.24, 0.86, 0.82, 1)
 theme_override_font_sizes/font_size = 16
-text = "COLLECTIBLES  0"
+text = "COINS: 0"
 horizontal_alignment = 2
 
 [node name="ExperimentId" type="Label" parent="HUD"]
@@ -256,7 +260,16 @@ offset_right = 260.0
 offset_bottom = 68.0
 theme_override_colors/font_color = Color(0.24, 0.86, 0.82, 1)
 theme_override_font_sizes/font_size = 14
-text = "EXPERIMENT VM-0.4.0"
+text = "EXPERIMENT VM-0.4.1"
+
+[node name="CollectibleLegend" type="Label" parent="HUD"]
+offset_left = 16.0
+offset_top = 72.0
+offset_right = 260.0
+offset_bottom = 96.0
+theme_override_colors/font_color = Color(0.24, 0.86, 0.82, 1)
+theme_override_font_sizes/font_size = 14
+text = "REFUND COIN  +1"
 
 [node name="Hypothesis" type="Label" parent="HUD"]
 offset_left = 280.0
@@ -281,9 +294,9 @@ horizontal_alignment = 1
 [node name="DeathMessage" type="Label" parent="HUD"]
 visible = false
 offset_left = 356.0
-offset_top = 286.0
+offset_top = 258.0
 offset_right = 796.0
-offset_bottom = 362.0
+offset_bottom = 390.0
 theme_override_styles/normal = SubResource("StyleBoxFlat_death")
 theme_override_colors/font_color = Color(1, 0.93, 0.88, 1)
 theme_override_font_sizes/font_size = 22

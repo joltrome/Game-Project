@@ -11,15 +11,15 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 ## Current state
 
-**Build:** VM-0.4.0 optional collectible experiment on the conveyor direction
+**Build:** VM-0.4.1 fixed-round and vertical Refund Coin experiment
 
-**Phase:** First post-comparison experiment on the selected conveyor direction
-**Gameplay evidence:** In a first external comparison of approximately five testers, everyone understood the objective and voluntarily restarted at least once. The overwhelming preference was for the conveyor. This is a small sample and does not establish broad retention or final balance.
+**Phase:** Fixed-round score-attack and vertical collectible evaluation
+**Gameplay evidence:** The first external comparison selected the conveyor, and subsequent manual testing accepted the optional collectible as proactively motivating. Fixed duration and aerial placement remain unvalidated hypotheses.
 
 Prototype B is now the primary direction. Prototype A remains preserved as a frozen comparison baseline and a possible future machine-jam event; that event is not implemented. The source project defaults to Prototype B for editor F5 testing.
 
 Prototype A is frozen on `master` and tag `VM-0.2.3-A-R1`. Its scene remains available at `scenes/prototypes/arena.tscn`.
-Prototype B's first externally preferred baseline is tagged `VM-0.3.4-B-EXTERNAL-PREFERRED`. VM-0.4.0 adds one optional, non-solid, current-run collectible experiment without changing the player or existing hazards.
+Prototype B's first externally preferred baseline is tagged `VM-0.3.4-B-EXTERNAL-PREFERRED`. The accepted endless collectible baseline is tagged `VM-0.4.0`. VM-0.4.1 defaults to a configurable 60-second round with Refund Coins as the only score; an exported `fixed_round_enabled` development setting can restore endless behavior.
 
 ## Open locally
 
@@ -68,11 +68,10 @@ python3 -m http.server 8124 --directory builds/web-ba
 
 ## Next validation task
 
-Manually test VM-0.4.0 and return to Startup Lab before changing it. Observe
-whether you voluntarily leave the safest area, whether collection creates
-meaningful risk, whether missing one encourages another run, whether the pickup
-distracts from survival readability, and whether ignoring every pickup remains
-the safest dominant strategy.
+Manually test VM-0.4.1 and return to Startup Lab before changing it. Run the
+full 60-second round while ignoring coins, collecting only ground coins, and
+pursuing aerial coins. Record deaths during pursuit, completion score, countdown
+pacing, aerial readability, and whether coin pursuit obscures survival hazards.
 
 ## Automated movement test
 
@@ -146,6 +145,12 @@ godot --headless --log-file /tmp/vms-playtest-distribution-test.log --path . --s
 
 ```bash
 godot --headless --log-file /tmp/vms-collectible-test.log --path . --script res://tests/test_collectible_experiment.gd
+```
+
+## Automated fixed-round and Refund Coin test
+
+```bash
+godot --headless --log-file /tmp/vms-fixed-round-refund-coin-test.log --path . --script res://tests/test_fixed_round_refund_coin.gd
 ```
 
 ## Cost

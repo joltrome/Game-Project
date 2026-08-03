@@ -7,6 +7,7 @@ signal expired(collectible: ConveyorCollectible)
 @export var lifetime: float = 3.0
 @export var scroll_speed: float = 140.0
 @export var collectible_size: Vector2 = Vector2(24.0, 24.0)
+@export var placement_band: int = 0
 
 var time_remaining: float = 0.0
 var _resolved: bool = false
@@ -34,11 +35,13 @@ func _physics_process(delta: float) -> void:
 func configure(
 	duration: float,
 	conveyor_scroll_speed: float,
-	size: Vector2
+	size: Vector2,
+	band: int = 0
 ) -> void:
 	lifetime = maxf(duration, 0.0)
 	scroll_speed = maxf(conveyor_scroll_speed, 0.0)
 	collectible_size = size
+	placement_band = band
 	time_remaining = lifetime
 	_resolved = false
 	monitoring = true
@@ -48,7 +51,7 @@ func configure(
 
 
 func stop() -> void:
-	monitoring = false
+	set_deferred("monitoring", false)
 	set_physics_process(false)
 
 

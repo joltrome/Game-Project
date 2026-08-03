@@ -167,7 +167,7 @@ func _test_restart_cleanup() -> void:
 		restarted_director.score == 0
 		and restarted_director.active_collectible_count() == 0
 		and restarted.get_node("HUD/CollectibleScore").text
-			== "COLLECTIBLES  0",
+			== "COINS: 0",
 		"Restart clears the collectible and resets current-run score"
 	)
 	_check(not is_instance_valid(old_collectible), "Restart frees the old pickup instance")

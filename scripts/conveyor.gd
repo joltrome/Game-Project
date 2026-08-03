@@ -128,6 +128,8 @@ var sweeper_altitude: float = 518.0
 
 var survival_time: float = 0.0
 var is_dead: bool = false
+var is_round_complete: bool = false
+var external_timer_display_enabled: bool = false
 
 var _pattern_cooldown_remaining: float = 0.0
 var _telegraph_remaining: float = 0.0
@@ -201,7 +203,7 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if is_dead:
+	if is_dead or is_round_complete:
 		return
 
 	survival_time += delta
@@ -2000,9 +2002,26 @@ func _on_off_belt_kill_region_body_entered(body: Node2D) -> void:
 
 
 func _kill_player() -> void:
-	if is_dead:
+	if is_dead or is_round_complete:
 		return
 	is_dead = true
+	_stop_active_gameplay()
+	_death_label.visible = true
+	player_died.emit()
+
+
+func stop_for_round_completion() -> void:
+	if is_dead or is_round_complete:
+		return
+	is_round_complete = true
+	_stop_active_gameplay()
+
+
+func gameplay_is_stopped() -> bool:
+	return is_dead or is_round_complete
+
+
+func _stop_active_gameplay() -> void:
 	player.set_physics_process(false)
 	_belt_floor.constant_linear_velocity = Vector2.ZERO
 	_clear_warning_state()
@@ -2016,8 +2035,6 @@ func _kill_player() -> void:
 		if is_instance_valid(sweeper):
 			sweeper.stop()
 	_clear_pattern_state()
-	_death_label.visible = true
-	player_died.emit()
 
 
 func _clear_warning_state() -> void:
@@ -2050,4 +2067,6 @@ func _clear_pattern_state() -> void:
 
 
 func _update_timer_label() -> void:
+	if external_timer_display_enabled:
+		return
 	_timer_label.text = "SURVIVAL  %05.2f s" % survival_time

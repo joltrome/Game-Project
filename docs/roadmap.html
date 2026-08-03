@@ -198,7 +198,7 @@
       <div class="eyebrow">Game 1 · Core-loop validation</div>
       <h1>Vending Machine Survival</h1>
       <p class="pitch">A tiny person is trapped inside a malfunctioning vending machine. Dodge falling products and increasingly absurd machine failures for as long as possible.</p>
-      <p class="tiny">Roadmap schema version 19 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
+      <p class="tiny">Roadmap schema version 20 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
     </div>
     <div class="actions">
       <button class="btn primary" id="copyHandoff">Copy Codex handoff</button>
@@ -1013,6 +1013,46 @@
     text: 'Added one non-solid gray-box collectible to Prototype B through an isolated collectible scene and director. The first attempt is deterministic at 6.5 seconds inside an exported 5–8 second window; lifetime is 3.0 seconds, recurring interval is 7.0 seconds, and invalid placements retry after 0.10 seconds. Candidate centers are x=600, 560, then 640 at grounded y=552; all are left of the 72 px right-edge safe zone by a configurable 48 px exclusion. The pickup moves left at the unchanged 140 px/s conveyor speed, increments current-run score once, expires without scoring, and resets through the existing scene reload. Placement deterministically checks belt bounds through expiry, grounded vertical contact, relative-speed reachability, current warning and falling-can footprints, current landed-can rectangles, current Sweeper rectangles, and current right-pressure targets. Future hazard evolution, player recognition, execution, perceived risk, distraction, replay desire, and whether ignoring collectibles remains dominant are heuristic or manually unverified. Twelve automated suites and 180-frame headless launches of both prototype scene paths passed. Prototype A, the shared controller, and all existing conveyor/hazard scripts were unchanged.'
   };
 
+  const optionalCollectibleAcceptedEvidence = {
+    id: 'evidence-vm-0.4.0-collectible-accepted',
+    type: 'Evidence',
+    date: '2026-08-03',
+    source: 'Manual test report, Build VM-0.4.0',
+    text: 'Manual testing indicated that the optional collectible added proactive motivation in the primary conveyor direction. This supports retaining collectibles in the loop, but the report did not separately validate fixed rounds, vertical placement, time rewards, power-ups, broad retention, or final balance.'
+  };
+
+  const refundCoinDirectionDecision = {
+    id: 'decision-vm-0.4.1-refund-coin-direction',
+    type: 'Decision',
+    date: '2026-08-03',
+    source: 'Startup Lab decision after VM-0.4.0 manual test',
+    text: 'Accept the collectible as a Refund Coin in the primary conveyor direction. Use current-run coin count as the only score in a configurable 60-second score-attack experiment. Coins award exactly one point and never add time, grant powers, persist, multiply, or directly penalize the player when ignored.'
+  };
+
+  const fixedRoundHypothesis = {
+    id: 'hypothesis-vm-0.4.1-fixed-round',
+    type: 'Hypothesis',
+    date: '2026-08-03',
+    source: 'Startup Lab approved experiment',
+    text: 'A fixed 60-second shutdown countdown with current-run Refund Coin count as the sole score may create a legible score-attack structure without combining survival time and coins or introducing progression. Whether 60 seconds produces better pacing, completion motivation, or replay behavior remains pending manual evaluation.'
+  };
+
+  const verticalRefundCoinHypothesis = {
+    id: 'hypothesis-vm-0.4.1-vertical-refund-coins',
+    type: 'Hypothesis',
+    date: '2026-08-03',
+    source: 'Startup Lab approved experiment',
+    text: 'Keeping the first Refund Coin grounded and placing later coins approximately 50 percent on the ground and 50 percent in a low-air band may create optional horizontal-versus-jump collection decisions without double jump, can-top placement, time rewards, or power-ups. Pursuit risk, readability, distraction, and the value of aerial placement remain pending manual evaluation.'
+  };
+
+  const fixedRoundRefundCoinResult = {
+    id: 'result-vm-0.4.1-fixed-round-refund-coins',
+    type: 'Result',
+    date: '2026-08-03',
+    source: 'Build VM-0.4.1 implementation and automated validation',
+    text: 'Prototype B now defaults to a configurable 60.0-second round displaying SHUTDOWN and COINS. Death immediately freezes the round and reports coins plus remaining time; zero completes exactly once, stops player, belt, cans, Sweepers, warnings, pending patterns, and coins, and displays MACHINE SHUTDOWN with the run coin count. Restart reloads a clean 60-second, zero-coin state. An exported fixed_round_enabled flag restores endless development behavior, while tag VM-0.4.0 preserves the exact accepted endless build. Refund Coins remain one non-solid type moving at 140 px/s, worth exactly one point with no timer effect. The first coin is always ground-band; later deterministic selection uses a configurable 0.50 ground probability. Configured center ranges are y=548–552 for ground and y=488–500 for low air. At the low-air midpoint y=494, the locked normal jump has 72.083 px of vertical collection margin and a 0.237-second ascent collection window. Current geometry, lifetime, relative-speed reachability, active falling-can paths, current and reserved can lanes, active/pending/reserved Sweeper state, off-belt bounds, and exact-once state transitions are deterministic checks. Future hazard choices, human execution, perceived risk, readability, distraction, and replay effects remain heuristic or manually unverified. All thirteen automated suites and both 180-frame headless scene launches passed. Prototype A and the shared player controller were unchanged.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1067,7 +1107,12 @@
     firstExternalComparisonEvidence,
     conveyorDirectionDecision,
     optionalCollectibleHypothesis,
-    optionalCollectibleResult
+    optionalCollectibleResult,
+    optionalCollectibleAcceptedEvidence,
+    refundCoinDirectionDecision,
+    fixedRoundHypothesis,
+    verticalRefundCoinHypothesis,
+    fixedRoundRefundCoinResult
   ];
 
   const defaultFindings = [
@@ -1079,7 +1124,7 @@
   ];
 
   const defaultState = {
-    version: 19,
+    version: 20,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []
