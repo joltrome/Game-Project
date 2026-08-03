@@ -1,6 +1,6 @@
 # Vending Machine Survival
 
-Gray-box core-loop experiment comparing:
+Gray-box survival prototype developed from an initial comparison between:
 
 1. A compact arena with left/right movement and jumping.
 2. An automatically scrolling conveyor with limited repositioning and jumping.
@@ -11,15 +11,15 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 ## Current state
 
-**Build:** VM-EXT-AB / VM-EXT-BA browser-playtest distribution
+**Build:** VM-0.4.0 optional collectible experiment on the conveyor direction
 
-**Phase:** Frozen Prototype A/B external comparative playtest preparation
-**Gameplay evidence:** Prototype A and Prototype B are frozen for the first external comparison; the browser distribution is an implementation result, not new gameplay evidence.
+**Phase:** First post-comparison experiment on the selected conveyor direction
+**Gameplay evidence:** In a first external comparison of approximately five testers, everyone understood the objective and voluntarily restarted at least once. The overwhelming preference was for the conveyor. This is a small sample and does not establish broad retention or final balance.
 
-The source project still defaults to Prototype B for editor F5 testing. The Web AB and Web BA export presets instead launch one shared neutral session flow. Each game lasts 60 seconds, restarts remain available with `R`, and the order is fixed by the selected export preset rather than by the tester.
+Prototype B is now the primary direction. Prototype A remains preserved as a frozen comparison baseline and a possible future machine-jam event; that event is not implemented. The source project defaults to Prototype B for editor F5 testing.
 
 Prototype A is frozen on `master` and tag `VM-0.2.3-A-R1`. Its scene remains available at `scenes/prototypes/arena.tscn`.
-Prototype B is frozen at Build VM-0.3.4-B on this branch.
+Prototype B's first externally preferred baseline is tagged `VM-0.3.4-B-EXTERNAL-PREFERRED`. VM-0.4.0 adds one optional, non-solid, current-run collectible experiment without changing the player or existing hazards.
 
 ## Open locally
 
@@ -68,10 +68,11 @@ python3 -m http.server 8124 --directory builds/web-ba
 
 ## Next validation task
 
-Return to Startup Lab with the completed AB/BA distribution report before
-uploading or publishing. After approval, create two separately assigned itch.io
-HTML pages so testers cannot choose their order. Do not tune either frozen game
-between assignments.
+Manually test VM-0.4.0 and return to Startup Lab before changing it. Observe
+whether you voluntarily leave the safest area, whether collection creates
+meaningful risk, whether missing one encourages another run, whether the pickup
+distracts from survival readability, and whether ignoring every pickup remains
+the safest dominant strategy.
 
 ## Automated movement test
 
@@ -139,6 +140,12 @@ godot --headless --log-file /tmp/vms-elevated-right-edge-test.log --path . --scr
 
 ```bash
 godot --headless --log-file /tmp/vms-playtest-distribution-test.log --path . --script res://tests/test_playtest_distribution.gd
+```
+
+## Automated collectible experiment test
+
+```bash
+godot --headless --log-file /tmp/vms-collectible-test.log --path . --script res://tests/test_collectible_experiment.gd
 ```
 
 ## Cost

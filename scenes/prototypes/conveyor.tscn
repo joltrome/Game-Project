@@ -1,7 +1,8 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/conveyor.gd" id="1_conveyor"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
+[ext_resource type="Script" path="res://scripts/collectible_director.gd" id="3_collectible_director"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
 size = Vector2(896, 48)
@@ -214,6 +215,9 @@ horizontal_alignment = 1
 [node name="Player" parent="." instance=ExtResource("2_player")]
 position = Vector2(640, 552)
 
+[node name="CollectibleDirector" type="Node2D" parent="."]
+script = ExtResource("3_collectible_director")
+
 [node name="HUD" type="CanvasLayer" parent="."]
 
 [node name="BuildId" type="Label" parent="HUD"]
@@ -234,6 +238,25 @@ theme_override_colors/font_color = Color(0.93, 0.95, 0.98, 1)
 theme_override_font_sizes/font_size = 18
 text = "SURVIVAL  00.00 s"
 horizontal_alignment = 2
+
+[node name="CollectibleScore" type="Label" parent="HUD"]
+offset_left = 900.0
+offset_top = 46.0
+offset_right = 1136.0
+offset_bottom = 72.0
+theme_override_colors/font_color = Color(0.24, 0.86, 0.82, 1)
+theme_override_font_sizes/font_size = 16
+text = "COLLECTIBLES  0"
+horizontal_alignment = 2
+
+[node name="ExperimentId" type="Label" parent="HUD"]
+offset_left = 16.0
+offset_top = 44.0
+offset_right = 260.0
+offset_bottom = 68.0
+theme_override_colors/font_color = Color(0.24, 0.86, 0.82, 1)
+theme_override_font_sizes/font_size = 14
+text = "EXPERIMENT VM-0.4.0"
 
 [node name="Hypothesis" type="Label" parent="HUD"]
 offset_left = 280.0

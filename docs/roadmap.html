@@ -198,7 +198,7 @@
       <div class="eyebrow">Game 1 · Core-loop validation</div>
       <h1>Vending Machine Survival</h1>
       <p class="pitch">A tiny person is trapped inside a malfunctioning vending machine. Dodge falling products and increasingly absurd machine failures for as long as possible.</p>
-      <p class="tiny">Roadmap schema version 18 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
+      <p class="tiny">Roadmap schema version 19 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
     </div>
     <div class="actions">
       <button class="btn primary" id="copyHandoff">Copy Codex handoff</button>
@@ -997,6 +997,22 @@
     text: 'Select Prototype B, the conveyor, as the primary game direction and stop independent Prototype A development. Preserve both frozen comparison builds and their evidence. Retain Prototype A only as a possible future machine-jam event; do not implement that event now and do not alternate between two complete modes every 30 seconds.'
   };
 
+  const optionalCollectibleHypothesis = {
+    id: 'hypothesis-vm-0.4.0-optional-collectible',
+    type: 'Hypothesis',
+    date: '2026-08-03',
+    source: 'Startup Lab approved experiment',
+    text: 'An optional collectible placed away from the safest right-edge position may give players a proactive reason to move, take risks, and replay for a better current-run score. Whether players voluntarily pursue it, experience meaningful risk, want to retry after missing it, become distracted from readable survival decisions, or rationally ignore every collectible remains pending manual testing.'
+  };
+
+  const optionalCollectibleResult = {
+    id: 'result-vm-0.4.0-optional-collectible',
+    type: 'Result',
+    date: '2026-08-03',
+    source: 'Build VM-0.4.0 implementation and automated validation',
+    text: 'Added one non-solid gray-box collectible to Prototype B through an isolated collectible scene and director. The first attempt is deterministic at 6.5 seconds inside an exported 5–8 second window; lifetime is 3.0 seconds, recurring interval is 7.0 seconds, and invalid placements retry after 0.10 seconds. Candidate centers are x=600, 560, then 640 at grounded y=552; all are left of the 72 px right-edge safe zone by a configurable 48 px exclusion. The pickup moves left at the unchanged 140 px/s conveyor speed, increments current-run score once, expires without scoring, and resets through the existing scene reload. Placement deterministically checks belt bounds through expiry, grounded vertical contact, relative-speed reachability, current warning and falling-can footprints, current landed-can rectangles, current Sweeper rectangles, and current right-pressure targets. Future hazard evolution, player recognition, execution, perceived risk, distraction, replay desire, and whether ignoring collectibles remains dominant are heuristic or manually unverified. Twelve automated suites and 180-frame headless launches of both prototype scene paths passed. Prototype A, the shared controller, and all existing conveyor/hazard scripts were unchanged.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1049,7 +1065,9 @@
     externalComparisonFreezeDecision,
     webDistributionResult,
     firstExternalComparisonEvidence,
-    conveyorDirectionDecision
+    conveyorDirectionDecision,
+    optionalCollectibleHypothesis,
+    optionalCollectibleResult
   ];
 
   const defaultFindings = [
@@ -1061,7 +1079,7 @@
   ];
 
   const defaultState = {
-    version: 18,
+    version: 19,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []
