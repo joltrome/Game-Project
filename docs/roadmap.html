@@ -198,7 +198,7 @@
       <div class="eyebrow">Game 1 · Core-loop validation</div>
       <h1>Vending Machine Survival</h1>
       <p class="pitch">A tiny person is trapped inside a malfunctioning vending machine. Dodge falling products and increasingly absurd machine failures for as long as possible.</p>
-      <p class="tiny">Roadmap schema version 17 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
+      <p class="tiny">Roadmap schema version 18 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
     </div>
     <div class="actions">
       <button class="btn primary" id="copyHandoff">Copy Codex handoff</button>
@@ -575,7 +575,10 @@
     ['p4-order', 'done'],
     ['p4-fixed', 'done'],
     ['p4-buildid', 'done'],
-    ['p4-web', 'done']
+    ['p4-web', 'done'],
+    ['p5-first5', 'done'],
+    ['p5-gate', 'done'],
+    ['p6-select', 'done']
   ]);
 
   const implementationResult = {
@@ -978,6 +981,22 @@
     text: 'Added one persistent neutral session controller and one shared screen for introduction, transition, and completion. Export-only playtest_ab and playtest_ba feature flags select fixed scene orders without duplicating gameplay code or changing either frozen prototype scene or gameplay script. Both games use the same 60-second session duration and shared instructions; R reloads the active game without resetting its distribution timer; Game 2 starts as a fresh scene. Single-thread Web AB and Web BA presets exported index.html into separate ignored directories and produced 10 MB ZIP archives with index.html at archive root. The new AB/BA flow test, all ten existing automated suites, and both original headless scene launches passed. Both 1152×648 exports loaded through local HTTP servers, displayed their neutral order build IDs, opened the expected first game, and produced no browser-console warnings or errors after the input-transition correction. No analytics, paid API, paid hosting, itch.io upload, or public deployment occurred. This is a factual distribution result, not gameplay or retention evidence.'
   };
 
+  const firstExternalComparisonEvidence = {
+    id: 'evidence-vm-first-external-comparison',
+    type: 'Evidence',
+    date: '2026-08-03',
+    source: 'First external comparative playtest, approximately five testers',
+    text: 'Approximately five testers participated. All understood the avoidance objective immediately and voluntarily restarted after dying at least once. The overwhelming preference was for the conveyor build; testers described managing conveyor movement, cans, Sweeper Arms, jumping, and staying grounded as more interesting. Prototype A was often perceived as harder mainly because of its speed progression, while testers independently identified its dominant wait-for-warning-and-step-aside strategy. This matches earlier internal observations of lower decision depth in Prototype A. Limitations: the sample was small; tester demographics, exact run counts, order split, and longer-term replay behavior were not fully recorded; these observations do not establish broad retention or final balance.'
+  };
+
+  const conveyorDirectionDecision = {
+    id: 'decision-vm-conveyor-primary-direction',
+    type: 'Decision',
+    date: '2026-08-03',
+    source: 'Startup Lab decision after first external comparative playtest',
+    text: 'Select Prototype B, the conveyor, as the primary game direction and stop independent Prototype A development. Preserve both frozen comparison builds and their evidence. Retain Prototype A only as a possible future machine-jam event; do not implement that event now and do not alternate between two complete modes every 30 seconds.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1028,7 +1047,9 @@
     elevatedRightEdgeHypothesis,
     elevatedRightEdgeResult,
     externalComparisonFreezeDecision,
-    webDistributionResult
+    webDistributionResult,
+    firstExternalComparisonEvidence,
+    conveyorDirectionDecision
   ];
 
   const defaultFindings = [
@@ -1040,7 +1061,7 @@
   ];
 
   const defaultState = {
-    version: 17,
+    version: 18,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []
