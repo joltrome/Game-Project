@@ -57,6 +57,11 @@ func stop() -> void:
 	super.stop()
 
 
+func set_conveyor_speed(speed: float) -> void:
+	conveyor_speed = maxf(speed, 0.0)
+	_update_platform_velocity()
+
+
 func intended_platform_velocity() -> Vector2:
 	return Vector2(-conveyor_speed, 0.0) if is_landed() else Vector2.ZERO
 

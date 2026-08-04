@@ -198,7 +198,7 @@
       <div class="eyebrow">Game 1 · Core-loop validation</div>
       <h1>Vending Machine Survival</h1>
       <p class="pitch">A tiny person is trapped inside a malfunctioning vending machine. Dodge falling products and increasingly absurd machine failures for as long as possible.</p>
-      <p class="tiny">Roadmap schema version 20 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
+      <p class="tiny">Roadmap schema version 22 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
     </div>
     <div class="actions">
       <button class="btn primary" id="copyHandoff">Copy Codex handoff</button>
@@ -1053,6 +1053,134 @@
     text: 'Prototype B now defaults to a configurable 60.0-second round displaying SHUTDOWN and COINS. Death immediately freezes the round and reports coins plus remaining time; zero completes exactly once, stops player, belt, cans, Sweepers, warnings, pending patterns, and coins, and displays MACHINE SHUTDOWN with the run coin count. Restart reloads a clean 60-second, zero-coin state. An exported fixed_round_enabled flag restores endless development behavior, while tag VM-0.4.0 preserves the exact accepted endless build. Refund Coins remain one non-solid type moving at 140 px/s, worth exactly one point with no timer effect. The first coin is always ground-band; later deterministic selection uses a configurable 0.50 ground probability. Configured center ranges are y=548–552 for ground and y=488–500 for low air. At the low-air midpoint y=494, the locked normal jump has 72.083 px of vertical collection margin and a 0.237-second ascent collection window. Current geometry, lifetime, relative-speed reachability, active falling-can paths, current and reserved can lanes, active/pending/reserved Sweeper state, off-belt bounds, and exact-once state transitions are deterministic checks. Future hazard choices, human execution, perceived risk, readability, distraction, and replay effects remain heuristic or manually unverified. All thirteen automated suites and both 180-frame headless scene launches passed. Prototype A and the shared player controller were unchanged.'
   };
 
+  const vm041NaturalLifecycleEvidence = {
+    id: 'evidence-vm-0.4.1-correct-recording-natural-lifecycle',
+    type: 'Evidence',
+    date: '2026-08-04',
+    source: 'Manual review of the correct VM-0.4.1 recording',
+    text: 'The correct recording contains two runs. The first ends early at two coins; the second completes the 60-second countdown at two coins. In the completed run, the score reaches approximately one around 12 seconds and two around 22 seconds, then remains unchanged for roughly the final 38 seconds. No natural low-air collection is clearly visible. Forced isolated placement tests therefore did not establish reliable natural lifecycle behavior.'
+  };
+
+  const vm041StarvationDiagnosisResult = {
+    id: 'result-vm-0.4.1-natural-starvation-diagnosis',
+    type: 'Result',
+    date: '2026-08-04',
+    source: 'Instrumented deterministic 60-second VM-0.4.1 scheduler run',
+    text: 'The diagnostic reproduced two accepted and collected singleton coins at 6.500 and 13.600 seconds. From 20.600 seconds, the retained LOW_AIR request was rejected through the end of the run. The run recorded 397 attempts, 395 rejections, 394 Sweeper-related rejections, no unknown rejection, cleared active references after both collections, and a scheduled 0.10-second retry after every failure. The active cap and retry timer were not stuck. Starvation resulted from retaining one aerial request while the old validator rejected it whenever any active or reserved pattern included a Sweeper.'
+  };
+
+  const vm042OfferDirectorHypothesis = {
+    id: 'hypothesis-vm-0.4.2-refund-coin-offer-director',
+    type: 'Hypothesis',
+    date: '2026-08-04',
+    source: 'Startup Lab approved VM-0.4.2 experiment',
+    text: 'A reliable sequence of authored multi-coin offers, combined with smoothly increasing conveyor and Sweeper pressure, may let two full-round survivors produce substantially different scores based on voluntary risk. Initial unvalidated score targets remain 0 for ignoring coins, approximately 8–15 conservative, 18–30 moderate-risk, 30–45 aggressive, and 45–60+ near-perfect.'
+  };
+
+  const vm042OfferDirectorResult = {
+    id: 'result-vm-0.4.2-natural-offer-director',
+    type: 'Result',
+    date: '2026-08-04',
+    source: 'Build VM-0.4.2 implementation and automated validation',
+    text: 'Prototype B now schedules authored ground-single, low-air-arc, safe-versus-risk, horizontal-line, and mixed-route offers. Coins within one offer score and resolve independently. The natural teaching sequence starts with a ground single at 1.750 seconds and guarantees a low-air arc by six seconds. Phase cadence ranges are 2.5–3.0, 2.25–2.75, 1.75–2.25, and 1.5–2.0 seconds across 0–10, 10–30, 30–45, and 45–60 seconds; the initial implementation uses the upper endpoint of each range. Configured coin-count ranges are 1–2, 1–3, 2–4, and 3–5. Failed templates retry after 0.10 seconds, rotate after teaching, retain a finite next attempt, use named rejection categories, and have a 3.5-second watchdog. Three deterministic real-scheduler 60-second runs offered 55, 57, and 55 coins (min/median/max 55/55/57); ground/air splits were 18/37, 18/39, and 16/39; longest offer-start gap was 3.000 seconds. Rejections were limited to named can-overlap and Sweeper-conflict categories, with no unknown category. Conveyor speed follows a smooth 140→175 px/s curve and Sweeper speed a smooth 520→598 px/s curve over 60 seconds; final rightward recovery remains 125 px/s. Geometry, belt bounds through lifetime, normal-jump margin, active and reserved can paths, current physical Sweeper overlap, projected active/reserved Sweeper occupancy duration, sibling overlap, exact-once scoring, active-offer limits, restart cleanup, and speed functions are deterministic checks. Future compound hazard schedules, recognition, execution, perceived risk, score segmentation, and whether projected Sweeper timing makes a route subjectively fair remain heuristic or manually unverified. All fifteen automated suites and both original 180-frame headless scene launches passed. Prototype A and the shared player controller were unchanged. This combined correction does not identify one individual change as the cause of any future playtest improvement.'
+  };
+
+  const vm042ManualAcceptanceEvidence = {
+    id: 'evidence-vm-0.4.2-manual-acceptance-and-readability-gap',
+    type: 'Evidence',
+    date: '2026-08-04',
+    source: 'Startup Lab manual review of VM-0.4.2',
+    text: 'Manual review reported meaningful survival-versus-score decisions, understandable mistake-driven deaths, real conservative-versus-aggressive Refund Coin choices, and perceptible 60-second intensity progression. No new gameplay mechanic was judged necessary. However, one first-time tester did not understand that the cyan diamond shapes were collectible until approximately halfway through the run. This single-tester observation identifies a blocking readability/onboarding issue but does not establish how quickly fresh testers will recognize a revised visual.'
+  };
+
+  const vm043ReadabilityDecision = {
+    id: 'decision-vm-0.4.3-readability-completion-pass',
+    type: 'Decision',
+    date: '2026-08-04',
+    source: 'Startup Lab approved VM-0.4.3 milestone',
+    text: 'Accept VM-0.4.2 core gameplay structure for the next external playtest. Address only Refund Coin visual identity, lightweight visual animation, collection feedback, a first-offer local teaching cue, and confirmation of fixed-round completion UX. Preserve the 60-second round, all offer behavior, hazard and speed curves, player controller, failure and restart behavior, and Prototype A. Do not add another mechanic.'
+  };
+
+  const vm043ReadabilityHypothesis = {
+    id: 'hypothesis-vm-0.4.3-refund-coin-readability',
+    type: 'Hypothesis',
+    date: '2026-08-04',
+    source: 'Startup Lab approved readability hypothesis',
+    text: 'A larger gold coin silhouette, desynchronized visual-only motion, one-shot collection feedback, HUD emphasis, and a short local REFUND COIN +1 cue on the first offer may allow fresh players to identify Refund Coins and their value early without pausing play, obscuring hazards, or altering collection geometry. Fresh-user recognition remains unvalidated.'
+  };
+
+  const vm043ReadabilityResult = {
+    id: 'result-vm-0.4.3-refund-coin-readability',
+    type: 'Result',
+    date: '2026-08-04',
+    source: 'Build VM-0.4.3 implementation and automated/Web validation',
+    text: 'Refund Coins now use a 32 px round gold visual with a dark outline around the unchanged 24×24 collection rectangle. Visual-only parameters are a 0.75-second horizontal spin cycle, 0.28 minimum horizontal scale, 3 px bob amplitude, deterministic desynchronized 0.8–1.4-second glint interval with 0.12-second glint, and 0.20-second spawn pop. Collection keeps the existing exactly-once scoring signal, then shows a 0.34-second sparse burst and floating +1 while pulsing the COINS HUD for 0.22 seconds. The first natural ground offer shows one local, input-transparent REFUND COIN +1 cue for up to 2.0 seconds; collection, expiration, timeout, completion, and restart clear it, and later offers do not repeat it during the run. The fixed 60-second completion still stops gameplay and displays MACHINE SHUTDOWN with the final coin count; restart remains player-triggered. All sixteen automated suites passed, both prototype scenes completed 180-frame headless launches, and both existing single-threaded Web presets exported successfully. Local HTTP browser checks loaded the AB flow and the BA conveyor flow at 1152×648 with the first gold coin and teaching cue visible and no browser-console warnings or errors. Generated build artifacts remained ignored. No gameplay scheduling, score value, collision size, hazard timing, speed curve, player controller, off-belt failure, death/restart behavior, or Prototype A file was changed for this pass. This is an implementation result, not fresh-user readability evidence.'
+  };
+
+  const vm043CountdownMissEvidence = {
+    id: 'evidence-vm-0.4.3-first-tester-countdown-miss',
+    type: 'Evidence',
+    date: '2026-08-04',
+    source: 'Startup Lab first-time usability result',
+    text: 'One first-time tester completely missed the fixed-round countdown while watching the player and nearby hazards. The timer was small and positioned in the upper-right corner. This is one tester and does not establish a population rate, but it blocks clear communication of the existing 60-second shutdown structure.'
+  };
+
+  const vm044CountdownDecision = {
+    id: 'decision-vm-0.4.4-countdown-visibility-correction',
+    type: 'Decision',
+    date: '2026-08-04',
+    source: 'Startup Lab approved VM-0.4.4 milestone',
+    text: 'Correct countdown hierarchy only: move the timer to the top-centre of the playable viewport, make it the dominant persistent HUD element, use a stable readable format and restrained 30-, 15-, final-ten-, and final-five-second emphasis, freeze it on death, reset it on restart, and preserve all gameplay, collectibles, hazards, Prototype A, and the 60-second duration.'
+  };
+
+  const vm044CountdownHypothesis = {
+    id: 'hypothesis-vm-0.4.4-countdown-peripheral-readability',
+    type: 'Hypothesis',
+    date: '2026-08-04',
+    source: 'Startup Lab approved readability correction',
+    text: 'A large, high-contrast, fixed top-centre countdown with restrained threshold pulses may communicate approaching shutdown through peripheral vision without drawing attention away from hazards. Fresh-tester recognition and distraction remain unvalidated.'
+  };
+
+  const vm044CountdownResult = {
+    id: 'result-vm-0.4.4-countdown-visibility-correction',
+    type: 'Result',
+    date: '2026-08-04',
+    source: 'Build VM-0.4.4 implementation and automated/Web validation',
+    text: 'The fixed-round countdown now uses the stable 00:SS format, a 44 px Godot default font, 6 px dark outline, dark rounded backing plate, and 264×60 logical-pixel top-centre layout with 24 px top margin. Its 0.5 left/right anchors keep it centred on the playable viewport; the 16 px coin score remains right-anchored and the build identifiers were reduced to 12 px and 11 px. Normal, mild, urgent, and final color states apply at 60–31, 30–16, 15–6, and 5–0 seconds. One 0.24-second 1.10× scale pulse occurs when crossing 30 and 15 seconds, one pulse occurs per newly displayed second from 10 through 1, and the 5-through-1 pulses use 1.16× scale. Death freezes the displayed remaining second and cancels animation; completion cancels animation and retains the existing MACHINE SHUTDOWN result; scene reload resets text, urgency, and pulse history. Anchor-derived layout checks cover 1152, 960, 800, and 720 px desktop widths, and the standalone Web preset uses Godot adaptive canvas resizing while the archived AB/BA presets remain unchanged. All seventeen automated test files passed. Both prototype scenes launched headlessly, and the single-threaded standalone Web build exported and loaded locally without browser-console errors. No round duration, score, offer, speed, hazard, player, death condition, restart mechanic, collectible presentation, or Prototype A behavior changed. Fresh-tester timer recognition remains unverified.'
+  };
+
+  const vm044AcceptanceEvidence = {
+    id: 'evidence-vm-0.4.4-countdown-accepted',
+    type: 'Evidence',
+    date: '2026-08-04',
+    source: 'Startup Lab review of VM-0.4.4 recording',
+    text: 'Startup Lab review judged the top-centre countdown substantially more visible and its urgency states readable, and accepted the correction for the next build. The same review observed that the coin score remained small and isolated and that several multi-coin offers appeared as compact herds whose siblings could be collected with little additional input. This recording review supports the next correction but is not an external multi-tester result.'
+  };
+
+  const vm045ScoreRouteDecision = {
+    id: 'decision-vm-0.4.5-score-route-pass',
+    type: 'Decision',
+    date: '2026-08-04',
+    source: 'Startup Lab approved VM-0.4.5 milestone',
+    text: 'Revise only the existing score HUD and authored Refund Coin geometry. Keep the countdown primary, attach a secondary central score, preserve exactly-one-point scoring and floating +1 feedback, and make most multi-coin offers require additional horizontal, jump, timing, exposure, or landing commitment. Preserve the 60-second round, speed curves, hazards, player controller, Prototype A, and all excluded systems.'
+  };
+
+  const vm045ScoreRouteHypothesis = {
+    id: 'hypothesis-vm-0.4.5-score-routes',
+    type: 'Hypothesis',
+    date: '2026-08-04',
+    source: 'Startup Lab approved score and route hypothesis',
+    text: 'A central secondary score and differentiated safe-extension, horizontal-trail, ground-versus-air, aerial-arc, and staggered routes may make score changes visible and produce deliberate conservative, moderate, and aggressive collection choices. Compact clusters at a 10–15 percent minority may preserve occasional low-risk payoff. Score awareness, route readability, perceived risk, and player preference remain unvalidated.'
+  };
+
+  const vm045ScoreRouteResult = {
+    id: 'result-vm-0.4.5-score-routes',
+    type: 'Result',
+    date: '2026-08-04',
+    source: 'Build VM-0.4.5 implementation and automated/Web validation',
+    text: 'The 44 px 00:SS countdown remains primary at top-centre. A separate 200×58 logical-pixel score plate is anchored directly beneath it with a geometric Refund Coin icon, a 28 px numeric score (63.6 percent of countdown font size), and a 10 px COINS caption; build and experiment labels remain 12 px and 11 px. Each exactly-once score event restarts a 0.22-second scale-and-color pulse from 1.22× to 1.0× on the number while preserving the existing floating +1; rapid collections and restart return the number to the correct value and base scale. The authored offer system now includes ground teaching, rising/falling aerial arc, safe coin plus risky extension, long horizontal trail, ground-versus-air fork, compact burst, and 0.30-second staggered route categories. Typical route spacing is 48 px, derived from 1.50 times the locked 32 px player collision width; horizontal trails span 40 percent of the currently valid belt route width. Post-teaching compact weights are 10, 10, 12, and 12 percent across the four phases, and natural selection does not use the same category three times consecutively. Three deterministic 60-second runs offered 54, 60, and 57 coins, exercised every category and phase, and measured a maximum offer-start gap of 3.25 seconds. All eighteen automated test files passed; both frozen scenes completed 180-frame headless launches. The standalone single-threaded Web build exported, its ZIP retained index.html at the root, and localhost checks at 1152×648, 800×648, and 1440×810 loaded with no browser-console warnings or errors. Prototype A, the shared player controller, round duration, score value, countdown behavior, speed curves, hazards, coin collision size, death/completion rules, and restart behavior were not changed. These are implementation and structural-validation results, not evidence that the score or routes improve play.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1112,7 +1240,23 @@
     refundCoinDirectionDecision,
     fixedRoundHypothesis,
     verticalRefundCoinHypothesis,
-    fixedRoundRefundCoinResult
+    fixedRoundRefundCoinResult,
+    vm041NaturalLifecycleEvidence,
+    vm041StarvationDiagnosisResult,
+    vm042OfferDirectorHypothesis,
+    vm042OfferDirectorResult,
+    vm042ManualAcceptanceEvidence,
+    vm043ReadabilityDecision,
+    vm043ReadabilityHypothesis,
+    vm043ReadabilityResult,
+    vm043CountdownMissEvidence,
+    vm044CountdownDecision,
+    vm044CountdownHypothesis,
+    vm044CountdownResult,
+    vm044AcceptanceEvidence,
+    vm045ScoreRouteDecision,
+    vm045ScoreRouteHypothesis,
+    vm045ScoreRouteResult
   ];
 
   const defaultFindings = [
@@ -1124,7 +1268,7 @@
   ];
 
   const defaultState = {
-    version: 20,
+    version: 23,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

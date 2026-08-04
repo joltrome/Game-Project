@@ -34,19 +34,20 @@ func _run() -> void:
 func _test_round_countdown_death_and_completion() -> void:
 	var conveyor := await _make_conveyor(true)
 	var round_controller := _round_controller(conveyor)
+	var initial_remaining := round_controller.round_time_remaining
 	_check(
 		round_controller.round_duration == 60.0
-		and round_controller.round_time_remaining == 60.0
+		and round_controller.round_time_remaining > 59.9
 		and round_controller.is_running(),
-		"Round begins at exactly the configured 60-second duration"
+		"Round begins from the configured 60-second duration"
 	)
 	_check(
-		conveyor.get_node("HUD/Timer").text == "SHUTDOWN: 60",
-		"Initial timer uses the approved SHUTDOWN label"
+		conveyor.get_node("HUD/Timer").text == "00:60",
+		"Initial timer uses the approved stable countdown format"
 	)
 	round_controller._process(0.25)
 	_check(
-		absf(round_controller.round_time_remaining - 59.75) <= 0.0001,
+		absf(round_controller.round_time_remaining - (initial_remaining - 0.25)) <= 0.0001,
 		"Countdown decreases by the supplied elapsed time"
 	)
 	conveyor._kill_player()
@@ -273,16 +274,14 @@ func _test_active_and_reserved_hazard_validation() -> void:
 	)
 	conveyor.force_pattern_for_test(ConveyorPrototype.PatternType.SWEEPER_ONLY)
 	_check(
-		not director.try_spawn_band_for_test(
+		director.try_spawn_band_for_test(
 			CollectibleDirector.PlacementBand.LOW_AIR
 		)
-		and director.pending_band()
-			== CollectibleDirector.PlacementBand.LOW_AIR
-		and not director.candidate_is_valid(
+		and director.candidate_is_valid(
 			low_air_candidate,
 			CollectibleDirector.PlacementBand.LOW_AIR
 		),
-		"Invalid low-air spawn remains pending while a Sweeper trajectory is reserved"
+		"A planned Sweeper no longer starves an otherwise valid low-air offer"
 	)
 	_free_conveyor(conveyor)
 
@@ -324,7 +323,10 @@ func _test_restart_and_endless_recovery() -> void:
 	round_controller.set_process(false)
 	conveyor.player.position = Vector2(600.0, 552.0)
 	director.candidate_x_positions = PackedFloat32Array([600.0])
-	director.try_spawn_for_test()
+	director.try_spawn_template_for_test(
+		CollectibleDirector.OfferTemplate.SAFE_VERSUS_RISK,
+		4
+	)
 	director.score = 3
 	round_controller.force_time_remaining_for_test(20.0)
 	var old_coin := director.active_collectible()
@@ -339,11 +341,13 @@ func _test_restart_and_endless_recovery() -> void:
 	_check(
 		_round_controller(restarted).round_time_remaining > 59.9
 		and _round_controller(restarted).is_running()
+		and restarted.get_node("HUD/Timer").text == "00:60"
+		and restarted.get_node("HUD/Timer").scale == Vector2.ONE
 		and _director(restarted).score == 0
 		and _director(restarted).active_collectible_count() == 0
 		and restarted.falling_product_count() == 0
 		and restarted.active_sweeper_count() == 0,
-		"Restart resets timer, score, coin, hazards, and round state"
+		"Restart resets timer text, visuals, score, coin, hazards, and round state"
 	)
 	_check(not is_instance_valid(old_coin), "Restart frees the previous Refund Coin")
 

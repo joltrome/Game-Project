@@ -58,7 +58,7 @@ func _test_configuration() -> void:
 	_check(
 		str(ProjectSettings.get_setting("application/run/main_scene"))
 			== GAME_B_SCENE_PATH,
-		"Normal editor F5 launch remains the frozen second game"
+		"Normal editor F5 launch remains the current conveyor game"
 	)
 	_check(
 		str(
@@ -84,8 +84,9 @@ func _test_configuration() -> void:
 		return
 	_check(
 		presets.get_value("preset.0", "name") == "Web AB"
-		and presets.get_value("preset.1", "name") == "Web BA",
-		"Separate AB and BA Web presets exist"
+		and presets.get_value("preset.1", "name") == "Web BA"
+		and presets.get_value("preset.2", "name") == "Web Current",
+		"Archived AB and BA presets and standalone current preset exist"
 	)
 	_check(
 		presets.get_value("preset.0", "custom_features") == "playtest_ab"
@@ -98,8 +99,11 @@ func _test_configuration() -> void:
 		)
 		and not bool(
 			presets.get_value("preset.1.options", "variant/thread_support")
+		)
+		and not bool(
+			presets.get_value("preset.2.options", "variant/thread_support")
 		),
-		"Both Web presets explicitly disable thread support"
+		"All Web presets explicitly disable thread support"
 	)
 	_check(
 		presets.get_value("preset.0", "export_path")
@@ -112,8 +116,24 @@ func _test_configuration() -> void:
 		str(presets.get_value("preset.0", "exclude_filter"))
 			.contains("builds/")
 		and str(presets.get_value("preset.1", "exclude_filter"))
+			.contains("builds/")
+		and str(presets.get_value("preset.2", "exclude_filter"))
 			.contains("builds/"),
 		"Generated Web output is excluded from subsequent exports"
+	)
+	_check(
+		str(presets.get_value("preset.2", "custom_features")).is_empty(),
+		"Standalone preset does not select either comparison order"
+	)
+	_check(
+		presets.get_value("preset.2", "export_path")
+			== "builds/web-current/index.html",
+		"Standalone preset exports index.html into its own directory"
+	)
+	_check(
+		int(presets.get_value("preset.2.options", "html/canvas_resize_policy"))
+			== 2,
+		"Standalone Web canvas adapts to the available browser viewport"
 	)
 
 

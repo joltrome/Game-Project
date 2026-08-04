@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/conveyor.gd" id="1_conveyor"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
@@ -22,6 +22,30 @@ corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_countdown"]
+bg_color = Color(0.025, 0.03, 0.04, 0.94)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.62, 0.68, 0.76, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_coin_score"]
+bg_color = Color(0.025, 0.03, 0.04, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.92, 0.64, 0.08, 0.9)
+corner_radius_top_left = 7
+corner_radius_top_right = 7
+corner_radius_bottom_right = 7
+corner_radius_bottom_left = 7
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_off_belt"]
 size = Vector2(160, 128)
@@ -227,48 +251,116 @@ script = ExtResource("4_round_controller")
 [node name="BuildId" type="Label" parent="HUD"]
 offset_left = 16.0
 offset_top = 16.0
-offset_right = 260.0
-offset_bottom = 42.0
-theme_override_colors/font_color = Color(0.68, 0.72, 0.78, 1)
-theme_override_font_sizes/font_size = 16
-text = "BUILD VM-0.3.4-B"
+offset_right = 172.0
+offset_bottom = 36.0
+theme_override_colors/font_color = Color(0.48, 0.52, 0.58, 1)
+theme_override_font_sizes/font_size = 12
+text = "BUILD VM-0.4.5"
 
 [node name="Timer" type="Label" parent="HUD"]
-offset_left = 900.0
-offset_top = 16.0
-offset_right = 1136.0
-offset_bottom = 44.0
-theme_override_colors/font_color = Color(0.93, 0.95, 0.98, 1)
-theme_override_font_sizes/font_size = 18
-text = "SHUTDOWN: 60"
-horizontal_alignment = 2
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -132.0
+offset_top = 24.0
+offset_right = 132.0
+offset_bottom = 84.0
+grow_horizontal = 2
+pivot_offset = Vector2(132, 30)
+theme_override_colors/font_color = Color(0.95, 0.97, 1, 1)
+theme_override_colors/font_outline_color = Color(0.01, 0.012, 0.016, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 44
+theme_override_styles/normal = SubResource("StyleBoxFlat_countdown")
+text = "00:60"
+horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="CollectibleScore" type="Label" parent="HUD"]
-offset_left = 900.0
-offset_top = 46.0
-offset_right = 1136.0
-offset_bottom = 72.0
-theme_override_colors/font_color = Color(0.24, 0.86, 0.82, 1)
-theme_override_font_sizes/font_size = 16
-text = "COINS: 0"
-horizontal_alignment = 2
+[node name="ScoreGroup" type="Control" parent="HUD"]
+layout_mode = 3
+anchors_preset = 10
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -100.0
+offset_top = 92.0
+offset_right = 100.0
+offset_bottom = 150.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="Backing" type="Panel" parent="HUD/ScoreGroup"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_coin_score")
+
+[node name="CoinOutline" type="Polygon2D" parent="HUD/ScoreGroup"]
+position = Vector2(31, 29)
+polygon = PackedVector2Array(-16, -7, -7, -16, 7, -16, 16, -7, 16, 7, 7, 16, -7, 16, -16, 7)
+color = Color(0.055, 0.045, 0.02, 1)
+
+[node name="CoinFace" type="Polygon2D" parent="HUD/ScoreGroup"]
+position = Vector2(31, 29)
+polygon = PackedVector2Array(-12, -5, -5, -12, 5, -12, 12, -5, 12, 5, 5, 12, -5, 12, -12, 5)
+color = Color(1, 0.72, 0.08, 1)
+
+[node name="CoinMark" type="Label" parent="HUD/ScoreGroup"]
+layout_mode = 0
+offset_left = 22.0
+offset_top = 15.0
+offset_right = 40.0
+offset_bottom = 43.0
+theme_override_colors/font_color = Color(0.28, 0.16, 0.015, 1)
+theme_override_font_sizes/font_size = 18
+text = "$"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CollectibleScore" type="Label" parent="HUD/ScoreGroup"]
+layout_mode = 0
+offset_left = 54.0
+offset_top = 2.0
+offset_right = 138.0
+offset_bottom = 45.0
+pivot_offset = Vector2(42, 22)
+theme_override_colors/font_color = Color(1, 0.79, 0.11, 1)
+theme_override_colors/font_outline_color = Color(0.01, 0.012, 0.016, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 28
+text = "0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CoinCaption" type="Label" parent="HUD/ScoreGroup"]
+layout_mode = 0
+offset_left = 58.0
+offset_top = 39.0
+offset_right = 134.0
+offset_bottom = 55.0
+theme_override_colors/font_color = Color(0.78, 0.68, 0.42, 1)
+theme_override_font_sizes/font_size = 10
+text = "COINS"
+horizontal_alignment = 1
 
 [node name="ExperimentId" type="Label" parent="HUD"]
 offset_left = 16.0
-offset_top = 44.0
-offset_right = 260.0
-offset_bottom = 68.0
-theme_override_colors/font_color = Color(0.24, 0.86, 0.82, 1)
-theme_override_font_sizes/font_size = 14
-text = "EXPERIMENT VM-0.4.1"
+offset_top = 38.0
+offset_right = 172.0
+offset_bottom = 56.0
+theme_override_colors/font_color = Color(0.22, 0.58, 0.58, 1)
+theme_override_font_sizes/font_size = 11
+text = "EXPERIMENT VM-0.4.5"
 
 [node name="CollectibleLegend" type="Label" parent="HUD"]
 offset_left = 16.0
-offset_top = 72.0
-offset_right = 260.0
-offset_bottom = 96.0
-theme_override_colors/font_color = Color(0.24, 0.86, 0.82, 1)
-theme_override_font_sizes/font_size = 14
+offset_top = 62.0
+offset_right = 172.0
+offset_bottom = 82.0
+theme_override_colors/font_color = Color(1, 0.79, 0.11, 1)
+theme_override_font_sizes/font_size = 12
 text = "REFUND COIN  +1"
 
 [node name="Hypothesis" type="Label" parent="HUD"]

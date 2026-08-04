@@ -2,7 +2,7 @@ extends SceneTree
 
 const CONVEYOR_SCENE_PATH := "res://scenes/prototypes/conveyor.tscn"
 const ARENA_SCENE_PATH := "res://scenes/prototypes/arena.tscn"
-const EXPECTED_FIRST_SPAWN := 6.5
+const EXPECTED_FIRST_SPAWN := 1.75
 const FLOAT_TOLERANCE := 0.05
 
 var _failures: int = 0
@@ -34,15 +34,15 @@ func _test_configuration_and_timing() -> void:
 	var conveyor := await _make_conveyor()
 	var director := _director(conveyor)
 	_check(
-		director.first_spawn_window_min == 5.0
-		and director.first_spawn_window_max == 8.0
+		director.first_spawn_window_min == 1.5
+		and director.first_spawn_window_max == 2.0
 		and director.first_spawn_time == EXPECTED_FIRST_SPAWN,
-		"First collectible is configured inside the approved 5–8 second window"
+		"First offer is configured inside the approved 1.5–2.0 second window"
 	)
 	_check(
-		director.collectible_lifetime == 3.0
-		and director.recurring_spawn_interval == 7.0,
-		"Collectible lifetime and recurring interval are independently configurable"
+		director.collectible_lifetime == 2.25
+		and director.phase_one_cadence == Vector2(2.5, 3.0),
+		"Coin lifetime and phase cadence are independently configurable"
 	)
 	conveyor.survival_time = EXPECTED_FIRST_SPAWN - 0.01
 	director._process(0.0)
@@ -56,7 +56,7 @@ func _test_configuration_and_timing() -> void:
 		director.active_collectible_count() == 1
 		and absf(director.first_actual_spawn_time - EXPECTED_FIRST_SPAWN)
 			<= FLOAT_TOLERANCE,
-		"Collectible spawns at 6.5 seconds within the configured window"
+		"Ground teaching offer spawns at 1.75 seconds within its configured window"
 	)
 	_check(
 		not director.try_spawn_for_test()
@@ -166,8 +166,8 @@ func _test_restart_cleanup() -> void:
 	_check(
 		restarted_director.score == 0
 		and restarted_director.active_collectible_count() == 0
-		and restarted.get_node("HUD/CollectibleScore").text
-			== "COINS: 0",
+		and restarted.get_node("HUD/ScoreGroup/CollectibleScore").text
+			== "0",
 		"Restart clears the collectible and resets current-run score"
 	)
 	_check(not is_instance_valid(old_collectible), "Restart frees the old pickup instance")
@@ -193,11 +193,11 @@ func _test_frozen_gameplay_boundaries() -> void:
 
 	var conveyor := await _make_conveyor()
 	_check(
-		conveyor.conveyor_speed == 140.0
+		conveyor.conveyor_speed_at(0.0) == 140.0
 		and conveyor.telegraph_duration == 0.45
 		and conveyor.target_fall_duration == 0.55
-		and conveyor.sweeper_speed == 520.0,
-		"Collectible experiment leaves conveyor and hazard baseline values unchanged"
+		and conveyor.sweeper_speed_at(0.0) == 520.0,
+		"Offer experiment starts from the frozen conveyor and hazard values"
 	)
 	_check(
 		conveyor.player.maximum_speed == 300.0

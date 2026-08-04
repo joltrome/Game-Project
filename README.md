@@ -11,10 +11,10 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 ## Current state
 
-**Build:** VM-0.4.1 fixed-round and vertical Refund Coin experiment
+**Build:** VM-0.4.5 score visibility and differentiated Refund Coin routes
 
-**Phase:** Fixed-round score-attack and vertical collectible evaluation
-**Gameplay evidence:** The first external comparison selected the conveyor, and subsequent manual testing accepted the optional collectible as proactively motivating. Fixed duration and aerial placement remain unvalidated hypotheses.
+**Phase:** External readability testing of the fixed-round conveyor loop
+**Gameplay evidence:** The first external comparison selected the conveyor, subsequent manual testing accepted the optional collectible as proactively motivating, and Startup Lab review accepted the VM-0.4.4 top-centre countdown for the next build. Whether VM-0.4.5's central score and differentiated routes improve score awareness and deliberate route choice remains unverified.
 
 Prototype B is now the primary direction. Prototype A remains preserved as a frozen comparison baseline and a possible future machine-jam event; that event is not implemented. The source project defaults to Prototype B for editor F5 testing.
 
@@ -39,14 +39,19 @@ Prototype B's first externally preferred baseline is tagged `VM-0.3.4-B-EXTERNAL
 Install the matching Godot 4.7.1 export templates, then run:
 
 ```bash
+/Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --headless --path . --export-release "Web Current" builds/web-current/index.html
 /Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --headless --path . --export-release "Web AB" builds/web-ab/index.html
 /Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --headless --path . --export-release "Web BA" builds/web-ba/index.html
 ```
+
+`Web Current` launches only the latest conveyor build. `Web AB` and `Web BA`
+remain archived comparative-playtest flows.
 
 The generated files are ignored by Git. Each upload archive must have
 `index.html` at its root:
 
 ```bash
+(cd builds/web-current && zip -r -FS ../vending-machine-current.zip . -x '*.import' '.DS_Store')
 (cd builds/web-ab && zip -r ../vending-machine-playtest-ab.zip .)
 (cd builds/web-ba && zip -r ../vending-machine-playtest-ba.zip .)
 ```
@@ -55,6 +60,7 @@ The Web canvas is 1152 × 648. Serve a directory over HTTP rather than opening
 `index.html` directly:
 
 ```bash
+python3 -m http.server 8122 --directory builds/web-current
 python3 -m http.server 8123 --directory builds/web-ab
 python3 -m http.server 8124 --directory builds/web-ba
 ```
@@ -68,10 +74,11 @@ python3 -m http.server 8124 --directory builds/web-ba
 
 ## Next validation task
 
-Manually test VM-0.4.1 and return to Startup Lab before changing it. Run the
-full 60-second round while ignoring coins, collecting only ground coins, and
-pursuing aerial coins. Record deaths during pursuit, completion score, countdown
-pacing, aerial readability, and whether coin pursuit obscures survival hazards.
+Run fresh-tester VM-0.4.5 sessions without explaining the offer categories. Record
+whether the central score is noticed, whether most routes require a second input
+after the first coin, whether players intentionally abandon risky extensions,
+whether aerial and staggered routes remain readable beside hazards, and whether
+compact offers feel distinct. Do not tune from developer preference alone.
 
 ## Automated movement test
 
@@ -151,6 +158,12 @@ godot --headless --log-file /tmp/vms-collectible-test.log --path . --script res:
 
 ```bash
 godot --headless --log-file /tmp/vms-fixed-round-refund-coin-test.log --path . --script res://tests/test_fixed_round_refund_coin.gd
+```
+
+## Automated central score and differentiated-route test
+
+```bash
+godot --headless --log-file /tmp/vms-vm045-score-routes-test.log --path . --script res://tests/test_vm045_score_routes.gd
 ```
 
 ## Cost

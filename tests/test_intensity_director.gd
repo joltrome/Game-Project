@@ -171,16 +171,16 @@ func _test_continuous_timing_and_speed_curves() -> void:
 			"Hazard speed remains continuous across %.0fs" % boundary_time
 		)
 	_check(
-		conveyor.sweeper_speed_at(12.0) == conveyor.sweeper_speed
+		conveyor.sweeper_speed_at(12.0) > conveyor.sweeper_speed
 		and conveyor.target_fall_duration_at(12.0)
 			== conveyor.target_fall_duration,
-		"Teaching and conflict phases preserve base hazard speeds"
+		"Sweeper ramps smoothly while the existing can fall curve is preserved"
 	)
 	_check(
-		conveyor.sweeper_speed_at(40.0)
-			<= conveyor.sweeper_speed * 1.20
+		conveyor.sweeper_speed_at(60.0)
+			== conveyor.sweeper_speed * 1.15
 		and conveyor.hazard_speed_multiplier_at(40.0) == 1.12,
-		"Late hazard ramp is capped at the configured 12% increase"
+		"Sweeper caps at 115 percent while the can fall curve remains capped at 12 percent"
 	)
 	await _free_conveyor(conveyor)
 

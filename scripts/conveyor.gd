@@ -33,7 +33,7 @@ enum PatternEventType {
 	SWEEPER,
 }
 
-const BUILD_ID := "VM-0.3.4-B"
+const BUILD_ID := "VM-0.4.5"
 const CONVEYOR_PRODUCT_SCENE := preload(
 	"res://scenes/hazards/conveyor_product.tscn"
 )
@@ -42,6 +42,9 @@ const DEFAULT_PLAYER_COLLISION_SIZE := Vector2(32.0, 48.0)
 
 @export_category("Conveyor")
 @export var conveyor_speed: float = 140.0
+@export var conveyor_speed_ramp_duration: float = 60.0
+@export var conveyor_speed_end_multiplier: float = 1.25
+@export_range(0.0, 1.0, 0.01) var maximum_conveyor_player_speed_ratio: float = 0.70
 @export var belt_left_x: float = 160.0
 @export var belt_right_x: float = 1056.0
 @export var offscreen_cleanup_x: float = 96.0
@@ -74,6 +77,8 @@ const DEFAULT_PLAYER_COLLISION_SIZE := Vector2(32.0, 48.0)
 @export var grounded_sweeper_clearance: float = 4.0
 var sweeper_altitude: float = 518.0
 @export var sweeper_speed: float = 520.0
+@export var sweeper_speed_ramp_duration: float = 60.0
+@export var sweeper_speed_end_multiplier: float = 1.15
 @export var sweeper_size: Vector2 = Vector2(96.0, 28.0)
 @export var sweeper_entry_cue_duration: float = 0.20
 @export var maximum_active_sweepers: int = 1
@@ -171,6 +176,7 @@ var _right_edge_dwell_time: float = 0.0
 var _right_pressure_requested: bool = false
 var _right_pressure_target_x: float = NAN
 var _right_pressure_reserved_at: float = -1.0
+var _base_conveyor_speed: float = 140.0
 
 @onready var player: SharedPlayerController = $Player
 @onready var _hazard_container: Node2D = $Hazards
@@ -190,6 +196,7 @@ var _right_pressure_reserved_at: float = -1.0
 
 
 func _ready() -> void:
+	_base_conveyor_speed = conveyor_speed
 	_refresh_sweeper_geometry()
 	_pattern_cooldown_remaining = initial_warning_delay
 	_pending_fall_duration = target_fall_duration_at(0.0)
@@ -207,6 +214,7 @@ func _physics_process(delta: float) -> void:
 		return
 
 	survival_time += delta
+	_update_continuous_speed_ramps()
 	_update_timer_label()
 	_scroll_belt_presentation(delta)
 	_enforce_control_band()
@@ -352,7 +360,41 @@ func hazard_speed_multiplier_at(time_seconds: float) -> float:
 
 
 func sweeper_speed_at(time_seconds: float) -> float:
-	return sweeper_speed * hazard_speed_multiplier_at(time_seconds)
+	return sweeper_speed * _smooth_multiplier_at(
+		time_seconds,
+		sweeper_speed_ramp_duration,
+		sweeper_speed_end_multiplier
+	)
+
+
+func conveyor_speed_at(time_seconds: float) -> float:
+	var requested := _base_conveyor_speed * _smooth_multiplier_at(
+		time_seconds,
+		conveyor_speed_ramp_duration,
+		conveyor_speed_end_multiplier
+	)
+	var controllable_limit := (
+		player.maximum_speed * maximum_conveyor_player_speed_ratio
+		if is_instance_valid(player)
+		else INF
+	)
+	return minf(requested, controllable_limit)
+
+
+func player_rightward_recovery_speed_at(time_seconds: float) -> float:
+	return player.maximum_speed - conveyor_speed_at(time_seconds)
+
+
+func _smooth_multiplier_at(
+	time_seconds: float,
+	duration: float,
+	end_multiplier: float
+) -> float:
+	if duration <= 0.0:
+		return end_multiplier
+	var progress := clampf(time_seconds / duration, 0.0, 1.0)
+	var smooth_progress := progress * progress * (3.0 - 2.0 * progress)
+	return lerpf(1.0, end_multiplier, smooth_progress)
 
 
 func target_fall_duration_at(time_seconds: float) -> float:
@@ -1209,6 +1251,21 @@ func _scroll_belt_presentation(delta: float) -> void:
 		stripe.position.x -= conveyor_speed * delta
 		while stripe.position.x < belt_left_x:
 			stripe.position.x += belt_width
+
+
+func _update_continuous_speed_ramps() -> void:
+	conveyor_speed = conveyor_speed_at(survival_time)
+	_apply_conveyor_support_velocity()
+	for product in _falling_products:
+		if is_instance_valid(product):
+			product.set_conveyor_speed(conveyor_speed)
+	for product in _landed_products:
+		if is_instance_valid(product):
+			product.set_conveyor_speed(conveyor_speed)
+	var current_sweeper_speed := sweeper_speed_at(survival_time)
+	for sweeper in _active_sweepers:
+		if is_instance_valid(sweeper):
+			sweeper.travel_speed = current_sweeper_speed
 
 
 func _apply_conveyor_support_velocity() -> void:
