@@ -20,6 +20,14 @@ enum OfferTemplate {
 	STAGGERED_ROUTE,
 }
 
+enum RouteTrajectory {
+	NO_FURTHER_INPUT,
+	SAME_INPUT_CONTINUATION,
+	PASSIVE_JUMP,
+	INTENDED_AGGRESSIVE,
+	SAFE_ABANDONMENT,
+}
+
 const COLLECTIBLE_SCENE := preload(
 	"res://scenes/collectibles/conveyor_collectible.tscn"
 )
@@ -67,10 +75,10 @@ const REJECTION_UNKNOWN := "unknown"
 @export var phase_two_coin_range := Vector2i(1, 3)
 @export var phase_three_coin_range := Vector2i(2, 4)
 @export var phase_four_coin_range := Vector2i(3, 5)
-@export var phase_one_template_weights := PackedInt32Array([20, 20, 15, 20, 10, 10, 5])
-@export var phase_two_template_weights := PackedInt32Array([5, 18, 22, 20, 15, 10, 10])
-@export var phase_three_template_weights := PackedInt32Array([0, 20, 22, 18, 15, 12, 13])
-@export var phase_four_template_weights := PackedInt32Array([0, 18, 22, 18, 15, 12, 15])
+@export var phase_one_template_weights := PackedInt32Array([0, 0, 30, 20, 25, 10, 15])
+@export var phase_two_template_weights := PackedInt32Array([0, 0, 30, 20, 25, 10, 15])
+@export var phase_three_template_weights := PackedInt32Array([0, 0, 30, 20, 25, 10, 15])
+@export var phase_four_template_weights := PackedInt32Array([0, 0, 30, 20, 25, 10, 15])
 
 @export_category("Placement")
 @export var placement_seed: int = 401
@@ -81,10 +89,15 @@ const REJECTION_UNKNOWN := "unknown"
 @export var collectible_size: Vector2 = Vector2(24.0, 24.0)
 @export var safe_edge_exclusion: float = 48.0
 @export var reachability_reserve: float = 0.20
-@export_range(1.25, 1.75, 0.05) var typical_sibling_spacing_player_widths: float = 1.50
-@export_range(0.30, 0.50, 0.01) var horizontal_trail_span_ratio: float = 0.40
-@export_range(0.20, 0.40, 0.01) var staggered_coin_interval: float = 0.30
+@export_range(1.75, 2.50, 0.05) var typical_sibling_spacing_player_widths: float = 2.00
+@export_range(0.35, 0.55, 0.01) var horizontal_trail_span_ratio: float = 0.45
+@export_range(0.35, 0.70, 0.01) var staggered_coin_interval: float = 0.50
 @export var minimum_route_response_time: float = 0.55
+
+@export_category("Route Validation")
+@export var trajectory_simulation_step: float = 1.0 / 120.0
+@export var recent_route_history_size: int = 2
+@export var decision_route_cadence_multiplier: float = 1.50
 
 # Kept as a compatibility surface for VM-0.4.1 tests and factual comparisons.
 @export_range(0.0, 1.0, 0.01) var ground_probability_after_first := 0.50
@@ -108,7 +121,7 @@ var _stopped: bool = false
 var _teaching_cue_shown: bool = false
 var _score_pulse_remaining: float = 0.0
 var _score_pulse_count: int = 0
-var _last_natural_template: int = -1
+var _recent_natural_templates: Array[int] = []
 
 @onready var _conveyor: ConveyorPrototype = get_parent() as ConveyorPrototype
 @onready var _score_label: Label = _conveyor.get_node("HUD/ScoreGroup/CollectibleScore")
@@ -359,7 +372,9 @@ func _try_spawn_natural_offer() -> bool:
 	var attempted: Array[int] = []
 	for rotation in range(OfferTemplate.size()):
 		var template := selected_template if rotation == 0 else posmod(selected_template + rotation + _rotation_offset, OfferTemplate.size())
-		if _natural_offer_count >= 2 and template == _last_natural_template:
+		if template == OfferTemplate.COMPACT_BURST and selected_template != OfferTemplate.COMPACT_BURST:
+			continue
+		if _natural_offer_count >= 2 and _recent_natural_templates.has(template):
 			continue
 		if attempted.has(template):
 			continue
@@ -368,7 +383,7 @@ func _try_spawn_natural_offer() -> bool:
 			_pending_teaching_template = -1
 			_rotation_offset = 0
 			_natural_offer_count += 1
-			_last_natural_template = template
+			_remember_natural_template(template)
 			return true
 		if _natural_offer_count < 2:
 			break
@@ -436,6 +451,10 @@ func _try_spawn_template(template: int, intended_count: int, natural: bool) -> b
 		return _reject_attempt(log_entry, first_rejection)
 	if not _offer_has_reachable_response(accepted_candidates):
 		return _reject_attempt(log_entry, REJECTION_UNREACHABLE)
+	if _is_post_teaching_route(template):
+		var action_validation := route_action_validation_for_test(template, candidates.size())
+		if not bool(action_validation.valid):
+			return _reject_attempt(log_entry, REJECTION_UNREACHABLE)
 	_offer_id_cursor += 1
 	var offer_id := _offer_id_cursor
 	var coins: Array[ConveyorCollectible] = []
@@ -589,13 +608,13 @@ func template_name(template: int) -> String:
 		OfferTemplate.SAFE_VERSUS_RISK:
 			return "safe coin + risky extension"
 		OfferTemplate.HORIZONTAL_LINE:
-			return "long horizontal trail"
+			return "long commitment trail"
 		OfferTemplate.MIXED_ROUTE:
 			return "ground-versus-air fork"
 		OfferTemplate.COMPACT_BURST:
-			return "compact burst"
+			return "compact jackpot"
 		OfferTemplate.STAGGERED_ROUTE:
-			return "staggered route"
+			return "staggered aerial route"
 	return "unknown"
 
 
@@ -624,41 +643,82 @@ func _template_candidates(template: int, intended_count: int) -> Array[Dictionar
 			var risk_anchor := _route_anchor_x(spacing * float(count - 1))
 			candidates.append({"position": Vector2(risk_anchor, ground_y), "band": PlacementBand.GROUND})
 			for index in range(count - 1):
+				var extension_rise := 26.0 if index % 2 == 1 else 0.0
 				candidates.append({
-					"position": Vector2(risk_anchor - spacing * float(index + 1), low_y - float(index % 2) * 8.0),
+					"position": Vector2(
+						risk_anchor - spacing * float(index + 1),
+						low_y + 6.0 - extension_rise
+					),
 					"band": PlacementBand.LOW_AIR,
+					"route_branch": "extension",
 				})
 		OfferTemplate.HORIZONTAL_LINE:
-			count = clampi(count, 2, 4)
+			count = clampi(count, 3, 3)
 			var line_span := trail_span_pixels()
 			var line_spacing := line_span / float(count - 1)
 			var line_anchor := _route_anchor_x(line_span)
 			for index in range(count):
-				candidates.append({"position": Vector2(line_anchor - line_spacing * index, ground_y), "band": PlacementBand.GROUND})
-		OfferTemplate.MIXED_ROUTE:
-			count = clampi(count, 2, 4)
-			var fork_anchor := _route_anchor_x(spacing * float(count - 1))
-			for index in range(count):
-				var band := PlacementBand.GROUND if index == 0 or index == count - 1 else PlacementBand.LOW_AIR
 				candidates.append({
-					"position": Vector2(fork_anchor - spacing * index, ground_y if band == PlacementBand.GROUND else low_y - 6.0),
-					"band": band,
+					"position": Vector2(line_anchor - line_spacing * index, ground_y),
+					"band": PlacementBand.GROUND,
+					"route_branch": "commitment",
+				})
+		OfferTemplate.MIXED_ROUTE:
+			count = clampi(count, 3, 4)
+			var route_bounds := _route_bounds()
+			var fork_origin := clampf(
+				(route_bounds.x + route_bounds.y) * 0.5,
+				route_bounds.x + spacing,
+				route_bounds.y - spacing * float(count - 2)
+			)
+			candidates.append({
+				"position": Vector2(fork_origin, ground_y),
+				"band": PlacementBand.GROUND,
+				"route_branch": "shared",
+			})
+			candidates.append({
+				"position": Vector2(fork_origin - spacing, ground_y),
+				"band": PlacementBand.GROUND,
+				"route_branch": "ground",
+			})
+			for index in range(count - 2):
+				candidates.append({
+					"position": Vector2(fork_origin + spacing * float(index + 1), low_y - float(index) * 12.0),
+					"band": PlacementBand.LOW_AIR,
+					"route_branch": "air",
 				})
 		OfferTemplate.COMPACT_BURST:
-			count = clampi(count, 3, 5)
+			count = clampi(count, 3, 3)
 			var compact_spacing := collectible_size.x
-			var compact_span := compact_spacing * float(count - 1)
-			var compact_anchor := _route_anchor_x(compact_span)
+			var compact_radius := compact_spacing * float(ceili(float(count - 1) * 0.5))
+			var compact_bounds := _route_bounds()
+			var compact_anchor := clampf(
+				_candidate_x(0),
+				compact_bounds.x + compact_radius,
+				compact_bounds.y - compact_radius
+			)
 			for index in range(count):
-				candidates.append({"position": Vector2(compact_anchor - compact_spacing * index, ground_y), "band": PlacementBand.GROUND})
+				var signed_offset := 0.0
+				if index > 0:
+					var magnitude := float((index + 1) / 2) * compact_spacing
+					signed_offset = -magnitude if index % 2 == 1 else magnitude
+				candidates.append({
+					"position": Vector2(compact_anchor + signed_offset, ground_y),
+					"band": PlacementBand.GROUND,
+					"route_branch": "jackpot",
+				})
 		OfferTemplate.STAGGERED_ROUTE:
-			count = clampi(count, 2, 4)
+			count = clampi(count, 3, 4)
 			var stagger_anchor := _route_anchor_x(spacing * float(count - 1))
 			for index in range(count):
-				var band := PlacementBand.GROUND if index % 2 == 0 else PlacementBand.LOW_AIR
 				candidates.append({
-					"position": Vector2(stagger_anchor - spacing * index, ground_y if band == PlacementBand.GROUND else low_y - 4.0),
-					"band": band,
+					"position": Vector2(
+						stagger_anchor - spacing * index,
+						low_y + 6.0 - float(index % 2) * 20.0
+					),
+					"band": PlacementBand.LOW_AIR,
+					"subspawn_time": staggered_coin_interval * float(index),
+					"route_branch": "staggered_air",
 				})
 	return candidates
 
@@ -678,6 +738,227 @@ func trail_span_pixels() -> float:
 
 func template_candidates_for_test(template: int, intended_count: int) -> Array[Dictionary]:
 	return _template_candidates(template, intended_count)
+
+
+func route_spawn_times_for_test(template: int, intended_count: int) -> PackedFloat32Array:
+	var result := PackedFloat32Array()
+	for candidate in _template_candidates(template, intended_count):
+		result.append(float(candidate.get("subspawn_time", 0.0)))
+	return result
+
+
+func simulate_route_trajectory_for_test(
+	template: int,
+	trajectory: int,
+	intended_count: int = 4
+) -> Dictionary:
+	var candidates := _template_candidates(template, intended_count)
+	if candidates.is_empty():
+		return {
+			"collected_count": 0,
+			"collected_indices": PackedInt32Array(),
+			"final_position": Vector2.ZERO,
+			"intended_target_count": 0,
+		}
+	var spawn_times := route_spawn_times_for_test(template, intended_count)
+	var collected_flags: Array[bool] = []
+	collected_flags.resize(candidates.size())
+	collected_flags.fill(false)
+	var player_size := _conveyor.player_collision_size()
+	var player_position := Vector2(
+		candidates[0].position.x,
+		_conveyor.floor_y - player_size.y * 0.5
+	)
+	var relative_velocity_x := 0.0
+	var vertical_velocity := 0.0
+	var grounded := true
+	var jump_times := _trajectory_jump_times(template, trajectory, candidates)
+	var next_jump_index := 0
+	var simulation_time := 0.0
+	var last_spawn_time := float(spawn_times[-1]) if not spawn_times.is_empty() else 0.0
+	var simulation_duration := last_spawn_time + collectible_lifetime + 0.35
+	var step := maxf(trajectory_simulation_step, 1.0 / 240.0)
+	while simulation_time <= simulation_duration + 0.0001:
+		for index in range(candidates.size()):
+			if collected_flags[index] or simulation_time + 0.0001 < spawn_times[index]:
+				continue
+			if simulation_time > spawn_times[index] + _candidate_visible_lifetime(candidates[index].position.x):
+				continue
+			if _trajectory_overlaps_coin(player_position, candidates[index].position, player_size):
+				collected_flags[index] = true
+
+		var input_direction := _trajectory_input_direction(template, trajectory, simulation_time)
+		if grounded:
+			relative_velocity_x = input_direction * _conveyor.player.maximum_speed
+		elif not is_zero_approx(input_direction):
+			relative_velocity_x = move_toward(
+				relative_velocity_x,
+				input_direction * _conveyor.player.maximum_speed,
+				_conveyor.player.air_acceleration * step
+			)
+		if (
+			next_jump_index < jump_times.size()
+			and simulation_time + step * 0.5 >= jump_times[next_jump_index]
+			and grounded
+		):
+			vertical_velocity = _conveyor.player.jump_velocity
+			grounded = false
+			next_jump_index += 1
+		if not grounded:
+			vertical_velocity += _conveyor.player.gravity * step
+		player_position.x += relative_velocity_x * step
+		player_position.x = clampf(
+			player_position.x,
+			_conveyor.conveyor_support_left_x + player_size.x * 0.5,
+			_conveyor.control_band_right
+		)
+		player_position.y += vertical_velocity * step
+		var ground_center_y := _conveyor.floor_y - player_size.y * 0.5
+		if player_position.y >= ground_center_y:
+			player_position.y = ground_center_y
+			vertical_velocity = 0.0
+			grounded = true
+		simulation_time += step
+
+	var collected_indices := PackedInt32Array()
+	for index in range(collected_flags.size()):
+		if collected_flags[index]:
+			collected_indices.append(index)
+	return {
+		"collected_count": collected_indices.size(),
+		"collected_indices": collected_indices,
+		"final_position": player_position,
+		"intended_target_count": _trajectory_aggressive_target_count(template, candidates),
+	}
+
+
+func route_action_validation_for_test(template: int, intended_count: int = 4) -> Dictionary:
+	var candidates := _template_candidates(template, intended_count)
+	var results := {}
+	for trajectory in RouteTrajectory.values():
+		results[trajectory] = simulate_route_trajectory_for_test(
+			template,
+			trajectory,
+			intended_count
+		)
+	var total := candidates.size()
+	var valid := not candidates.is_empty()
+	if template not in [OfferTemplate.GROUND_SINGLE, OfferTemplate.LOW_AIR_ARC, OfferTemplate.COMPACT_BURST]:
+		valid = valid and int(results[RouteTrajectory.NO_FURTHER_INPUT].collected_count) < total
+	if template in [OfferTemplate.MIXED_ROUTE, OfferTemplate.STAGGERED_ROUTE]:
+		valid = valid and int(results[RouteTrajectory.SAME_INPUT_CONTINUATION].collected_count) < total
+	if template in [OfferTemplate.SAFE_VERSUS_RISK, OfferTemplate.MIXED_ROUTE, OfferTemplate.STAGGERED_ROUTE]:
+		valid = valid and int(results[RouteTrajectory.PASSIVE_JUMP].collected_count) < total
+	var aggressive: Dictionary = results[RouteTrajectory.INTENDED_AGGRESSIVE]
+	valid = valid and int(aggressive.collected_count) >= int(aggressive.intended_target_count)
+	if template == OfferTemplate.SAFE_VERSUS_RISK:
+		var abandonment: Dictionary = results[RouteTrajectory.SAFE_ABANDONMENT]
+		var final_position: Vector2 = abandonment.final_position
+		valid = (
+			valid
+			and int(abandonment.collected_count) == 1
+			and final_position.x >= _conveyor.conveyor_support_left_x + _conveyor.player_collision_size().x * 0.5
+			and final_position.x <= _conveyor.control_band_right
+			and is_equal_approx(final_position.y, _conveyor.floor_y - _conveyor.player_collision_size().y * 0.5)
+		)
+	return {
+		"valid": valid,
+		"template": template,
+		"template_name": template_name(template),
+		"positions": candidates.map(func(candidate: Dictionary) -> Vector2: return candidate.position),
+		"spawn_times": route_spawn_times_for_test(template, intended_count),
+		"results": results,
+	}
+
+
+func _is_post_teaching_route(template: int) -> bool:
+	return template in [
+		OfferTemplate.SAFE_VERSUS_RISK,
+		OfferTemplate.HORIZONTAL_LINE,
+		OfferTemplate.MIXED_ROUTE,
+		OfferTemplate.COMPACT_BURST,
+		OfferTemplate.STAGGERED_ROUTE,
+	]
+
+
+func _trajectory_overlaps_coin(
+	player_position: Vector2,
+	coin_position: Vector2,
+	player_size: Vector2
+) -> bool:
+	return (
+		absf(player_position.x - coin_position.x) <= (player_size.x + collectible_size.x) * 0.5
+		and absf(player_position.y - coin_position.y) <= (player_size.y + collectible_size.y) * 0.5
+	)
+
+
+func _trajectory_jump_times(
+	template: int,
+	trajectory: int,
+	candidates: Array[Dictionary]
+) -> PackedFloat32Array:
+	var first_is_air: bool = int(candidates[0].band) == PlacementBand.LOW_AIR
+	match trajectory:
+		RouteTrajectory.NO_FURTHER_INPUT:
+			return PackedFloat32Array([0.0]) if first_is_air else PackedFloat32Array()
+		RouteTrajectory.SAME_INPUT_CONTINUATION:
+			return PackedFloat32Array([0.0]) if first_is_air else PackedFloat32Array()
+		RouteTrajectory.PASSIVE_JUMP:
+			return PackedFloat32Array([0.0])
+		RouteTrajectory.INTENDED_AGGRESSIVE:
+			match template:
+				OfferTemplate.SAFE_VERSUS_RISK:
+					return PackedFloat32Array([0.12])
+				OfferTemplate.MIXED_ROUTE:
+					return PackedFloat32Array([0.08])
+				OfferTemplate.STAGGERED_ROUTE:
+					return PackedFloat32Array([0.0, 0.78, 1.38])
+				OfferTemplate.LOW_AIR_ARC:
+					return PackedFloat32Array([0.08])
+		RouteTrajectory.SAFE_ABANDONMENT:
+			return PackedFloat32Array([0.0]) if first_is_air else PackedFloat32Array()
+	return PackedFloat32Array()
+
+
+func _trajectory_input_direction(template: int, trajectory: int, time_seconds: float) -> float:
+	match trajectory:
+		RouteTrajectory.NO_FURTHER_INPUT:
+			return 0.0
+		RouteTrajectory.SAME_INPUT_CONTINUATION:
+			return 0.0 if template == OfferTemplate.COMPACT_BURST else -1.0
+		RouteTrajectory.PASSIVE_JUMP:
+			return -1.0
+		RouteTrajectory.SAFE_ABANDONMENT:
+			return 1.0 if time_seconds < 0.22 else 0.0
+		RouteTrajectory.INTENDED_AGGRESSIVE:
+			match template:
+				OfferTemplate.MIXED_ROUTE:
+					return 1.0
+				OfferTemplate.COMPACT_BURST:
+					return 0.0
+				OfferTemplate.STAGGERED_ROUTE:
+					if time_seconds >= 0.20 and time_seconds < 0.55:
+						return -1.0
+					if time_seconds >= 0.78 and time_seconds < 1.02:
+						return -1.0
+					if time_seconds >= 1.36 and time_seconds < 1.58:
+						return 1.0
+					return 0.0
+			return -1.0
+	return 0.0
+
+
+func _trajectory_aggressive_target_count(
+	template: int,
+	candidates: Array[Dictionary]
+) -> int:
+	if template == OfferTemplate.MIXED_ROUTE:
+		var target := 0
+		for candidate in candidates:
+			if candidate.get("route_branch", "") != "ground":
+				target += 1
+		return target
+	return candidates.size()
 
 
 func _route_bounds() -> Vector2:
@@ -826,15 +1107,15 @@ func _select_natural_template() -> int:
 	if _natural_offer_count == 1:
 		_pending_teaching_template = OfferTemplate.LOW_AIR_ARC
 		return OfferTemplate.LOW_AIR_ARC
-	# Complete one natural cycle early so every authored route category is
-	# exercised without repeating the same shape several times in succession.
-	if _natural_offer_count < 7:
+	# Establish the four deliberate decision routes early. Compact jackpots stay
+	# in the weighted pool so their accepted frequency remains occasional rather
+	# than receiving an extra guaranteed appearance every run.
+	if _natural_offer_count < 6:
 		return [
 			OfferTemplate.HORIZONTAL_LINE,
 			OfferTemplate.MIXED_ROUTE,
 			OfferTemplate.SAFE_VERSUS_RISK,
 			OfferTemplate.STAGGERED_ROUTE,
-			OfferTemplate.COMPACT_BURST,
 		][_natural_offer_count - 2]
 	_placement_rng_state = _next_rng_state(_placement_rng_state)
 	var weights := _template_weights_at(_conveyor.survival_time)
@@ -847,18 +1128,24 @@ func _select_natural_template() -> int:
 	for index in range(weights.size()):
 		roll -= maxi(weights[index], 0)
 		if roll < 0:
-			return _avoid_immediate_template_repeat(index, weights)
+			return _avoid_recent_template_repeat(index, weights)
 	return OfferTemplate.MIXED_ROUTE
 
 
-func _avoid_immediate_template_repeat(selected: int, weights: PackedInt32Array) -> int:
-	if selected != _last_natural_template:
+func _avoid_recent_template_repeat(selected: int, weights: PackedInt32Array) -> int:
+	if not _recent_natural_templates.has(selected):
 		return selected
 	for offset in range(1, weights.size()):
 		var alternative := posmod(selected + offset, weights.size())
-		if weights[alternative] > 0:
+		if weights[alternative] > 0 and not _recent_natural_templates.has(alternative):
 			return alternative
 	return selected
+
+
+func _remember_natural_template(template: int) -> void:
+	_recent_natural_templates.append(template)
+	while _recent_natural_templates.size() > maxi(recent_route_history_size, 0):
+		_recent_natural_templates.pop_front()
 
 
 func _template_weights_at(time_seconds: float) -> PackedInt32Array:
@@ -877,16 +1164,22 @@ func _select_intended_count(template: int) -> int:
 	var count := configured.x
 	if template == OfferTemplate.GROUND_SINGLE:
 		return 1
-	if template in [OfferTemplate.LOW_AIR_ARC, OfferTemplate.HORIZONTAL_LINE, OfferTemplate.MIXED_ROUTE, OfferTemplate.STAGGERED_ROUTE]:
+	if template == OfferTemplate.LOW_AIR_ARC:
 		return maxi(count, 2)
+	if template == OfferTemplate.SAFE_VERSUS_RISK:
+		return 4
 	return maxi(count, 3)
 
 
 func _select_cadence() -> float:
 	var configured := cadence_range_at(_conveyor.survival_time)
-	# The upper edge keeps a full run inside the experimental 40–60 offered-coin
-	# envelope while remaining inside every approved phase cadence range.
-	return configured.y
+	# Wider decision routes contain at least three independent pickups. Spacing
+	# launches out so the 60-second offered-coin economy remains comparable to
+	# the pre-separation baseline without changing coin value.
+	return minf(
+		configured.y * maxf(decision_route_cadence_multiplier, 1.0),
+		maxf(maximum_offer_free_gap - 0.05, configured.y)
+	)
 
 
 func _can_open_another_offer() -> bool:

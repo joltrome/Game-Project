@@ -39,7 +39,8 @@ func _test_explicit_templates_and_siblings() -> void:
 				conveyor.survival_time += director.staggered_coin_interval
 				director._process(director.staggered_coin_interval)
 		var coins := director.active_collectibles()
-		_check(coins.size() == requested, "%s creates the intended independent coin count" % director.template_name(template))
+		var expected_count := 3 if template == CollectibleDirector.OfferTemplate.COMPACT_BURST else requested
+		_check(coins.size() == expected_count, "%s creates the intended independent coin count" % director.template_name(template))
 		var no_overlap := true
 		for first in range(coins.size()):
 			for second in range(first + 1, coins.size()):

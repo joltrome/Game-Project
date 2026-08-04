@@ -11,10 +11,10 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 ## Current state
 
-**Build:** VM-0.4.5 score visibility and differentiated Refund Coin routes
+**Build:** VM-0.4.6 Refund Coin route decision-separation correction
 
 **Phase:** External readability testing of the fixed-round conveyor loop
-**Gameplay evidence:** The first external comparison selected the conveyor, subsequent manual testing accepted the optional collectible as proactively motivating, and Startup Lab review accepted the VM-0.4.4 top-centre countdown for the next build. Whether VM-0.4.5's central score and differentiated routes improve score awareness and deliberate route choice remains unverified.
+**Gameplay evidence:** The first external comparison selected the conveyor, subsequent manual testing accepted the optional collectible as proactively motivating, and Startup Lab review accepted the central countdown and score hierarchy. Manual review found that VM-0.4.5 route spacing still allowed compact collection corridors. Whether VM-0.4.6's action-separated routes improve deliberate route choice remains unverified.
 
 Prototype B is now the primary direction. Prototype A remains preserved as a frozen comparison baseline and a possible future machine-jam event; that event is not implemented. The source project defaults to Prototype B for editor F5 testing.
 
@@ -74,11 +74,16 @@ python3 -m http.server 8124 --directory builds/web-ba
 
 ## Next validation task
 
-Run fresh-tester VM-0.4.5 sessions without explaining the offer categories. Record
-whether the central score is noticed, whether most routes require a second input
-after the first coin, whether players intentionally abandon risky extensions,
-whether aerial and staggered routes remain readable beside hazards, and whether
-compact offers feel distinct. Do not tune from developer preference alone.
+Run fresh-tester VM-0.4.6 sessions without explaining the offer categories. Record
+whether most routes require a second input or continued risky commitment after
+the first coin, whether players intentionally abandon risky extensions, whether
+ground/air forks and staggered routes are readable beside hazards, and whether
+compact jackpots feel like occasional variation. Do not tune from developer
+preference alone.
+
+For an isolated reproducible route review, open
+`scenes/tests/vm046_route_gallery.tscn` and press **F6**. Use number keys **1–5**
+to select the five post-teaching categories and **R** to reset the current route.
 
 ## Automated movement test
 
@@ -164,6 +169,12 @@ godot --headless --log-file /tmp/vms-fixed-round-refund-coin-test.log --path . -
 
 ```bash
 godot --headless --log-file /tmp/vms-vm045-score-routes-test.log --path . --script res://tests/test_vm045_score_routes.gd
+```
+
+## Automated route decision-separation test
+
+```bash
+godot --headless --log-file /tmp/vms-vm046-route-decision-test.log --path . --script res://tests/test_vm046_route_decision_separation.gd
 ```
 
 ## Cost

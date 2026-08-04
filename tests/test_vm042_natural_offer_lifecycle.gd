@@ -22,6 +22,8 @@ func _run() -> void:
 	var scene := load(CONVEYOR_SCENE_PATH) as PackedScene
 	var conveyors: Array[ConveyorPrototype] = []
 	var directors: Array[CollectibleDirector] = []
+	var aggregate_template_counts := PackedInt32Array([0, 0, 0, 0, 0, 0, 0])
+	var aggregate_post_teaching_offers := 0
 	for seed in TEST_SEEDS:
 		var conveyor := scene.instantiate() as ConveyorPrototype
 		conveyor.left_failure_enabled = false
@@ -63,6 +65,12 @@ func _run() -> void:
 			if entry.accepted:
 				accepted.append(entry)
 				templates.append(int(entry.template))
+				aggregate_template_counts[int(entry.template)] += 1
+				if int(entry.template) not in [
+					CollectibleDirector.OfferTemplate.GROUND_SINGLE,
+					CollectibleDirector.OfferTemplate.LOW_AIR_ARC,
+				]:
+					aggregate_post_teaching_offers += 1
 				if int(entry.template) == previous_template:
 					consecutive_template_repeats += 1
 				else:
@@ -129,9 +137,16 @@ func _run() -> void:
 		)
 
 	offered_totals.sort()
+	var compact_count := aggregate_template_counts[CollectibleDirector.OfferTemplate.COMPACT_BURST]
+	var compact_frequency := float(compact_count) / float(maxi(aggregate_post_teaching_offers, 1))
+	_check(compact_frequency < 0.20, "Compact jackpots remain a minority across natural seeds")
 	print(
 		"VM042_MULTI_SEED_TOTALS min=%d median=%d max=%d"
 		% [offered_totals[0], offered_totals[1], offered_totals[2]]
+	)
+	print(
+		"VM046_NATURAL_ROUTE_COUNTS counts=%s post_teaching=%d compact=%d compact_frequency=%.4f"
+		% [aggregate_template_counts, aggregate_post_teaching_offers, compact_count, compact_frequency]
 	)
 	for conveyor in conveyors:
 		conveyor.queue_free()

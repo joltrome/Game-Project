@@ -81,9 +81,9 @@ func _test_route_geometry_and_weights() -> void:
 	var player_width := conveyor.player_collision_size().x
 	var typical_spacing := director.route_spacing_pixels()
 	_check(
-		typical_spacing >= player_width * 1.25
-		and typical_spacing <= player_width * 1.75,
-		"Typical sibling spacing is derived from 1.25–1.75 player widths"
+		typical_spacing >= player_width * 1.75
+		and typical_spacing <= player_width * 2.5,
+		"Typical sibling spacing is derived from 1.75–2.5 player widths"
 	)
 	var trail := director.template_candidates_for_test(
 		CollectibleDirector.OfferTemplate.HORIZONTAL_LINE,
@@ -92,9 +92,9 @@ func _test_route_geometry_and_weights() -> void:
 	var trail_span := absf(trail[0].position.x - trail[-1].position.x)
 	_check(
 		absf(trail_span / director.valid_route_width() - director.horizontal_trail_span_ratio) <= 0.001
-		and director.horizontal_trail_span_ratio >= 0.30
-		and director.horizontal_trail_span_ratio <= 0.50,
-		"Horizontal trail spans the configured 30–50 percent of valid belt width"
+		and director.horizontal_trail_span_ratio >= 0.35
+		and director.horizontal_trail_span_ratio <= 0.55,
+		"Horizontal trail spans the configured 35–55 percent of valid belt width"
 	)
 
 	for template in REQUIRED_ROUTE_TEMPLATES:
@@ -122,8 +122,10 @@ func _test_route_geometry_and_weights() -> void:
 	)
 	_check(
 		fork[0].band == CollectibleDirector.PlacementBand.GROUND
-		and fork[1].band == CollectibleDirector.PlacementBand.LOW_AIR
-		and fork[-1].band == CollectibleDirector.PlacementBand.GROUND,
+		and fork[1].band == CollectibleDirector.PlacementBand.GROUND
+		and fork[-1].band == CollectibleDirector.PlacementBand.LOW_AIR
+		and fork[1].position.x < fork[0].position.x
+		and fork[-1].position.x > fork[0].position.x,
 		"Ground-versus-air route exposes distinct grounded and jumping paths"
 	)
 	_check(
@@ -164,10 +166,10 @@ func _test_staggered_lifecycle() -> void:
 	var conveyor := await _make_conveyor()
 	var director := _director(conveyor)
 	_check(
-		director.staggered_coin_interval >= 0.20
-		and director.staggered_coin_interval <= 0.40
+		director.staggered_coin_interval >= 0.35
+		and director.staggered_coin_interval <= 0.70
 		and director.try_spawn_template_for_test(CollectibleDirector.OfferTemplate.STAGGERED_ROUTE, 4),
-		"Staggered route starts with a configurable 0.20–0.40 second interval"
+		"Staggered route starts with a configurable 0.35–0.70 second interval"
 	)
 	_check(
 		director.active_collectible_count() == 1
@@ -238,10 +240,11 @@ func _test_sibling_resolution_and_rapid_score() -> void:
 	var director := _director(conveyor)
 	_check(director.try_spawn_template_for_test(CollectibleDirector.OfferTemplate.HORIZONTAL_LINE, 4), "Spaced route score fixture spawns")
 	var route := director.active_collectibles()
+	var sibling_count_after_collection := route.size() - 1
 	route[0]._resolve(true)
 	await process_frame
 	_check(
-		director.score == 1 and director.active_collectible_count() == 3,
+		director.score == 1 and director.active_collectible_count() == sibling_count_after_collection,
 		"Collecting one spaced-route coin does not remove or auto-collect siblings"
 	)
 	_free_conveyor(conveyor)
@@ -269,7 +272,7 @@ func _test_sibling_resolution_and_rapid_score() -> void:
 
 func _test_restart_clears_score_and_pending_route() -> void:
 	var change_error := change_scene_to_file(CONVEYOR_SCENE_PATH)
-	_check(change_error == OK, "Restart fixture loads VM-0.4.5")
+	_check(change_error == OK, "Restart fixture loads VM-0.4.6")
 	await scene_changed
 	await physics_frame
 	var conveyor := current_scene as ConveyorPrototype

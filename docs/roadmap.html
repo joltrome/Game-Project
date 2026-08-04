@@ -1181,6 +1181,38 @@
     text: 'The 44 px 00:SS countdown remains primary at top-centre. A separate 200×58 logical-pixel score plate is anchored directly beneath it with a geometric Refund Coin icon, a 28 px numeric score (63.6 percent of countdown font size), and a 10 px COINS caption; build and experiment labels remain 12 px and 11 px. Each exactly-once score event restarts a 0.22-second scale-and-color pulse from 1.22× to 1.0× on the number while preserving the existing floating +1; rapid collections and restart return the number to the correct value and base scale. The authored offer system now includes ground teaching, rising/falling aerial arc, safe coin plus risky extension, long horizontal trail, ground-versus-air fork, compact burst, and 0.30-second staggered route categories. Typical route spacing is 48 px, derived from 1.50 times the locked 32 px player collision width; horizontal trails span 40 percent of the currently valid belt route width. Post-teaching compact weights are 10, 10, 12, and 12 percent across the four phases, and natural selection does not use the same category three times consecutively. Three deterministic 60-second runs offered 54, 60, and 57 coins, exercised every category and phase, and measured a maximum offer-start gap of 3.25 seconds. All eighteen automated test files passed; both frozen scenes completed 180-frame headless launches. The standalone single-threaded Web build exported, its ZIP retained index.html at the root, and localhost checks at 1152×648, 800×648, and 1440×810 loaded with no browser-console warnings or errors. Prototype A, the shared player controller, round duration, score value, countdown behavior, speed curves, hazards, coin collision size, death/completion rules, and restart behavior were not changed. These are implementation and structural-validation results, not evidence that the score or routes improve play.'
   };
 
+  const vm045DecisionSeparationEvidence = {
+    id: 'evidence-vm-0.4.5-route-corridors',
+    type: 'Evidence',
+    date: '2026-08-04',
+    source: 'Startup Lab manual review of the VM-0.4.5 recording',
+    text: 'Manual recording review found that VM-0.4.5 Refund Coins still frequently behaved as compact herds. Several offers occupied one continuous collection corridor, so aligning with the first coin and continuing the same movement or jump often collected most or all siblings. This establishes that coordinate spacing alone did not consistently create decision separation. It is one reviewed recording and does not quantify fresh-tester behavior or final balance.'
+  };
+
+  const vm046RouteDecision = {
+    id: 'decision-vm-0.4.6-route-decision-separation',
+    type: 'Decision',
+    date: '2026-08-04',
+    source: 'Startup Lab approved VM-0.4.6 correction',
+    text: 'Validate Refund Coin routes by the additional action or commitment required after the first coin, not centre spacing alone. Use configurable post-teaching weights of 30 percent safe-to-risky extension, 25 percent ground-versus-air fork, 20 percent long commitment trail, 15 percent staggered aerial route, and 10 percent compact jackpot. Keep compact jackpots as the explicit easy exception, avoid recent route repetition, and preserve the player, hazards, HUD, score value, 60-second round, Prototype A, and excluded systems.'
+  };
+
+  const vm046RouteHypothesis = {
+    id: 'hypothesis-vm-0.4.6-route-decision-separation',
+    type: 'Hypothesis',
+    date: '2026-08-04',
+    source: 'Startup Lab approved route-separation hypothesis',
+    text: 'Authored routes that require renewed horizontal commitment, a ground-versus-air choice, adjusted jump timing, or continued exposure after the first Refund Coin may create clearer conservative, moderate, and aggressive scoring choices than compact collection corridors. Whether players perceive the choices, safely abandon them, value the compact exception, or prefer the revised score loop remains pending manual playtesting.'
+  };
+
+  const vm046RouteResult = {
+    id: 'result-vm-0.4.6-route-decision-separation',
+    type: 'Result',
+    date: '2026-08-04',
+    source: 'Build VM-0.4.6 implementation and automated/Web validation',
+    text: 'Post-teaching routes now use configurable 30/25/20/15/10 weights and remember the two most recent categories. Renewed horizontal spacing defaults to 64 px, exactly 2.0 locked 32 px player widths inside a 1.75–2.5 range; the three-coin long trail spans 45 percent of valid belt width; staggered aerial siblings appear at 0.00, 0.50, 1.00, and 1.50 seconds. A deterministic 120 Hz action simulator gates production routes using no-input, same-input, passive-jump, intended-aggressive, and safe-abandonment trajectories. Safe-to-risky collected 1/1/3/4 of 4 and abandonment collected 1; fork collected 1/2/1 and 3 of its 3-coin aggressive branch target; long trail collected 1/3/2/3 of 3; staggered aerial collected 1/1/1/4 of 4; compact jackpot deliberately collected 3/3/3/3 of 3. All five remained action-valid at the maximum 175 px/s conveyor speed. A 1.50 configurable decision-route cadence multiplier, capped below the existing 3.5-second watchdog, retained the approximate economy after increasing route counts: deterministic 60-second seeds offered 53, 46, and 51 coins with a 3.450-second maximum accepted-offer gap. Across those seeds, accepted template counts by enum were [10, 5, 10, 7, 7, 3, 12]; compact jackpots were 3 of 39 post-teaching offers, or 7.69 percent, against their configured 10 percent selection weight. A developer-only route gallery reproduces all five categories without changing the production scene. All nineteen automated test files passed; Prototype A, Prototype B, and the gallery completed 180-frame headless launches. The standalone single-threaded Web build and root-index ZIP completed, and localhost checks at 1152×720, 800×600, and 1440×900 showed responsive canvases with no browser-console warnings or errors. Player control, coin collision and value, HUD, round duration, hazards, intensity curves, death/completion behavior, restart, and Prototype A were unchanged. These are implementation and deterministic-validation results, not evidence of improved play or balance.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1256,7 +1288,11 @@
     vm044AcceptanceEvidence,
     vm045ScoreRouteDecision,
     vm045ScoreRouteHypothesis,
-    vm045ScoreRouteResult
+    vm045ScoreRouteResult,
+    vm045DecisionSeparationEvidence,
+    vm046RouteDecision,
+    vm046RouteHypothesis,
+    vm046RouteResult
   ];
 
   const defaultFindings = [
@@ -1268,7 +1304,7 @@
   ];
 
   const defaultState = {
-    version: 23,
+    version: 24,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []
