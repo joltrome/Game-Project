@@ -128,13 +128,6 @@ color = Color(0.11, 0.14, 0.17, 1)
 polygon = PackedVector2Array(280, 574, 760, 574, 760, 584, 280, 584)
 color = Color(0.96, 0.77, 0.26, 0.42)
 
-[node name="LeftMarker" type="Node2D" parent="ControlBand"]
-position = Vector2(272, 480)
-
-[node name="Visual" type="Polygon2D" parent="ControlBand/LeftMarker"]
-polygon = PackedVector2Array(-8, -104, 8, -104, 8, 104, -8, 104)
-color = Color(0.78, 0.32, 0.20, 0.48)
-
 [node name="ConveyorEnd" type="Node2D" parent="."]
 
 [node name="Opening" type="Polygon2D" parent="ConveyorEnd"]
@@ -181,10 +174,6 @@ color = Color(1, 0.48, 0.16, 1)
 
 [node name="RightWall" type="StaticBody2D" parent="ControlBand"]
 position = Vector2(784, 480)
-
-[node name="Visual" type="Polygon2D" parent="ControlBand/RightWall"]
-polygon = PackedVector2Array(-8, -104, 8, -104, 8, 104, -8, 104)
-color = Color(0.78, 0.32, 0.20, 0.48)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="ControlBand/RightWall"]
 shape = SubResource("RectangleShape2D_band_wall")
@@ -255,7 +244,7 @@ offset_right = 172.0
 offset_bottom = 36.0
 theme_override_colors/font_color = Color(0.48, 0.52, 0.58, 1)
 theme_override_font_sizes/font_size = 12
-text = "BUILD VM-0.4.6"
+text = "BUILD VM-0.4.7"
 
 [node name="Timer" type="Label" parent="HUD"]
 anchor_left = 0.5
@@ -352,7 +341,7 @@ offset_right = 172.0
 offset_bottom = 56.0
 theme_override_colors/font_color = Color(0.22, 0.58, 0.58, 1)
 theme_override_font_sizes/font_size = 11
-text = "EXPERIMENT VM-0.4.6"
+text = "EXPERIMENT VM-0.4.7"
 
 [node name="CollectibleLegend" type="Label" parent="HUD"]
 offset_left = 16.0
@@ -375,12 +364,14 @@ horizontal_alignment = 1
 
 [node name="Controls" type="Label" parent="HUD"]
 offset_left = 96.0
-offset_top = 614.0
+offset_top = 590.0
 offset_right = 1056.0
-offset_bottom = 640.0
+offset_bottom = 648.0
 theme_override_colors/font_color = Color(0.68, 0.72, 0.78, 1)
-theme_override_font_sizes/font_size = 14
-text = "MOVE: A/D or ←/→    JUMP: SPACE    RESTART: R"
+theme_override_font_sizes/font_size = 12
+text = "MOVE: A/D or LEFT/RIGHT
+JUMP: SPACE
+RESTART: R"
 horizontal_alignment = 1
 
 [node name="DeathMessage" type="Label" parent="HUD"]

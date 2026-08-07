@@ -198,7 +198,7 @@
       <div class="eyebrow">Game 1 · Core-loop validation</div>
       <h1>Vending Machine Survival</h1>
       <p class="pitch">A tiny person is trapped inside a malfunctioning vending machine. Dodge falling products and increasingly absurd machine failures for as long as possible.</p>
-      <p class="tiny">Roadmap schema version 22 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
+      <p class="tiny">Roadmap schema version 25 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
     </div>
     <div class="actions">
       <button class="btn primary" id="copyHandoff">Copy Codex handoff</button>
@@ -1213,6 +1213,38 @@
     text: 'Post-teaching routes now use configurable 30/25/20/15/10 weights and remember the two most recent categories. Renewed horizontal spacing defaults to 64 px, exactly 2.0 locked 32 px player widths inside a 1.75–2.5 range; the three-coin long trail spans 45 percent of valid belt width; staggered aerial siblings appear at 0.00, 0.50, 1.00, and 1.50 seconds. A deterministic 120 Hz action simulator gates production routes using no-input, same-input, passive-jump, intended-aggressive, and safe-abandonment trajectories. Safe-to-risky collected 1/1/3/4 of 4 and abandonment collected 1; fork collected 1/2/1 and 3 of its 3-coin aggressive branch target; long trail collected 1/3/2/3 of 3; staggered aerial collected 1/1/1/4 of 4; compact jackpot deliberately collected 3/3/3/3 of 3. All five remained action-valid at the maximum 175 px/s conveyor speed. A 1.50 configurable decision-route cadence multiplier, capped below the existing 3.5-second watchdog, retained the approximate economy after increasing route counts: deterministic 60-second seeds offered 53, 46, and 51 coins with a 3.450-second maximum accepted-offer gap. Across those seeds, accepted template counts by enum were [10, 5, 10, 7, 7, 3, 12]; compact jackpots were 3 of 39 post-teaching offers, or 7.69 percent, against their configured 10 percent selection weight. A developer-only route gallery reproduces all five categories without changing the production scene. All nineteen automated test files passed; Prototype A, Prototype B, and the gallery completed 180-frame headless launches. The standalone single-threaded Web build and root-index ZIP completed, and localhost checks at 1152×720, 800×600, and 1440×900 showed responsive canvases with no browser-console warnings or errors. Player control, coin collision and value, HUD, round duration, hazards, intensity curves, death/completion behavior, restart, and Prototype A were unchanged. These are implementation and deterministic-validation results, not evidence of improved play or balance.'
   };
 
+  const vm046BroaderExternalEvidence = {
+    id: 'evidence-vm-0.4.6-broader-external-playtest',
+    type: 'Evidence',
+    date: '2026-08-08',
+    source: 'Startup Lab external-playtest synthesis',
+    text: 'A broader external playtest included multiple reports that the game felt fun, positively difficult, or addictive. At least one player became greedy for Refund Coins, deliberately took additional risk, and died because of that decision, directly exhibiting the intended survival-versus-score tension. Movement and survival comprehension did not produce a repeated major problem. One tester still missed the countdown, while other post-VM-0.4.4 testers did not report the problem. Tester count, device and browser mix, play order, completion rate, exact run count, and independently coded observation frequencies were not supplied, so this evidence supports a core-loop freeze but does not establish population-level retention, balance, or universal HUD comprehension.'
+  };
+
+  const vm047CoreFreezeDecision = {
+    id: 'decision-vm-0.4.7-external-graybox-freeze',
+    type: 'Decision',
+    date: '2026-08-08',
+    source: 'Startup Lab VM-0.4.7 milestone decision',
+    text: 'Accept and freeze the gray-box core loop. VM-0.4.7 is limited to removing misleading noninteractive side-pillar visuals, replacing Web-incompatible control glyphs with ASCII, measuring Refund Coin side distribution, correcting demonstrated behind-offer streaks without changing one-point coin value, and recording external feature requests. After this baseline, do not change player movement, the 60-second round, core hazards, coin value or scoring, countdown, core offer system, conveyor speed curve, or Sweeper behavior except for a reproducible bug or fairness failure. Return to Startup Lab before VM-0.5.0 visual vertical-slice work.'
+  };
+
+  const vm047DirectionalPressureHypothesis = {
+    id: 'hypothesis-vm-0.4.7-missile-conveyor-directional-pressure',
+    type: 'Hypothesis',
+    date: '2026-08-08',
+    source: 'One external playtest suggestion',
+    text: 'The conveyor leftward force combined with missiles entering from the left may compress reaction space, encourage right-edge camping, or contribute to deaths perceived as unavoidable. This was reported by one tester only. Keep the frozen direction unchanged; observe reaction margins and independent recurrence, then A/B-test left-entry versus right-entry missiles before any future baseline change.'
+  };
+
+  const vm047CleanupResult = {
+    id: 'result-vm-0.4.7-external-playtest-cleanup',
+    type: 'Result',
+    date: '2026-08-08',
+    source: 'Build VM-0.4.7 implementation and deterministic validation',
+    text: 'The two orange visual-only side pillars were removed; the right StaticBody2D and its unchanged 16×208 collision shape remain, and the background still covers the full playfield. Tester-facing controls now use only the exact ASCII text MOVE: A/D or LEFT/RIGHT, JUMP: SPACE, and RESTART: R. Natural 60-second audits with side correction disabled classified offers at their actionable spawn time relative to a fixed safe-right player position: seeds 401, 1701, and 4202 produced ahead/centred/behind counts of 0/4/14, 0/5/13, and 0/5/13. Each seed's longest behind streak was five, with the authored types aerial arc, long commitment trail, ground-versus-air fork, safe coin plus risky extension, and staggered aerial route; no ahead streak occurred. The configurable correction activates after two accepted behind offers; it retains the authored offer instead of silently replacing it, inserts one collision-free and trajectory-reachable centred/ahead ground coin, and uses a shorter follow-up cadence. With correction enabled all three seeds produced 5/3/14, capped behind streaks at two with aerial arc plus long commitment trail, and produced longest ahead streaks of one ground-single offer. Rearward multi-coin authored routes remain available, while each correction offer contains one coin and each coin remains worth exactly one point. Twenty automated test files passed and both prototype scenes completed 180-frame headless launches. The standalone single-threaded Web build exported, the ZIP contains index.html at its root, its packed resources contain the exact ASCII control lines without Unicode arrows, and a localhost 1280×720 browser smoke test rendered the build with no console warnings or errors. These measurements establish implementation behavior and the original distribution skew; they do not establish that the corrected economy is optimally balanced or more enjoyable.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1292,7 +1324,11 @@
     vm045DecisionSeparationEvidence,
     vm046RouteDecision,
     vm046RouteHypothesis,
-    vm046RouteResult
+    vm046RouteResult,
+    vm046BroaderExternalEvidence,
+    vm047CoreFreezeDecision,
+    vm047DirectionalPressureHypothesis,
+    vm047CleanupResult
   ];
 
   const defaultFindings = [
@@ -1304,7 +1340,7 @@
   ];
 
   const defaultState = {
-    version: 24,
+    version: 25,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

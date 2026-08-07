@@ -150,8 +150,9 @@ func _test_order(
 	)
 	_check(
 		_visible_text(intro).contains("CLICK TO FOCUS")
-		and _visible_text(intro).contains("ARROW KEYS: MOVE")
-		and _visible_text(intro).contains("SPACE: JUMP")
+		and _visible_text(intro).contains("MOVE: A/D or LEFT/RIGHT")
+		and _visible_text(intro).contains("JUMP: SPACE")
+		and _visible_text(intro).contains("RESTART: R")
 		and _visible_text(intro).contains("PRESS ENTER TO BEGIN"),
 		"%s introduction shows the shared focus and input instructions"
 		% order_code

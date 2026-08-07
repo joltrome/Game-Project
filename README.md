@@ -11,10 +11,10 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 ## Current state
 
-**Build:** VM-0.4.6 Refund Coin route decision-separation correction
+**Build:** VM-0.4.7 external-playtest cleanup baseline
 
-**Phase:** External readability testing of the fixed-round conveyor loop
-**Gameplay evidence:** The first external comparison selected the conveyor, subsequent manual testing accepted the optional collectible as proactively motivating, and Startup Lab review accepted the central countdown and score hierarchy. Manual review found that VM-0.4.5 route spacing still allowed compact collection corridors. Whether VM-0.4.6's action-separated routes improve deliberate route choice remains unverified.
+**Phase:** Frozen gray-box core loop; Startup Lab review before the visual vertical slice
+**Gameplay evidence:** A broader external playtest reported positive difficulty and replay reactions, and at least one tester deliberately pursued Refund Coins, accepted extra risk, and died because of that choice. This supports the intended survival-versus-score tension strongly enough to freeze the gray-box loop, subject to the limitations recorded in the roadmap. One tester missed the countdown, but the issue was not independently repeated after VM-0.4.4, so the timer was not redesigned again.
 
 Prototype B is now the primary direction. Prototype A remains preserved as a frozen comparison baseline and a possible future machine-jam event; that event is not implemented. The source project defaults to Prototype B for editor F5 testing.
 
@@ -72,18 +72,13 @@ python3 -m http.server 8124 --directory builds/web-ba
 3. Open `docs/roadmap.html` in a browser and use **Copy Codex handoff** for a current task brief.
 4. Commit after each runnable milestone.
 
-## Next validation task
+## Next task
 
-Run fresh-tester VM-0.4.6 sessions without explaining the offer categories. Record
-whether most routes require a second input or continued risky commitment after
-the first coin, whether players intentionally abandon risky extensions, whether
-ground/air forks and staggered routes are readable beside hazards, and whether
-compact jackpots feel like occasional variation. Do not tune from developer
-preference alone.
-
-For an isolated reproducible route review, open
-`scenes/tests/vm046_route_gallery.tscn` and press **F6**. Use number keys **1–5**
-to select the five post-teaching categories and **R** to reset the current route.
+Return VM-0.4.7 to Startup Lab for approval before beginning VM-0.5.0, the visual
+vertical slice. Do not add or tune gameplay mechanics from the external feature
+requests. Player movement, the 60-second round, hazards, Refund Coin value and
+scoring, countdown, core offer system, conveyor speed curve, and Sweeper behavior
+are frozen except for a reproducible bug or fairness failure.
 
 ## Automated movement test
 

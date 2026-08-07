@@ -3,9 +3,9 @@ extends Control
 
 const SHARED_CONTROLS_TEXT := (
 	"CLICK TO FOCUS\n\n"
-	+ "ARROW KEYS: MOVE\n"
-	+ "SPACE: JUMP\n"
-	+ "R: RESTART"
+	+ "MOVE: A/D or LEFT/RIGHT\n"
+	+ "JUMP: SPACE\n"
+	+ "RESTART: R"
 )
 
 @onready var build_id_label: Label = $Backdrop/Panel/Layout/BuildId

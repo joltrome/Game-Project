@@ -97,7 +97,9 @@ text = "Build VM-0.1.2 · Shared Movement Laboratory"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.735, 0.78, 1)
 theme_override_font_sizes/font_size = 16
-text = "Move: A/D or ←/→    Jump: Space    Reset: R"
+text = "MOVE: A/D or LEFT/RIGHT
+JUMP: SPACE
+RESTART: R"
 
 [node name="Scope" type="Label" parent="HUD/Margin/Readout"]
 layout_mode = 2

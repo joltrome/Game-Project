@@ -256,7 +256,7 @@ func _apply_neutral_game_labels(scene: Node) -> void:
 	var controls_label := scene.get_node_or_null("HUD/Controls") as Label
 	if controls_label != null:
 		controls_label.text = (
-			"MOVE: ←/→    JUMP: SPACE    RESTART: R"
+			"MOVE: A/D or LEFT/RIGHT\nJUMP: SPACE\nRESTART: R"
 		)
 
 	var structural_hint := scene.get_node_or_null("HUD/Hypothesis") as Label

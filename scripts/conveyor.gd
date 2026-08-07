@@ -33,7 +33,7 @@ enum PatternEventType {
 	SWEEPER,
 }
 
-const BUILD_ID := "VM-0.4.6"
+const BUILD_ID := "VM-0.4.7"
 const CONVEYOR_PRODUCT_SCENE := preload(
 	"res://scenes/hazards/conveyor_product.tscn"
 )

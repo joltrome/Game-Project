@@ -161,12 +161,14 @@ horizontal_alignment = 2
 
 [node name="Controls" type="Label" parent="HUD"]
 offset_left = 96.0
-offset_top = 614.0
+offset_top = 590.0
 offset_right = 1056.0
-offset_bottom = 640.0
+offset_bottom = 648.0
 theme_override_colors/font_color = Color(0.68, 0.72, 0.78, 1)
-theme_override_font_sizes/font_size = 14
-text = "MOVE: A/D or ←/→    JUMP: SPACE    RESTART: R"
+theme_override_font_sizes/font_size = 12
+text = "MOVE: A/D or LEFT/RIGHT
+JUMP: SPACE
+RESTART: R"
 horizontal_alignment = 1
 
 [node name="DeathMessage" type="Label" parent="HUD"]

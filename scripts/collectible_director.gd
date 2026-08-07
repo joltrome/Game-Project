@@ -28,6 +28,12 @@ enum RouteTrajectory {
 	SAFE_ABANDONMENT,
 }
 
+enum OfferSide {
+	BEHIND,
+	CENTRED,
+	AHEAD,
+}
+
 const COLLECTIBLE_SCENE := preload(
 	"res://scenes/collectibles/conveyor_collectible.tscn"
 )
@@ -99,6 +105,14 @@ const REJECTION_UNKNOWN := "unknown"
 @export var recent_route_history_size: int = 2
 @export var decision_route_cadence_multiplier: float = 1.50
 
+@export_category("Player-Relative Offer Distribution")
+@export var side_distribution_correction_enabled: bool = true
+@export var maximum_consecutive_behind_offers: int = 2
+@export_range(0.0, 1.0, 0.01) var centred_ahead_after_behind_weight: float = 1.0
+@export var offer_side_tolerance_player_widths: float = 1.0
+@export var ahead_target_offset_player_widths: float = 1.5
+@export_range(0.25, 1.0, 0.05) var centred_ahead_followup_cadence_multiplier: float = 0.40
+
 # Kept as a compatibility surface for VM-0.4.1 tests and factual comparisons.
 @export_range(0.0, 1.0, 0.01) var ground_probability_after_first := 0.50
 
@@ -122,6 +136,7 @@ var _teaching_cue_shown: bool = false
 var _score_pulse_remaining: float = 0.0
 var _score_pulse_count: int = 0
 var _recent_natural_templates: Array[int] = []
+var _consecutive_behind_offers: int = 0
 
 @onready var _conveyor: ConveyorPrototype = get_parent() as ConveyorPrototype
 @onready var _score_label: Label = _conveyor.get_node("HUD/ScoreGroup/CollectibleScore")
@@ -367,10 +382,17 @@ func stop_for_round_end() -> void:
 
 
 func _try_spawn_natural_offer() -> bool:
-	var selected_template := _select_natural_template()
+	var anti_streak_requested := _should_request_centred_ahead_offer()
+	var selected_template := (
+		OfferTemplate.GROUND_SINGLE
+		if anti_streak_requested
+		else _select_natural_template()
+	)
 	var intended_count := _select_intended_count(selected_template)
 	var attempted: Array[int] = []
 	for rotation in range(OfferTemplate.size()):
+		if anti_streak_requested and rotation > 0:
+			break
 		var template := selected_template if rotation == 0 else posmod(selected_template + rotation + _rotation_offset, OfferTemplate.size())
 		if template == OfferTemplate.COMPACT_BURST and selected_template != OfferTemplate.COMPACT_BURST:
 			continue
@@ -379,11 +401,28 @@ func _try_spawn_natural_offer() -> bool:
 		if attempted.has(template):
 			continue
 		attempted.append(template)
-		if _try_spawn_template(template, intended_count, true):
+		var side_preferences := (
+			[OfferSide.AHEAD, OfferSide.CENTRED]
+			if anti_streak_requested
+			else [-1]
+		)
+		var accepted := false
+		for side_preference in side_preferences:
+			if _try_spawn_template(
+				template,
+				intended_count,
+				true,
+				int(side_preference),
+				anti_streak_requested
+			):
+				accepted = true
+				break
+		if accepted:
 			_pending_teaching_template = -1
 			_rotation_offset = 0
-			_natural_offer_count += 1
-			_remember_natural_template(template)
+			if not anti_streak_requested:
+				_natural_offer_count += 1
+				_remember_natural_template(template)
 			return true
 		if _natural_offer_count < 2:
 			break
@@ -392,9 +431,17 @@ func _try_spawn_natural_offer() -> bool:
 	return false
 
 
-func _try_spawn_template(template: int, intended_count: int, natural: bool) -> bool:
+func _try_spawn_template(
+	template: int,
+	intended_count: int,
+	natural: bool,
+	side_preference: int = -1,
+	anti_streak_requested: bool = false
+) -> bool:
 	_refresh_active_offers()
 	var phase := phase_at(_conveyor.survival_time)
+	var player_x_at_commit := _conveyor.player.global_position.x
+	var behind_streak_before := _consecutive_behind_offers
 	var log_entry := {
 		"event": "attempt",
 		"time": _conveyor.survival_time,
@@ -419,12 +466,23 @@ func _try_spawn_template(template: int, intended_count: int, natural: bool) -> b
 		"active_coin_count": active_collectible_count(),
 		"active_offer_state": _active_offer_state(),
 		"natural": natural,
+		"player_x": player_x_at_commit,
+		"offer_primary_x": NAN,
+		"offer_side": -1,
+		"offer_side_name": "unclassified",
+		"behind_streak_before": behind_streak_before,
+		"behind_streak_after": behind_streak_before,
+		"anti_streak_requested": anti_streak_requested,
 	}
 	if _conveyor.gameplay_is_stopped() or _stopped:
 		return _reject_attempt(log_entry, REJECTION_ROUND_ENDING)
 	if not _can_open_another_offer():
 		return _reject_attempt(log_entry, REJECTION_ACTIVE_LIMIT)
-	var candidates := _template_candidates(template, intended_count)
+	var candidates := _template_candidates(
+		template,
+		intended_count,
+		side_preference
+	)
 	if candidates.is_empty():
 		return _reject_attempt(log_entry, REJECTION_UNKNOWN)
 	for candidate_data in candidates:
@@ -441,7 +499,8 @@ func _try_spawn_template(template: int, intended_count: int, natural: bool) -> b
 			candidate_data.position,
 			candidate_data.band,
 			accepted_candidates,
-			candidate_index == 0
+			candidate_index == 0,
+			bool(candidate_data.get("allow_right_edge", false))
 		)
 		if not reason.is_empty():
 			first_rejection = reason
@@ -496,6 +555,8 @@ func _try_spawn_template(template: int, intended_count: int, natural: bool) -> b
 		_longest_offer_gap = maxf(_longest_offer_gap, _conveyor.survival_time - _last_offer_spawn_time)
 	_last_offer_spawn_time = _conveyor.survival_time
 	var cadence := _select_cadence()
+	if anti_streak_requested:
+		cadence *= centred_ahead_followup_cadence_multiplier
 	_next_spawn_time = _conveyor.survival_time + cadence
 	log_entry.accepted = true
 	log_entry.ground_count = ground_count
@@ -506,6 +567,15 @@ func _try_spawn_template(template: int, intended_count: int, natural: bool) -> b
 	log_entry.active_offer_count = _active_offers.size()
 	log_entry.active_coin_count = active_collectible_count()
 	log_entry.active_offer_state = _active_offer_state()
+	var offer_side := classify_offer_side_for_test(
+		accepted_candidates,
+		player_x_at_commit
+	)
+	_update_offer_side_history(offer_side)
+	log_entry.offer_primary_x = offer_primary_x_for_test(accepted_candidates)
+	log_entry.offer_side = offer_side
+	log_entry.offer_side_name = offer_side_name(offer_side)
+	log_entry.behind_streak_after = _consecutive_behind_offers
 	_offer_log.append(log_entry)
 	offer_spawned.emit(offer_id, template, accepted_candidates.size())
 	return true
@@ -618,7 +688,11 @@ func template_name(template: int) -> String:
 	return "unknown"
 
 
-func _template_candidates(template: int, intended_count: int) -> Array[Dictionary]:
+func _template_candidates(
+	template: int,
+	intended_count: int,
+	side_preference: int = -1
+) -> Array[Dictionary]:
 	var candidates: Array[Dictionary] = []
 	var ground_y := band_center_y(PlacementBand.GROUND)
 	var low_y := band_center_y(PlacementBand.LOW_AIR)
@@ -626,7 +700,12 @@ func _template_candidates(template: int, intended_count: int) -> Array[Dictionar
 	var spacing := route_spacing_pixels()
 	match template:
 		OfferTemplate.GROUND_SINGLE:
-			candidates.append({"position": Vector2(_candidate_x(0), ground_y), "band": PlacementBand.GROUND})
+			candidates.append({
+				"position": Vector2(_candidate_x(0), ground_y),
+				"band": PlacementBand.GROUND,
+				"allow_right_edge": side_preference in [OfferSide.CENTRED, OfferSide.AHEAD],
+				"route_branch": "low_risk",
+			})
 		OfferTemplate.LOW_AIR_ARC:
 			count = clampi(count, 1, 4)
 			var arc_span := spacing * float(count - 1)
@@ -720,6 +799,92 @@ func _template_candidates(template: int, intended_count: int) -> Array[Dictionar
 					"subspawn_time": staggered_coin_interval * float(index),
 					"route_branch": "staggered_air",
 				})
+	return _translate_candidates_for_side(candidates, side_preference)
+
+
+func offer_primary_x_for_test(candidates: Array[Dictionary]) -> float:
+	if candidates.is_empty():
+		return NAN
+	var positions: Array[float] = []
+	for candidate in candidates:
+		positions.append(float(candidate.position.x))
+	positions.sort()
+	var middle := positions.size() / 2
+	if positions.size() % 2 == 1:
+		return positions[middle]
+	return (positions[middle - 1] + positions[middle]) * 0.5
+
+
+func classify_offer_side_for_test(
+	candidates: Array[Dictionary],
+	player_x: float
+) -> int:
+	var primary_x := offer_primary_x_for_test(candidates)
+	if is_nan(primary_x):
+		return OfferSide.CENTRED
+	var tolerance := (
+		_conveyor.player_collision_size().x
+		* maxf(offer_side_tolerance_player_widths, 0.0)
+	)
+	if primary_x < player_x - tolerance:
+		return OfferSide.BEHIND
+	if primary_x > player_x + tolerance:
+		return OfferSide.AHEAD
+	return OfferSide.CENTRED
+
+
+func offer_side_name(side: int) -> String:
+	match side:
+		OfferSide.BEHIND:
+			return "behind"
+		OfferSide.AHEAD:
+			return "ahead"
+	return "centred"
+
+
+func consecutive_behind_offer_count_for_test() -> int:
+	return _consecutive_behind_offers
+
+
+func _translate_candidates_for_side(
+	candidates: Array[Dictionary],
+	side_preference: int
+) -> Array[Dictionary]:
+	if candidates.is_empty() or side_preference not in [
+		OfferSide.BEHIND,
+		OfferSide.CENTRED,
+		OfferSide.AHEAD,
+	]:
+		return candidates
+	var player_width := _conveyor.player_collision_size().x
+	var target_x := _conveyor.player.global_position.x
+	if side_preference == OfferSide.AHEAD:
+		target_x += player_width * ahead_target_offset_player_widths
+	elif side_preference == OfferSide.BEHIND:
+		target_x -= player_width * ahead_target_offset_player_widths
+	var minimum_x := INF
+	var maximum_x := -INF
+	var allow_right_edge := true
+	for candidate in candidates:
+		minimum_x = minf(minimum_x, float(candidate.position.x))
+		maximum_x = maxf(maximum_x, float(candidate.position.x))
+		allow_right_edge = allow_right_edge and bool(candidate.get("allow_right_edge", false))
+	var bounds := _route_bounds()
+	if allow_right_edge:
+		bounds.y = _conveyor.control_band_right - collectible_size.x * 0.5
+	var desired_shift := target_x - offer_primary_x_for_test(candidates)
+	var applied_shift := clampf(
+		desired_shift,
+		bounds.x - minimum_x,
+		bounds.y - maximum_x
+	)
+	for index in range(candidates.size()):
+		var shifted: Dictionary = candidates[index].duplicate(true)
+		shifted.position = Vector2(
+			float(candidates[index].position.x) + applied_shift,
+			float(candidates[index].position.y)
+		)
+		candidates[index] = shifted
 	return candidates
 
 
@@ -992,12 +1157,17 @@ func _candidate_rejection_reason(
 	candidate: Vector2,
 	band: int,
 	siblings: Array[Dictionary],
-	enforce_current_reachability: bool = true
+	enforce_current_reachability: bool = true,
+	allow_right_edge: bool = false
 ) -> String:
 	if collectible_lifetime <= reachability_reserve or collectible_lifetime <= 0.0:
 		return REJECTION_LIFETIME
 	var half_size := collectible_size * 0.5
-	var risky_right_limit := _conveyor.right_edge_zone_left() - safe_edge_exclusion
+	var risky_right_limit := (
+		_conveyor.control_band_right - half_size.x
+		if allow_right_edge
+		else _conveyor.right_edge_zone_left() - safe_edge_exclusion
+	)
 	if candidate.x - half_size.x < _conveyor.belt_left_x or candidate.x + half_size.x > _conveyor.control_band_right or candidate.x > risky_right_limit or candidate.y - half_size.y <= 0.0 or candidate.y + half_size.y > _conveyor.floor_y:
 		return REJECTION_OFF_BELT
 	if _candidate_available_time(candidate.x) <= 0.0:
@@ -1107,15 +1277,16 @@ func _select_natural_template() -> int:
 	if _natural_offer_count == 1:
 		_pending_teaching_template = OfferTemplate.LOW_AIR_ARC
 		return OfferTemplate.LOW_AIR_ARC
-	# Establish the four deliberate decision routes early. Compact jackpots stay
-	# in the weighted pool so their accepted frequency remains occasional rather
-	# than receiving an extra guaranteed appearance every run.
-	if _natural_offer_count < 6:
+	# Establish each authored category once during the early run. Compact
+	# jackpots remain excluded as fallback replacements, so this one guaranteed
+	# appearance does not let them dominate rejected-route rotation.
+	if _natural_offer_count < 7:
 		return [
 			OfferTemplate.HORIZONTAL_LINE,
 			OfferTemplate.MIXED_ROUTE,
 			OfferTemplate.SAFE_VERSUS_RISK,
 			OfferTemplate.STAGGERED_ROUTE,
+			OfferTemplate.COMPACT_BURST,
 		][_natural_offer_count - 2]
 	_placement_rng_state = _next_rng_state(_placement_rng_state)
 	var weights := _template_weights_at(_conveyor.survival_time)
@@ -1130,6 +1301,30 @@ func _select_natural_template() -> int:
 		if roll < 0:
 			return _avoid_recent_template_repeat(index, weights)
 	return OfferTemplate.MIXED_ROUTE
+
+
+func _should_request_centred_ahead_offer() -> bool:
+	if (
+		not side_distribution_correction_enabled
+		or _natural_offer_count < 2
+		or _consecutive_behind_offers < maxi(maximum_consecutive_behind_offers, 1)
+	):
+		return false
+	var configured_weight := clampf(centred_ahead_after_behind_weight, 0.0, 1.0)
+	if configured_weight >= 1.0:
+		return true
+	if configured_weight <= 0.0:
+		return false
+	_placement_rng_state = _next_rng_state(_placement_rng_state)
+	var threshold := roundi(configured_weight * 10000.0)
+	return posmod(_placement_rng_state, 10000) < threshold
+
+
+func _update_offer_side_history(side: int) -> void:
+	if side == OfferSide.BEHIND:
+		_consecutive_behind_offers += 1
+	else:
+		_consecutive_behind_offers = 0
 
 
 func _avoid_recent_template_repeat(selected: int, weights: PackedInt32Array) -> int:

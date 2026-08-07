@@ -82,9 +82,9 @@ theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
 theme_override_font_sizes/font_size = 22
 text = "CLICK TO FOCUS
 
-ARROW KEYS: MOVE
-SPACE: JUMP
-R: RESTART"
+MOVE: A/D or LEFT/RIGHT
+JUMP: SPACE
+RESTART: R"
 horizontal_alignment = 1
 
 [node name="Prompt" type="Label" parent="Backdrop/Panel/Layout"]
