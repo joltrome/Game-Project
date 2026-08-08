@@ -198,7 +198,7 @@
       <div class="eyebrow">Game 1 · Core-loop validation</div>
       <h1>Vending Machine Survival</h1>
       <p class="pitch">A tiny person is trapped inside a malfunctioning vending machine. Dodge falling products and increasingly absurd machine failures for as long as possible.</p>
-      <p class="tiny">Roadmap schema version 25 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
+      <p class="tiny">Roadmap schema version 26 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
     </div>
     <div class="actions">
       <button class="btn primary" id="copyHandoff">Copy Codex handoff</button>
@@ -1245,6 +1245,46 @@
     text: 'The two orange visual-only side pillars were removed; the right StaticBody2D and its unchanged 16×208 collision shape remain, and the background still covers the full playfield. Tester-facing controls now use only the exact ASCII text MOVE: A/D or LEFT/RIGHT, JUMP: SPACE, and RESTART: R. Natural 60-second audits with side correction disabled classified offers at their actionable spawn time relative to a fixed safe-right player position: seeds 401, 1701, and 4202 produced ahead/centred/behind counts of 0/4/14, 0/5/13, and 0/5/13. Each seed's longest behind streak was five, with the authored types aerial arc, long commitment trail, ground-versus-air fork, safe coin plus risky extension, and staggered aerial route; no ahead streak occurred. The configurable correction activates after two accepted behind offers; it retains the authored offer instead of silently replacing it, inserts one collision-free and trajectory-reachable centred/ahead ground coin, and uses a shorter follow-up cadence. With correction enabled all three seeds produced 5/3/14, capped behind streaks at two with aerial arc plus long commitment trail, and produced longest ahead streaks of one ground-single offer. Rearward multi-coin authored routes remain available, while each correction offer contains one coin and each coin remains worth exactly one point. Twenty automated test files passed and both prototype scenes completed 180-frame headless launches. The standalone single-threaded Web build exported, the ZIP contains index.html at its root, its packed resources contain the exact ASCII control lines without Unicode arrows, and a localhost 1280×720 browser smoke test rendered the build with no console warnings or errors. These measurements establish implementation behavior and the original distribution skew; they do not establish that the corrected economy is optimally balanced or more enjoyable.'
   };
 
+  const vm050VisualContextEvidence = {
+    id: 'evidence-vm-0.5.0-visual-transition-context',
+    type: 'Evidence',
+    date: '2026-08-08',
+    source: 'Startup Lab art-direction and asset-audit handoff',
+    text: 'After removal of the nonfunctional orange pillars, the handoff records that the existing right gameplay boundary lacks a visual physical explanation and that the upper playfield feels visually large and empty. Some multi-coin offers have also been observed as locally clustered. These are visual/readability observations and a pending route-tuning observation; they do not authorize boundary, director, collision, or timing changes during the audit.'
+  };
+
+  const vm050ArtDirectionDecision = {
+    id: 'decision-vm-0.5.0-colorful-vending-vertical-slice',
+    type: 'Decision',
+    date: '2026-08-08',
+    source: 'Startup Lab approved art-audit phase',
+    text: 'Begin VM-0.5.0 with an asset audit and one target-screenshot plan, not full integration. The target is a colorful retro vending-machine arcade interior with chunky silhouettes, playful mechanical chaos, and strong gameplay readability. Cream, teal/cyan, vending red, yellow/gold, green, cobalt/medium blue, and coral/orange may lead; navy/charcoal may frame but must not dominate. Reject brown industrial, grimy factory, generic cyberpunk, realistic machinery, and asset-collage direction. Preserve all VM-0.4.7 gameplay behavior.'
+  };
+
+  const vm050VisualSliceHypothesis = {
+    id: 'hypothesis-vm-0.5.0-cohesive-visual-slice',
+    type: 'Hypothesis',
+    date: '2026-08-08',
+    source: 'VM-0.5.0 vertical-slice proposition',
+    text: 'A scene using karsiori vending-machine language plus an Oberzs-scale side-view rendering approach, an original technician protagonist, custom vending HUD and boundary mechanisms, and low-contrast mechanical context may communicate that a tiny character is trapped inside a malfunctioning vending machine without reducing timer, warning, hazard, player, or Refund Coin readability. This remains untested until a target screenshot and playable slice are reviewed.'
+  };
+
+  const vm050AssetAuditResult = {
+    id: 'result-vm-0.5.0-art-source-audit',
+    type: 'Result',
+    date: '2026-08-08',
+    source: 'Local filesystem, technical-image, license, and source-page audit',
+    text: 'The audit found Oberzs Industrial, ACTG Warehouse/Factory, Vryell Neon Platformer, Kevin\'s Mom\'s House factory_, karsiori Vending Machines, Atomic Realm Industrial FREE, and Kowches Basic Platformer Character. Goblinspire, Muffinespixels, and the intentionally skipped NES pack were not found. Neon had two byte-identical unpacked folders plus its archive; most other packs had folder/archive copies. Atomic is the FREE PNG/GIF tier, not the PSD SOURCE tier. Kowches uniquely includes a 19-frame Aseprite project. A 3.5 MB .local_art_sources workspace was created and verified ignored; no raw source is tracked. Official terms identify ACTG, factory_, and karsiori as CC0; Kowches permits commercial editing; Atomic permits commercial editing, forbids redistribution, and requires attribution; Oberzs and Neon permit commercial use and forbid redistribution but modification permission remains insufficiently explicit for production-critical use. The compatibility audit recommends karsiori plus Oberzs as primary references, Kowches as the protagonist animation base, and Atomic/Neon as redraw/reference material rather than direct style leaders. No scene, gameplay script, collision, timing, or asset import changed.'
+  };
+
+  const vm050CoinClusteringHypothesis = {
+    id: 'hypothesis-vm-0.5.0-pending-coin-route-footprint',
+    type: 'Hypothesis',
+    date: '2026-08-08',
+    source: 'Pending gameplay QA carried into art production',
+    text: 'Some routes containing three or more Refund Coins may need a total footprint around 35–60 percent of the usable horizontal playfield or clearer vertical branching to require a renewed decision after the first coin. Keep the VM-0.4.7 director unchanged during the visual slice; first measure template-specific behavior and whether new art improves or harms branch legibility.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1328,7 +1368,12 @@
     vm046BroaderExternalEvidence,
     vm047CoreFreezeDecision,
     vm047DirectionalPressureHypothesis,
-    vm047CleanupResult
+    vm047CleanupResult,
+    vm050VisualContextEvidence,
+    vm050ArtDirectionDecision,
+    vm050VisualSliceHypothesis,
+    vm050AssetAuditResult,
+    vm050CoinClusteringHypothesis
   ];
 
   const defaultFindings = [
@@ -1340,7 +1385,7 @@
   ];
 
   const defaultState = {
-    version: 25,
+    version: 26,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

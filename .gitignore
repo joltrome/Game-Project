@@ -1,4 +1,5 @@
 .godot/
 builds/
+.local_art_sources/
 *.tmp
 .DS_Store

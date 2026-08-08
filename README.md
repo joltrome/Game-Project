@@ -13,7 +13,7 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 **Build:** VM-0.4.7 external-playtest cleanup baseline
 
-**Phase:** Frozen gray-box core loop; Startup Lab review before the visual vertical slice
+**Phase:** Frozen gray-box core loop; VM-0.5.0 art-source audit awaiting Startup Lab visual approval
 **Gameplay evidence:** A broader external playtest reported positive difficulty and replay reactions, and at least one tester deliberately pursued Refund Coins, accepted extra risk, and died because of that choice. This supports the intended survival-versus-score tension strongly enough to freeze the gray-box loop, subject to the limitations recorded in the roadmap. One tester missed the countdown, but the issue was not independently repeated after VM-0.4.4, so the timer was not redesigned again.
 
 Prototype B is now the primary direction. Prototype A remains preserved as a frozen comparison baseline and a possible future machine-jam event; that event is not implemented. The source project defaults to Prototype B for editor F5 testing.
@@ -74,11 +74,15 @@ python3 -m http.server 8124 --directory builds/web-ba
 
 ## Next task
 
-Return VM-0.4.7 to Startup Lab for approval before beginning VM-0.5.0, the visual
-vertical slice. Do not add or tune gameplay mechanics from the external feature
+Review `docs/art-source-inventory.md` and `docs/pixel-art-workflow.md` in Startup
+Lab. Choose one palette direction, approve or revise the representative target
+screenshot, and decide the protagonist-base workflow before any VM-0.5.0 art is
+integrated. Do not add or tune gameplay mechanics from the external feature
 requests. Player movement, the 60-second round, hazards, Refund Coin value and
 scoring, countdown, core offer system, conveyor speed curve, and Sweeper behavior
-are frozen except for a reproducible bug or fairness failure.
+are frozen except for a reproducible bug or fairness failure. The unresolved coin
+route observation is recorded in `docs/gameplay-qa-backlog.md` without changing
+the director.
 
 ## Automated movement test
 
