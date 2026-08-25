@@ -24,9 +24,9 @@ enum VisualState {
 @export_category("Warning and Fall")
 @export var warning_duration: float = 1.10
 @export var target_fall_duration: float = 0.85
-@export var background_product_y: float = 210.0
-@export var release_y: float = 250.0
-@export var candidate_lane_x := PackedFloat32Array([420.0, 560.0, 700.0])
+@export var background_product_y: float = 192.0
+@export var release_y: float = 232.0
+@export var candidate_lane_x := PackedFloat32Array([406.0, 526.0, 646.0])
 
 @export_category("Fairness")
 @export var horizontal_clearance: float = 8.0

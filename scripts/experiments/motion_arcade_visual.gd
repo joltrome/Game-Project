@@ -42,6 +42,12 @@ func _draw_background() -> void:
 	for row in range(3):
 		for column in range(10):
 			var center := Vector2(166.0 + column * 60.0, 192.0 + row * 64.0)
+			# D3's first-row columns 4, 6, and 8 are owned by the
+			# stored/selected/released lifecycle director. Leaving the slots
+			# empty here prevents translucent duplicate products.
+			if not compact_crop and row == 0 and column in [4, 6, 8]:
+				draw_rect(Rect2(center - Vector2(19.0, 27.0), Vector2(38.0, 54.0)), Color("142238"))
+				continue
 			var colors := [MUTED_BLUE, Color("58736f"), Color("716879")]
 			_draw_product(center, colors[(row + column) % colors.size()], true)
 		draw_line(

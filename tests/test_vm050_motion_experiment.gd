@@ -151,6 +151,42 @@ func _test_d3_exact_and_heuristic_fairness_checks() -> void:
 		director.candidate_rejection_reason(790.0) == "outside_player_band",
 		"D3 rejects a release outside the frozen player control band"
 	)
+	director.reservation_pending = true
+	director._active_schedule_index = 0
+	var replacement_id := director._try_replace_ordinary_product_event({
+		"target_x": NAN,
+		"pattern_type": ConveyorPrototype.PatternType.CAN_ONLY,
+	})
+	_check(
+		not replacement_id.is_empty()
+		and director.state == MotionBackgroundDropDirector.VisualState.SELECTED
+		and is_equal_approx(director.warning_time_remaining, director.warning_duration),
+		"A committed D3 selection starts the exact configured warning countdown"
+	)
+	director.set_process(false)
+	director._process(0.40)
+	_check(
+		absf(director.warning_time_remaining - 0.70) <= 0.001,
+		"D3 warning countdown advances deterministically"
+	)
+	director._process(0.71)
+	_check(
+		director.state == MotionBackgroundDropDirector.VisualState.RELEASED
+		and d3.conveyor.falling_product_count() == 1,
+		"D3 releases exactly when its configured warning reaches zero"
+	)
+	var direct_products := d3.conveyor.active_falling_products()
+	var released_product: ConveyorProduct = direct_products[0] if not direct_products.is_empty() else null
+	var expected_fall_speed := (
+		d3.conveyor.floor_y
+		- d3.conveyor.product_size.y * 0.5
+		- director.release_y
+	) / director.target_fall_duration
+	_check(
+		released_product != null
+		and absf(released_product.fall_speed - expected_fall_speed) <= 0.001,
+		"D3 derives falling speed from actual release-to-floor distance and target duration"
+	)
 	d3.queue_free()
 	await process_frame
 
@@ -256,11 +292,6 @@ func _test_natural_d3_replacement_lifecycle() -> void:
 			"First D3 background warning occurs in the approved 15-20 second window"
 		)
 	for index in range(mini(warnings.size(), releases.size())):
-		var warning_to_release := float(releases[index].time) - float(warnings[index].time)
-		_check(
-			absf(warning_to_release - director.warning_duration) <= 0.16,
-			"D3 warning %d retains the configured generous duration" % index
-		)
 		var release_to_landing := float(landings[index].time) - float(releases[index].time)
 		_check(
 			absf(release_to_landing - director.target_fall_duration) <= 0.16,
