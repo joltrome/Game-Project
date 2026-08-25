@@ -18,6 +18,8 @@ config/name="Vending Machine Survival"
 run/main_scene="res://scenes/prototypes/conveyor.tscn"
 run/main_scene.playtest_ab="res://scenes/playtest/playtest_flow.tscn"
 run/main_scene.playtest_ba="res://scenes/playtest/playtest_flow.tscn"
+run/main_scene.motion_d2="res://scenes/experiments/motion_d2.tscn"
+run/main_scene.motion_d3="res://scenes/experiments/motion_d3.tscn"
 config/features=PackedStringArray("4.7")
 
 [autoload]

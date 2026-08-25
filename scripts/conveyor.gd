@@ -18,6 +18,7 @@ signal sweeper_reached_player_region(
 signal compound_decision_reached(pattern_type: int, reached_at: float)
 signal right_pressure_reserved(target_x: float, reserved_at: float)
 signal right_pressure_launched(target_x: float, launched_at: float)
+signal ordinary_product_event_replaced(pattern_type: int, replacement_id: String)
 signal player_died
 
 enum PatternType {
@@ -177,6 +178,8 @@ var _right_pressure_requested: bool = false
 var _right_pressure_target_x: float = NAN
 var _right_pressure_reserved_at: float = -1.0
 var _base_conveyor_speed: float = 140.0
+var _product_event_replacement_handler: Callable = Callable()
+var _external_product_event_pending: bool = false
 
 @onready var player: SharedPlayerController = $Player
 @onready var _hazard_container: Node2D = $Hazards
@@ -1183,6 +1186,73 @@ func active_product_count() -> int:
 	return falling_product_count() + landed_product_count()
 
 
+func set_product_event_replacement_handler(handler: Callable) -> void:
+	_product_event_replacement_handler = handler
+
+
+func clear_product_event_replacement_handler() -> void:
+	_product_event_replacement_handler = Callable()
+	_external_product_event_pending = false
+
+
+func product_event_replacement_handler_is_set() -> bool:
+	return _product_event_replacement_handler.is_valid()
+
+
+func set_external_product_event_pending(is_pending: bool) -> void:
+	_external_product_event_pending = is_pending
+
+
+func external_product_event_is_pending() -> bool:
+	return _external_product_event_pending
+
+
+func spawn_external_conveyor_product(
+	drop_x: float,
+	spawn_y: float,
+	fall_duration: float,
+	replacement_id: String
+) -> ConveyorProduct:
+	if (
+		is_dead
+		or is_round_complete
+		or _falling_products.size() >= maximum_concurrent_falling_cans
+		or drop_x - product_size.x * 0.5 < belt_left_x
+		or drop_x + product_size.x * 0.5 > belt_right_x
+	):
+		return null
+	var distance := maxf(
+		floor_y - product_size.y * 0.5 - spawn_y,
+		0.0
+	)
+	var product := CONVEYOR_PRODUCT_SCENE.instantiate() as ConveyorProduct
+	product.position = Vector2(drop_x, spawn_y)
+	product.configure_conveyor(
+		distance / fall_duration if fall_duration > 0.0 else INF,
+		floor_y,
+		landed_lifetime,
+		despawn_warning_duration,
+		product_size,
+		landed_product_size,
+		conveyor_speed,
+		offscreen_cleanup_x
+	)
+	product.player_hit.connect(_on_product_hit)
+	product.landed.connect(_on_product_landed)
+	product.cleared.connect(_on_product_cleared)
+	_hazard_container.add_child(product)
+	_falling_products.append(product)
+	_external_product_event_pending = false
+	product_dropped.emit(-1, product.fall_speed)
+	_record_encounter({
+		"event": "external_can_spawn",
+		"replacement_id": replacement_id,
+		"time": survival_time,
+		"target_x": drop_x,
+	})
+	return product
+
+
 func active_falling_products() -> Array[ConveyorProduct]:
 	return _falling_products.duplicate()
 
@@ -1606,6 +1676,7 @@ func _pattern_can_start(pattern_type: int) -> bool:
 		includes_can
 		and (
 			_has_pending_drop()
+			or _external_product_event_pending
 			or _falling_products.size() >= maximum_concurrent_falling_cans
 		)
 	):
@@ -1719,6 +1790,7 @@ func _trigger_due_pattern_events() -> void:
 		if event.event_type == PatternEventType.CAN:
 			triggered = (
 				not _has_pending_drop()
+				and not _external_product_event_pending
 				and _falling_products.size() < maximum_concurrent_falling_cans
 				and _start_next_telegraph(
 					event.fall_duration,
@@ -1852,6 +1924,26 @@ func _start_next_telegraph(
 	target_x: float = NAN,
 	pattern_type: int = -1
 ) -> bool:
+	if _product_event_replacement_handler.is_valid():
+		var replacement_result: Variant = (
+			_product_event_replacement_handler.call({
+				"fall_duration": event_fall_duration,
+				"target_x": target_x,
+				"pattern_type": pattern_type,
+				"requested_at": survival_time,
+			})
+		)
+		if replacement_result is String and not replacement_result.is_empty():
+			var replacement_id := String(replacement_result)
+			_external_product_event_pending = true
+			ordinary_product_event_replaced.emit(pattern_type, replacement_id)
+			_record_encounter({
+				"event": "ordinary_can_replaced",
+				"replacement_id": replacement_id,
+				"pattern_type": pattern_type,
+				"time": survival_time,
+			})
+			return true
 	var selected_lane := -1
 	var selected_x := target_x
 	if is_nan(target_x):
@@ -2121,6 +2213,7 @@ func _clear_pattern_state() -> void:
 	_right_pressure_requested = false
 	_right_pressure_target_x = NAN
 	_right_pressure_reserved_at = -1.0
+	_external_product_event_pending = false
 
 
 func _update_timer_label() -> void:
