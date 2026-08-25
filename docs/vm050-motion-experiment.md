@@ -76,7 +76,7 @@ Heuristic checks:
 - Original Arena, original Conveyor, D2, and D3 each completed a 180-frame headless launch with exit code 0.
 - Both single-threaded Web exports completed and include `index.html` at the directory and ZIP root.
 - Browser smoke tests loaded D2 and D3 at their native profiles and at a 900×700 host. Canvas size followed the host, the contained internal viewport stayed centred without aspect stretch, and no browser-console warnings or errors were reported.
-- Godot headless runs emitted the known macOS system-CA lookup warning and sandboxed editor-settings save warning; neither caused a failed test, launch, or export.
+- Godot headless runs emitted the known macOS system-CA lookup warning and sandboxed editor-settings save warning; neither caused a failed test, launch, or export. One final spot-check invoked without `--log-file` crashed while Godot attempted to create its default `user://logs` file in the restricted environment; the identical suite rerun with `/private/tmp/vms-vm050-motion-final.log` passed with `VM050_MOTION_EXPERIMENT_TEST_FAILURES=0`.
 
 ## Art and provenance decision
 
