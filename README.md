@@ -13,13 +13,15 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 **Build:** VM-0.4.7 external-playtest cleanup baseline
 
-**Phase:** Frozen gray-box core loop; VM-0.5.0 art-source audit awaiting Startup Lab visual approval
+**Phase:** Frozen gray-box core loop; VM-0.5.0-MOTION-01 D2/D3 structural motion experiment awaiting manual Startup Lab review
 **Gameplay evidence:** A broader external playtest reported positive difficulty and replay reactions, and at least one tester deliberately pursued Refund Coins, accepted extra risk, and died because of that choice. This supports the intended survival-versus-score tension strongly enough to freeze the gray-box loop, subject to the limitations recorded in the roadmap. One tester missed the countdown, but the issue was not independently repeated after VM-0.4.4, so the timer was not redesigned again.
 
 Prototype B is now the primary direction. Prototype A remains preserved as a frozen comparison baseline and a possible future machine-jam event; that event is not implemented. The source project defaults to Prototype B for editor F5 testing.
 
 Prototype A is frozen on `master` and tag `VM-0.2.3-A-R1`. Its scene remains available at `scenes/prototypes/arena.tscn`.
 Prototype B's first externally preferred baseline is tagged `VM-0.3.4-B-EXTERNAL-PREFERRED`. The accepted endless collectible baseline is tagged `VM-0.4.0`. VM-0.4.1 defaults to a configurable 60-second round with Refund Coins as the only score; an exported `fixed_round_enabled` development setting can restore endless behavior.
+
+The branch `visual/vm-0.5.0-motion-01` contains two isolated internal wrappers around the unchanged conveyor scene. D2 tests a 1152×480 wide presentation; D3 tests a 1152×648 close-up plus four scheduled background-product reservations that replace eligible ordinary product events. The project-wide F5 scene remains the frozen conveyor baseline.
 
 ## Open locally
 
@@ -65,6 +67,27 @@ python3 -m http.server 8123 --directory builds/web-ab
 python3 -m http.server 8124 --directory builds/web-ba
 ```
 
+## VM-0.5.0-MOTION-01 internal variants
+
+Run either wrapper without changing the default project scene:
+
+- D2: open `scenes/experiments/motion_d2.tscn`, then press **F6**.
+- D3: open `scenes/experiments/motion_d3.tscn`, then press **F6**.
+
+Export and serve the internal Web builds:
+
+```bash
+/Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --headless --path . --export-release "Web Motion D2" builds/web-motion-d2/index.html
+/Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --headless --path . --export-release "Web Motion D3" builds/web-motion-d3/index.html
+python3 -m http.server 8120 --directory builds/web-motion-d2
+python3 -m http.server 8121 --directory builds/web-motion-d3
+```
+
+The generated directories and ZIPs are ignored by Git. See
+[`docs/vm050-motion-experiment.md`](docs/vm050-motion-experiment.md) for the
+controlled variables, exact D3 lifecycle, validation results, instrumentation,
+and manual comparison protocol.
+
 ## Use with Codex
 
 1. Open this repository folder in the ChatGPT desktop app's Codex view, Codex CLI, or the Codex IDE extension.
@@ -74,15 +97,12 @@ python3 -m http.server 8124 --directory builds/web-ba
 
 ## Next task
 
-Review `docs/art-source-inventory.md` and `docs/pixel-art-workflow.md` in Startup
-Lab. Choose one palette direction, approve or revise the representative target
-screenshot, and decide the protagonist-base workflow before any VM-0.5.0 art is
-integrated. Do not add or tune gameplay mechanics from the external feature
-requests. Player movement, the 60-second round, hazards, Refund Coin value and
+Manually compare D2 and D3 and return the captured evidence to Startup Lab before
+selecting a structural direction or starting production art. Do not merge this
+experiment branch, add another motion concept, or tune gameplay from internal
+preference. Player movement, the 60-second round, hazards, Refund Coin value and
 scoring, countdown, core offer system, conveyor speed curve, and Sweeper behavior
-are frozen except for a reproducible bug or fairness failure. The unresolved coin
-route observation is recorded in `docs/gameplay-qa-backlog.md` without changing
-the director.
+remain frozen except for a reproducible bug or fairness failure.
 
 ## Automated movement test
 
@@ -174,6 +194,12 @@ godot --headless --log-file /tmp/vms-vm045-score-routes-test.log --path . --scri
 
 ```bash
 godot --headless --log-file /tmp/vms-vm046-route-decision-test.log --path . --script res://tests/test_vm046_route_decision_separation.gd
+```
+
+## Automated motion-experiment test
+
+```bash
+godot --headless --log-file /tmp/vms-vm050-motion-test.log --path . --script res://tests/test_vm050_motion_experiment.gd
 ```
 
 ## Cost

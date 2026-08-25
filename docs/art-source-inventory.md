@@ -263,3 +263,9 @@ Some multi-coin offers can still feel locally clustered. The pending hypothesis 
 5. Approve the custom protagonist method and target logical sprite size before redrawing frames.
 6. Decide whether Atomic attribution/no-redistribution handling is worth the style-normalization cost; the local FREE tier has no PSD sources.
 7. Do not start full VM-0.5.0 integration until Startup Lab reviews this audit.
+
+## VM-0.5.0-MOTION-01 provenance follow-up
+
+On 2026-08-26, the D2/D3 structural motion study implemented the approved visual direction using only project-owned Godot geometry and default-font text. No raw pack file, Work mockup, Aseprite source, flattened reference image, or custom font was moved into `assets/` or committed.
+
+The inspected Work Aseprite mockup includes a hidden `SOURCE Sports Drink` layer whose third-party provenance is not sufficiently clear for redistribution. It remains reference-only in the ignored/local working material. The playable study therefore recreates the relevant vending-machine framing, product bays, retrieval opening, rail, product, and carriage as original code-native shapes. This is a deliberate production-safety decision, not a finding that the reference source is unusable under every possible license review.

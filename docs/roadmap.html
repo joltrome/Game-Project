@@ -1242,7 +1242,7 @@
     type: 'Result',
     date: '2026-08-08',
     source: 'Build VM-0.4.7 implementation and deterministic validation',
-    text: 'The two orange visual-only side pillars were removed; the right StaticBody2D and its unchanged 16×208 collision shape remain, and the background still covers the full playfield. Tester-facing controls now use only the exact ASCII text MOVE: A/D or LEFT/RIGHT, JUMP: SPACE, and RESTART: R. Natural 60-second audits with side correction disabled classified offers at their actionable spawn time relative to a fixed safe-right player position: seeds 401, 1701, and 4202 produced ahead/centred/behind counts of 0/4/14, 0/5/13, and 0/5/13. Each seed's longest behind streak was five, with the authored types aerial arc, long commitment trail, ground-versus-air fork, safe coin plus risky extension, and staggered aerial route; no ahead streak occurred. The configurable correction activates after two accepted behind offers; it retains the authored offer instead of silently replacing it, inserts one collision-free and trajectory-reachable centred/ahead ground coin, and uses a shorter follow-up cadence. With correction enabled all three seeds produced 5/3/14, capped behind streaks at two with aerial arc plus long commitment trail, and produced longest ahead streaks of one ground-single offer. Rearward multi-coin authored routes remain available, while each correction offer contains one coin and each coin remains worth exactly one point. Twenty automated test files passed and both prototype scenes completed 180-frame headless launches. The standalone single-threaded Web build exported, the ZIP contains index.html at its root, its packed resources contain the exact ASCII control lines without Unicode arrows, and a localhost 1280×720 browser smoke test rendered the build with no console warnings or errors. These measurements establish implementation behavior and the original distribution skew; they do not establish that the corrected economy is optimally balanced or more enjoyable.'
+    text: 'The two orange visual-only side pillars were removed; the right StaticBody2D and its unchanged 16×208 collision shape remain, and the background still covers the full playfield. Tester-facing controls now use only the exact ASCII text MOVE: A/D or LEFT/RIGHT, JUMP: SPACE, and RESTART: R. Natural 60-second audits with side correction disabled classified offers at their actionable spawn time relative to a fixed safe-right player position: seeds 401, 1701, and 4202 produced ahead/centred/behind counts of 0/4/14, 0/5/13, and 0/5/13. Each seed\'s longest behind streak was five, with the authored types aerial arc, long commitment trail, ground-versus-air fork, safe coin plus risky extension, and staggered aerial route; no ahead streak occurred. The configurable correction activates after two accepted behind offers; it retains the authored offer instead of silently replacing it, inserts one collision-free and trajectory-reachable centred/ahead ground coin, and uses a shorter follow-up cadence. With correction enabled all three seeds produced 5/3/14, capped behind streaks at two with aerial arc plus long commitment trail, and produced longest ahead streaks of one ground-single offer. Rearward multi-coin authored routes remain available, while each correction offer contains one coin and each coin remains worth exactly one point. Twenty automated test files passed and both prototype scenes completed 180-frame headless launches. The standalone single-threaded Web build exported, the ZIP contains index.html at its root, its packed resources contain the exact ASCII control lines without Unicode arrows, and a localhost 1280×720 browser smoke test rendered the build with no console warnings or errors. These measurements establish implementation behavior and the original distribution skew; they do not establish that the corrected economy is optimally balanced or more enjoyable.'
   };
 
   const vm050VisualContextEvidence = {
@@ -1275,6 +1275,38 @@
     date: '2026-08-08',
     source: 'Local filesystem, technical-image, license, and source-page audit',
     text: 'The audit found Oberzs Industrial, ACTG Warehouse/Factory, Vryell Neon Platformer, Kevin\'s Mom\'s House factory_, karsiori Vending Machines, Atomic Realm Industrial FREE, and Kowches Basic Platformer Character. Goblinspire, Muffinespixels, and the intentionally skipped NES pack were not found. Neon had two byte-identical unpacked folders plus its archive; most other packs had folder/archive copies. Atomic is the FREE PNG/GIF tier, not the PSD SOURCE tier. Kowches uniquely includes a 19-frame Aseprite project. A 3.5 MB .local_art_sources workspace was created and verified ignored; no raw source is tracked. Official terms identify ACTG, factory_, and karsiori as CC0; Kowches permits commercial editing; Atomic permits commercial editing, forbids redistribution, and requires attribution; Oberzs and Neon permit commercial use and forbid redistribution but modification permission remains insufficiently explicit for production-critical use. The compatibility audit recommends karsiori plus Oberzs as primary references, Kowches as the protagonist animation base, and Atomic/Neon as redraw/reference material rather than direct style leaders. No scene, gameplay script, collision, timing, or asset import changed.'
+  };
+
+  const vm050MotionDecision = {
+    id: 'decision-vm-0.5.0-motion-01-controlled-d2-d3',
+    type: 'Decision',
+    date: '2026-08-26',
+    source: 'Startup Lab return-to-implementation handoff',
+    text: 'Implement two isolated internal wrappers around the frozen conveyor for structural comparison: D2 at exact 1152×480 with no background-drop mechanic, and D3 at exact 1152×648 with selected background products replacing eligible ordinary product events. Keep the project-wide main scene and VM-0.4.7 mechanics unchanged, share visual/instrumentation code where appropriate, keep variants independently runnable/exportable, use only repository-safe visuals, and stop for manual review before choosing a direction or beginning production art.'
+  };
+
+  const vm050D2Hypothesis = {
+    id: 'hypothesis-vm-0.5.0-motion-01-d2-wide',
+    type: 'Hypothesis',
+    date: '2026-08-26',
+    source: 'VM-0.5.0-MOTION-01 D2 proposition',
+    text: 'A wide 2.4:1 presentation that matches the validated horizontal mechanics may preserve threat and route readability while giving the vending-machine interior a distinctive horizontal composition. Whether letterboxing, reduced vertical context, or smaller display scale harms HUD and gameplay recognition remains pending manual comparison.'
+  };
+
+  const vm050D3Hypothesis = {
+    id: 'hypothesis-vm-0.5.0-motion-01-d3-background-source',
+    type: 'Hypothesis',
+    date: '2026-08-26',
+    source: 'VM-0.5.0-MOTION-01 D3 proposition',
+    text: 'A 16:9 close-up that occasionally shows a product selected in the background bay, warns its aligned path, and releases it as a one-for-one replacement for ordinary product pressure may improve source-to-threat spatial coherence without increasing hazard count. Human recognition, perceived fairness, distraction, and preference remain unvalidated.'
+  };
+
+  const vm050MotionResult = {
+    id: 'result-vm-0.5.0-motion-01-d2-d3',
+    type: 'Result',
+    date: '2026-08-26',
+    source: 'VM-0.5.0-MOTION-01 implementation and technical validation',
+    text: 'Two separate experiment scenes now instantiate the unchanged conveyor inside exact 1152×480 D2 and 1152×648 D3 SubViewports with centred contained scaling and nearest filtering; the default F5 scene remains the frozen conveyor. Both use project-owned code-native Japanese-retro-vending geometry and default-font text, and no downloaded art or unclear Work source layer was committed. D2 installs no background scheduler. D3 reserves four proposed events at 16, 28, 40, and 52 seconds, waits for an eligible untargeted ordinary product event, validates one of three lanes, replaces that event one-for-one, warns for 1.10 seconds, derives fall speed for a 0.85-second release-to-belt duration, then reuses the existing falling-lethal and landed-solid moving-platform states. The deterministic natural test recorded four warnings, releases, landings, and visual resets, one rejected attempt, maximum one falling product, and a first warning at 16.95–16.98 seconds. All 21 automated suites passed; the original Arena, original Conveyor, D2, and D3 completed 180-frame headless launches. Both single-threaded Web builds loaded at native and 900×700 host sizes without aspect stretch or browser-console warnings/errors. These are implementation and technical-validation results, not evidence that D2 or D3 is preferable, more readable, fair, or enjoyable.'
   };
 
   const vm050CoinClusteringHypothesis = {
@@ -1373,6 +1405,10 @@
     vm050ArtDirectionDecision,
     vm050VisualSliceHypothesis,
     vm050AssetAuditResult,
+    vm050MotionDecision,
+    vm050D2Hypothesis,
+    vm050D3Hypothesis,
+    vm050MotionResult,
     vm050CoinClusteringHypothesis
   ];
 
@@ -1385,7 +1421,7 @@
   ];
 
   const defaultState = {
-    version: 26,
+    version: 27,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []
