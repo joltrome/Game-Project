@@ -263,15 +263,10 @@ func _select_valid_lane() -> int:
 
 
 func _release_selected_product() -> void:
-	var rejection := candidate_rejection_reason(
-		selected_lane_x,
-		target_fall_duration,
-		false
-	)
-	if not rejection.is_empty():
-		_reject("release_revalidation_%s" % rejection)
-		warning_time_remaining = retry_delay
-		return
+	# Selection commits the lane after validating the complete warning-plus-fall
+	# horizon. The conveyor then reserves the product slot until release, so the
+	# warning duration remains stable and its one-to-one correspondence is not
+	# changed by a late visual-only collectible crossing.
 	var replacement_id := active_replacement_id()
 	var product := _conveyor.spawn_external_conveyor_product(
 		selected_lane_x,
