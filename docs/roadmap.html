@@ -198,7 +198,7 @@
       <div class="eyebrow">Game 1 · Core-loop validation</div>
       <h1>Vending Machine Survival</h1>
       <p class="pitch">A tiny person is trapped inside a malfunctioning vending machine. Dodge falling products and increasingly absurd machine failures for as long as possible.</p>
-      <p class="tiny">Roadmap schema version 26 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
+      <p class="tiny">Roadmap schema version 28 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
     </div>
     <div class="actions">
       <button class="btn primary" id="copyHandoff">Copy Codex handoff</button>
@@ -1309,6 +1309,38 @@
     text: 'Two separate experiment scenes now instantiate the unchanged conveyor inside exact 1152×480 D2 and 1152×648 D3 SubViewports with centred contained scaling and nearest filtering; the default F5 scene remains the frozen conveyor. Both use project-owned code-native Japanese-retro-vending geometry and default-font text, and no downloaded art or unclear Work source layer was committed. D2 installs no background scheduler. D3 reserves four proposed events at 16, 28, 40, and 52 seconds, waits for an eligible untargeted ordinary product event, validates one of three lanes, replaces that event one-for-one, warns for 1.10 seconds, derives fall speed for a 0.85-second release-to-belt duration, then reuses the existing falling-lethal and landed-solid moving-platform states. The deterministic natural test recorded four warnings, releases, landings, and visual resets, one rejected attempt, maximum one falling product, and a first warning at 16.95–16.98 seconds. All 21 automated suites passed; the original Arena, original Conveyor, D2, and D3 completed 180-frame headless launches. Both single-threaded Web builds loaded at native and 900×700 host sizes without aspect stretch or browser-console warnings/errors. These are implementation and technical-validation results, not evidence that D2 or D3 is preferable, more readable, fair, or enjoyable.'
   };
 
+  const vm050MotionReviewEvidence = {
+    id: 'evidence-vm-0.5.0-motion-01-manual-review',
+    type: 'Evidence',
+    date: '2026-08-26',
+    source: 'Startup Lab manual review of both VM-0.5.0-MOTION-01 recordings',
+    text: 'D2 made the player and horizontal pressure more prominent and reduced dead vertical space inside its 2.4:1 viewport, but a normal 16:9 PC window showed the game as a shallow strip with substantial unused area. D3 showed one clear stored-product selection, background state change, aligned DROP warning, and transition into a falling foreground hazard; this connected the background to play and moved attention vertically from rack to warning to fall path to player. The reviewed approximately 31-second D3 recording contained only one clearly observable background drop, which was insufficient exposure to judge repeated readability, distraction, fairness, decision value, or whole-round effect. These observations do not select either direction.'
+  };
+
+  const vm050Motion02Decision = {
+    id: 'decision-vm-0.5.0-motion-02-d3-stress',
+    type: 'Decision',
+    date: '2026-08-26',
+    source: 'Startup Lab D3 follow-up experiment approval',
+    text: 'Do not select D2 or D3 yet. Preserve D2 unchanged as a viable fallback and run one isolated D3 frequency stress test using the existing 16:9 composition and source-to-threat sequence. Target the first event around 8–10 seconds and approximately six to seven events per complete round, preserve maximum one active D3 sequence, suppress equivalent ordinary product pressure, add local-only instrumentation, and stop after five founder runs for Startup Lab review. Do not add mechanics, new art systems, production polish, public distribution, or gameplay retuning.'
+  };
+
+  const vm050Motion02Hypothesis = {
+    id: 'hypothesis-vm-0.5.0-motion-02-recurring-vertical-pressure',
+    type: 'Hypothesis',
+    date: '2026-08-26',
+    source: 'VM-0.5.0-MOTION-02 proposition',
+    text: 'When background-sourced product drops happen often enough to become a regular part of the 60-second run, they may remain readable and fair while producing meaningful vertical decision pressure without increasing total product pressure. The deliberately aggressive cadence is an upper-bound stress test, not a validated final frequency or evidence that D3 is preferable.'
+  };
+
+  const vm050Motion02Result = {
+    id: 'result-vm-0.5.0-motion-02-d3-stress',
+    type: 'Result',
+    date: '2026-08-26',
+    source: 'VM-0.5.0-MOTION-02 implementation and deterministic validation',
+    text: 'The isolated D3 build now identifies itself as VM-0.5.0-MOTION-02-D3-STRESS and uses exported first-reservation 8.50 seconds, seeded 7.00–9.00-second repeat intervals, 7.00-second minimum successful-warning spacing, six-event cap, unchanged 1.10-second warning, unchanged 0.85-second target fall duration, 0.12-second invalid-state retry, and the existing three logical lanes. A valid warning reserves suppression of the next ordinary product event; this advance replacement meets the early warning window while preventing background drops from simply adding products. Six was selected instead of seven because a late seventh release could lack a subsequent ordinary event to suppress and raised a deterministic run above the frozen 22-product baseline. Seeds 5002, 6011, and 7907 each produced six complete warning/release/landing/reset cycles and six ordinary suppressions, with first warnings at 9.82 seconds, longest warning gaps of 9.40, 9.20, and 9.20 seconds, maximum one active D3 sequence, lane sequences 2/1/2/0/1/2, 2/1/2/0/1/2, and 2/1/0/2/1/0, and total product hazards of 21, 21, and 20. Safety retries rejected 48, 49, and 22 attempts rather than spawning into active ordinary warnings, falling products, landed-product overlap, or coin paths. All 21 automated suites passed; Arena, Conveyor, D2, and D3 Stress completed 180-frame headless launches; the single-threaded Web build loaded at 1152×648 and 900×700 without browser-console warnings or errors. D2 and the project-wide default scene remain unchanged. These are implementation and deterministic-validation results, not evidence of human readability, fairness, fun, preferred cadence, or a final D2/D3 selection.'
+  };
+
   const vm050CoinClusteringHypothesis = {
     id: 'hypothesis-vm-0.5.0-pending-coin-route-footprint',
     type: 'Hypothesis',
@@ -1409,6 +1441,10 @@
     vm050D2Hypothesis,
     vm050D3Hypothesis,
     vm050MotionResult,
+    vm050MotionReviewEvidence,
+    vm050Motion02Decision,
+    vm050Motion02Hypothesis,
+    vm050Motion02Result,
     vm050CoinClusteringHypothesis
   ];
 
@@ -1421,7 +1457,7 @@
   ];
 
   const defaultState = {
-    version: 27,
+    version: 28,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

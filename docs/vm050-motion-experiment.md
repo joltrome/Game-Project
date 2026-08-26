@@ -6,6 +6,8 @@ Branch: `visual/vm-0.5.0-motion-01`
 
 Status: implemented and technically validated; manual comparison pending. This document records implementation facts, not evidence that either direction is more readable, fair, or enjoyable.
 
+Follow-up: Startup Lab did not select either direction after manual review. D2 remains unchanged as a fallback. D3 received the isolated `VM-0.5.0-MOTION-02-D3-STRESS` cadence experiment documented in [`vm050-motion02-d3-stress-report.md`](vm050-motion02-d3-stress-report.md). The follow-up does not alter the MOTION-01 observations or retrospectively validate either direction.
+
 ## Controlled baseline
 
 Both variants instantiate the existing `scenes/prototypes/conveyor.tscn` rather than duplicating gameplay. The shared player controller, jump/gravity values, conveyor behavior and speed curve, 60-second round, coin value and authored offer system, hazard timings and intensity, death/restart rules, horizontal play width, and Prototype A remain unchanged. The project-wide main scene also remains the frozen conveyor.

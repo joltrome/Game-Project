@@ -13,7 +13,7 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 **Build:** VM-0.4.7 external-playtest cleanup baseline
 
-**Phase:** Frozen gray-box core loop; VM-0.5.0-MOTION-01 D2/D3 structural motion experiment awaiting manual Startup Lab review
+**Phase:** Frozen gray-box core loop; VM-0.5.0-MOTION-02 D3 frequency stress test awaiting five-run founder review
 **Gameplay evidence:** A broader external playtest reported positive difficulty and replay reactions, and at least one tester deliberately pursued Refund Coins, accepted extra risk, and died because of that choice. This supports the intended survival-versus-score tension strongly enough to freeze the gray-box loop, subject to the limitations recorded in the roadmap. One tester missed the countdown, but the issue was not independently repeated after VM-0.4.4, so the timer was not redesigned again.
 
 Prototype B is now the primary direction. Prototype A remains preserved as a frozen comparison baseline and a possible future machine-jam event; that event is not implemented. The source project defaults to Prototype B for editor F5 testing.
@@ -21,7 +21,7 @@ Prototype B is now the primary direction. Prototype A remains preserved as a fro
 Prototype A is frozen on `master` and tag `VM-0.2.3-A-R1`. Its scene remains available at `scenes/prototypes/arena.tscn`.
 Prototype B's first externally preferred baseline is tagged `VM-0.3.4-B-EXTERNAL-PREFERRED`. The accepted endless collectible baseline is tagged `VM-0.4.0`. VM-0.4.1 defaults to a configurable 60-second round with Refund Coins as the only score; an exported `fixed_round_enabled` development setting can restore endless behavior.
 
-The branch `visual/vm-0.5.0-motion-01` contains two isolated internal wrappers around the unchanged conveyor scene. D2 tests a 1152×480 wide presentation; D3 tests a 1152×648 close-up plus four scheduled background-product reservations that replace eligible ordinary product events. The project-wide F5 scene remains the frozen conveyor baseline.
+The branch `visual/vm-0.5.0-motion-01` contains two isolated internal wrappers around the unchanged conveyor scene. D2 remains the unmodified 1152×480 fallback. D3 is now the `VM-0.5.0-MOTION-02-D3-STRESS` build: a 1152×648 close-up with six recurring, safety-validated background drops per deterministic 60-second run. Each accepted drop reserves suppression of one ordinary product event, so the experiment changes source and vertical pressure rather than adding product hazards. The project-wide F5 scene remains the frozen conveyor baseline.
 
 ## Open locally
 
@@ -67,26 +67,29 @@ python3 -m http.server 8123 --directory builds/web-ab
 python3 -m http.server 8124 --directory builds/web-ba
 ```
 
-## VM-0.5.0-MOTION-01 internal variants
+## VM-0.5.0 internal motion variants
 
 Run either wrapper without changing the default project scene:
 
 - D2: open `scenes/experiments/motion_d2.tscn`, then press **F6**.
-- D3: open `scenes/experiments/motion_d3.tscn`, then press **F6**.
+- D3 stress: open `scenes/experiments/motion_d3.tscn`, then press **F6**. Its visible build ID is `VM-0.5.0-MOTION-02-D3-STRESS`.
 
 Export and serve the internal Web builds:
 
 ```bash
 /Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --headless --path . --export-release "Web Motion D2" builds/web-motion-d2/index.html
-/Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --headless --path . --export-release "Web Motion D3" builds/web-motion-d3/index.html
+/Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --headless --path . --export-release "Web Motion D3 Stress" builds/web-motion-d3-stress/index.html
 python3 -m http.server 8120 --directory builds/web-motion-d2
-python3 -m http.server 8121 --directory builds/web-motion-d3
+python3 -m http.server 8125 --directory builds/web-motion-d3-stress
 ```
 
 The generated directories and ZIPs are ignored by Git. See
 [`docs/vm050-motion-experiment.md`](docs/vm050-motion-experiment.md) for the
 controlled variables, exact D3 lifecycle, validation results, instrumentation,
-and manual comparison protocol.
+and original comparison protocol. See
+[`docs/vm050-motion02-d3-stress-report.md`](docs/vm050-motion02-d3-stress-report.md)
+for the stress cadence, hazard-budget strategy, deterministic reports, and
+five-run founder protocol.
 
 ## Use with Codex
 
@@ -97,12 +100,13 @@ and manual comparison protocol.
 
 ## Next task
 
-Manually compare D2 and D3 and return the captured evidence to Startup Lab before
-selecting a structural direction or starting production art. Do not merge this
-experiment branch, add another motion concept, or tune gameplay from internal
-preference. Player movement, the 60-second round, hazards, Refund Coin value and
-scoring, countdown, core offer system, conveyor speed curve, and Sweeper behavior
-remain frozen except for a reproducible bug or fairness failure.
+Complete the documented five-run D3 stress test and return the recordings and
+observations to Startup Lab. Do not select D2 or D3, tune the stress frequency,
+merge this experiment branch, add another motion concept, or start production
+art before that review. Player movement, the 60-second round, hazards, Refund
+Coin value and scoring, countdown, core offer system, conveyor speed curve, and
+Sweeper behavior remain frozen except for a reproducible bug or fairness
+failure.
 
 ## Automated movement test
 

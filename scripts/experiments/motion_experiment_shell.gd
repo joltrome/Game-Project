@@ -5,6 +5,7 @@ const CONVEYOR_SCENE := preload("res://scenes/prototypes/conveyor.tscn")
 
 @export_enum("D2", "D3") var variant_id: String = "D2"
 @export var internal_size := Vector2i(1152, 480)
+@export var build_id_override: String = ""
 
 var conveyor: ConveyorPrototype
 var background_drop_director: MotionBackgroundDropDirector
@@ -89,7 +90,12 @@ func _configure_camera_and_hud() -> void:
 	camera.position = Vector2(576.0, 412.0 if variant_id == "D2" else 324.0)
 
 	var build_label := conveyor.get_node("HUD/BuildId") as Label
-	build_label.text = "BUILD VM-0.5.0-MOTION-01-%s" % variant_id
+	var build_id := (
+		build_id_override
+		if not build_id_override.is_empty()
+		else "VM-0.5.0-MOTION-01-%s" % variant_id
+	)
+	build_label.text = "BUILD %s" % build_id
 	build_label.add_theme_color_override("font_color", Color("f2e7c9"))
 	build_label.add_theme_color_override("font_outline_color", Color("0d1424"))
 	build_label.add_theme_constant_override("outline_size", 3)

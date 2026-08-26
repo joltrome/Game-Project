@@ -180,6 +180,7 @@ var _right_pressure_reserved_at: float = -1.0
 var _base_conveyor_speed: float = 140.0
 var _product_event_replacement_handler: Callable = Callable()
 var _external_product_event_pending: bool = false
+var _reserved_external_suppression_ids: Array[String] = []
 
 @onready var player: SharedPlayerController = $Player
 @onready var _hazard_container: Node2D = $Hazards
@@ -1207,6 +1208,17 @@ func external_product_event_is_pending() -> bool:
 	return _external_product_event_pending
 
 
+func reserve_ordinary_product_suppression(replacement_id: String) -> bool:
+	if replacement_id.is_empty() or is_dead or is_round_complete:
+		return false
+	_reserved_external_suppression_ids.append(replacement_id)
+	return true
+
+
+func reserved_ordinary_product_suppression_count() -> int:
+	return _reserved_external_suppression_ids.size()
+
+
 func spawn_external_conveyor_product(
 	drop_x: float,
 	spawn_y: float,
@@ -1924,6 +1936,17 @@ func _start_next_telegraph(
 	target_x: float = NAN,
 	pattern_type: int = -1
 ) -> bool:
+	if not _reserved_external_suppression_ids.is_empty():
+		var reserved_replacement_id: String = _reserved_external_suppression_ids.pop_front()
+		ordinary_product_event_replaced.emit(pattern_type, reserved_replacement_id)
+		_record_encounter({
+			"event": "ordinary_can_replaced",
+			"replacement_id": reserved_replacement_id,
+			"pattern_type": pattern_type,
+			"time": survival_time,
+			"suppression_reserved_in_advance": true,
+		})
+		return true
 	if _product_event_replacement_handler.is_valid():
 		var replacement_result: Variant = (
 			_product_event_replacement_handler.call({
@@ -2214,6 +2237,7 @@ func _clear_pattern_state() -> void:
 	_right_pressure_target_x = NAN
 	_right_pressure_reserved_at = -1.0
 	_external_product_event_pending = false
+	_reserved_external_suppression_ids.clear()
 
 
 func _update_timer_label() -> void:

@@ -9,6 +9,7 @@ var _d3_director: MotionBackgroundDropDirector
 var _entries: Array[Dictionary] = []
 var _pending_death_cause: String = "unknown"
 var _run_ended: bool = false
+var _run_end_pending: bool = false
 
 
 func _ready() -> void:
@@ -33,6 +34,9 @@ func _ready() -> void:
 		_d3_director.product_landed.connect(_on_d3_landing)
 		_d3_director.visual_cycle_reset.connect(_on_d3_reset)
 		_d3_director.replacement_rejected.connect(_on_d3_rejection)
+		_d3_director.product_player_collision.connect(_on_d3_player_collision)
+		_d3_director.sequence_stopped.connect(_on_d3_sequence_stopped)
+	_conveyor.ordinary_product_event_replaced.connect(_on_ordinary_product_replaced)
 	_record("run_start", {
 		"player_x": _conveyor.player.position.x,
 		"score": _score(),
@@ -102,6 +106,13 @@ func _on_sweeper_player_hit(_sweeper: AirSweeper) -> void:
 
 
 func _on_player_died() -> void:
+	if _run_ended or _run_end_pending:
+		return
+	_run_end_pending = true
+	call_deferred("_record_death_end")
+
+
+func _record_death_end() -> void:
 	if _run_ended:
 		return
 	if (
@@ -119,6 +130,7 @@ func _on_player_died() -> void:
 		"product_count": _conveyor.active_product_count(),
 	})
 	_run_ended = true
+	_run_end_pending = false
 
 
 func _on_round_completed(score: int) -> void:
@@ -187,6 +199,34 @@ func _on_d3_rejection(schedule_index: int, reason: String, _rejected_at: float) 
 	_record("d3_rejection", {
 		"schedule_index": schedule_index,
 		"reason": reason,
+	})
+
+
+func _on_d3_player_collision(
+	schedule_index: int,
+	lane_index: int,
+	death_resulted: bool,
+	_collided_at: float
+) -> void:
+	_pending_death_cause = "background_product"
+	_record("d3_player_collision", {
+		"schedule_index": schedule_index,
+		"lane_index": lane_index,
+		"death_resulted": death_resulted,
+	})
+
+
+func _on_d3_sequence_stopped(outcome: String, _stopped_at: float) -> void:
+	_record("d3_sequence_stopped", {
+		"outcome": outcome,
+		"next_scheduled_drop_time": _d3_director.next_reservation_time,
+	})
+
+
+func _on_ordinary_product_replaced(pattern_type: int, replacement_id: String) -> void:
+	_record("d3_ordinary_product_suppressed", {
+		"pattern_type": pattern_type,
+		"replacement_id": replacement_id,
 	})
 
 
