@@ -100,13 +100,40 @@ five-run founder protocol.
 
 ## Next task
 
-Complete the documented five-run D3 stress test and return the recordings and
-observations to Startup Lab. Do not select D2 or D3, tune the stress frequency,
-merge this experiment branch, add another motion concept, or start production
-art before that review. Player movement, the 60-second round, hazards, Refund
-Coin value and scoring, countdown, core offer system, conveyor speed curve, and
-Sweeper behavior remain frozen except for a reproducible bug or fairness
-failure.
+Manually review `VM-0.5.0-VIS-01-D3-V2` in Startup Lab with one survival-first,
+one coin-greedy, and one natural run. Do not revise art, tune gameplay, merge the
+visual branch, or begin another milestone before that review. Player movement,
+the 60-second round, hazards, Refund Coin value and scoring, countdown, core
+offer system, conveyor speed curve, D3 cadence, and Sweeper behavior remain
+frozen except for a reproducible bug or fairness failure.
+
+## VM-0.5.0-VIS-01-D3-V2
+
+Open `scenes/experiments/motion_d3.tscn` and run the current scene with `F6`.
+The developer collision overlay is OFF by default; press `F8` in a local debug
+run to show sprite origins, collision boxes, the selected D3 rack lane, and its
+logical state.
+
+Run the VIS-01 integration test:
+
+```bash
+godot --headless --log-file /tmp/vms-vm050-vis01-test.log --path . --script res://tests/test_vm050_vis01_integration.gd
+```
+
+Export the single-threaded Web build:
+
+```bash
+godot --headless --path . --export-release "Web VIS-01 D3 V2" builds/web-vis01-d3-v2/index.html
+```
+
+Serve it locally from `builds/web-vis01-d3-v2/`:
+
+```bash
+python3 -m http.server 8123 --bind 127.0.0.1
+```
+
+Then open `http://127.0.0.1:8123/index.html`. The prepared upload archive is
+`builds/VM-0.5.0-VIS-01-D3-V2-web.zip`; generated builds remain ignored by Git.
 
 ## Automated movement test
 

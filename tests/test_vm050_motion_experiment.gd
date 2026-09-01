@@ -53,8 +53,8 @@ func _test_isolated_profiles_and_frozen_values() -> void:
 	)
 	_check(
 		(d3.conveyor.get_node("HUD/BuildId") as Label).text
-			== "BUILD VM-0.5.0-MOTION-02-D3-STRESS",
-		"D3 exposes the MOTION-02 stress build ID"
+			== "BUILD VM-0.5.0-VIS-01-D3-V2",
+		"D3 exposes the VIS-01 V2 integration build ID"
 	)
 	_check(
 		d2.background_drop_director == null

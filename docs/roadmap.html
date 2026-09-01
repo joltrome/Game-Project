@@ -1341,6 +1341,38 @@
     text: 'The isolated D3 build now identifies itself as VM-0.5.0-MOTION-02-D3-STRESS and uses exported first-reservation 8.50 seconds, seeded 7.00–9.00-second repeat intervals, 7.00-second minimum successful-warning spacing, six-event cap, unchanged 1.10-second warning, unchanged 0.85-second target fall duration, 0.12-second invalid-state retry, and the existing three logical lanes. A valid warning reserves suppression of the next ordinary product event; this advance replacement meets the early warning window while preventing background drops from simply adding products. Six was selected instead of seven because a late seventh release could lack a subsequent ordinary event to suppress and raised a deterministic run above the frozen 22-product baseline. Seeds 5002, 6011, and 7907 each produced six complete warning/release/landing/reset cycles and six ordinary suppressions, with first warnings at 9.82 seconds, longest warning gaps of 9.40, 9.20, and 9.20 seconds, maximum one active D3 sequence, lane sequences 2/1/2/0/1/2, 2/1/2/0/1/2, and 2/1/0/2/1/0, and total product hazards of 21, 21, and 20. Safety retries rejected 48, 49, and 22 attempts rather than spawning into active ordinary warnings, falling products, landed-product overlap, or coin paths. All 21 automated suites passed; Arena, Conveyor, D2, and D3 Stress completed 180-frame headless launches; the single-threaded Web build loaded at 1152×648 and 900×700 without browser-console warnings or errors. D2 and the project-wide default scene remain unchanged. These are implementation and deterministic-validation results, not evidence of human readability, fairness, fun, preferred cadence, or a final D2/D3 selection.'
   };
 
+  const vm050V2AdaptationEvidence = {
+    id: 'evidence-vm-0.5.0-v2-runtime-adaptation',
+    type: 'Evidence',
+    date: '2026-09-01',
+    source: 'V1 collision review and approved V2 runtime adaptation package',
+    text: 'The V1 concept-sized sprites could not map safely onto the frozen gameplay collision envelopes. V2 was specifically adapted to those envelopes: the live technician uses a 32×48 canvas against the existing 32×48 collision, falling products render at 72×72 against the existing 72×72 collision, landed products render at 72×48 against the existing 72×48 collision, the carriage renders at 96×28 against the existing 96×28 collision, and the Refund Coin renders at 24×24 against its existing pickup area. The supplied envelope study reports active-play lethal margins no greater than four runtime pixels, integer scaling for every primary runtime asset, preservation of the B0.1/B0.2 identities, and no gameplay changes during V2 creation.'
+  };
+
+  const vm050V2IntegrationDecision = {
+    id: 'decision-vm-0.5.0-vis-01-v2-runtime-integration',
+    type: 'Decision',
+    date: '2026-09-01',
+    source: 'Startup Lab VIS-01 integration approval',
+    text: 'Use V2 as the authoritative D3 runtime-art package and keep V1 as a visual-identity reference rather than restoring its concept-sized dimensions. Integrate V2 only on an isolated child branch and D3 experiment scene. Preserve the frozen player, product, landed-product, carriage, coin, conveyor, round, scheduler, cadence, collision, score, D2, and Prototype A behavior. Commit approved runtime derivatives and provenance documentation, while leaving Aseprite masters and raw source packs outside the public repository.'
+  };
+
+  const vm050V2IntegrationHypothesis = {
+    id: 'hypothesis-vm-0.5.0-vis-01-v2-readable-coherent',
+    type: 'Hypothesis',
+    date: '2026-09-01',
+    source: 'VM-0.5.0-VIS-01-D3-V2 proposition',
+    text: 'The V2 runtime package may preserve fair hitbox readability while making D3 visually coherent: the technician may remain prominent, the selected stored product may read as entering the foreground rather than magically growing, and the rack warning, carriage, Refund Coin, conveyor, and HUD may retain a usable visual hierarchy. These remain unverified pending Startup Lab survival-first, coin-greedy, and natural playthroughs.'
+  };
+
+  const vm050V2IntegrationResult = {
+    id: 'result-vm-0.5.0-vis-01-v2-runtime-integration',
+    type: 'Result',
+    date: '2026-09-01',
+    source: 'VM-0.5.0-VIS-01-D3-V2 implementation and technical validation',
+    text: 'The mandatory death-interactivity check passed before DEATH art was enabled: player control and processing, active hazards, active coin interaction, the collectible director, and score changes had already stopped. Twelve approved V2 runtime sheets were integrated through a D3-only visual adapter with nearest-neighbour filtering, integer scale, stable origins, deterministic red/blue/green rack-to-falling-to-landed identity, visual-only technician/product/carriage/coin/belt animation, and a default-off developer collision overlay. No collision shape or frozen gameplay value was changed. The new VIS-01 suite and all 22 existing test scripts passed; Prototype A, original Conveyor, D2, and D3 completed headless launches. Three deterministic D3 seeds retained six-drop cadence with first warnings at 9.8167 seconds and a 9.20-second maximum warning gap. The final single-threaded Web export loaded through localhost, restart worked, and the browser console contained zero warnings and zero errors. Technician prominence, the perceived depth transition, rack-warning and carriage readability at speed, clutter, identity, and human perceived-hitbox fairness remain unverified; this result is not a claim of final art quality.'
+  };
+
   const vm050CoinClusteringHypothesis = {
     id: 'hypothesis-vm-0.5.0-pending-coin-route-footprint',
     type: 'Hypothesis',
@@ -1445,6 +1477,10 @@
     vm050Motion02Decision,
     vm050Motion02Hypothesis,
     vm050Motion02Result,
+    vm050V2AdaptationEvidence,
+    vm050V2IntegrationDecision,
+    vm050V2IntegrationHypothesis,
+    vm050V2IntegrationResult,
     vm050CoinClusteringHypothesis
   ];
 
@@ -1457,7 +1493,7 @@
   ];
 
   const defaultState = {
-    version: 28,
+    version: 29,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

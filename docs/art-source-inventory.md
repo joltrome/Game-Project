@@ -269,3 +269,9 @@ Some multi-coin offers can still feel locally clustered. The pending hypothesis 
 On 2026-08-26, the D2/D3 structural motion study implemented the approved visual direction using only project-owned Godot geometry and default-font text. No raw pack file, Work mockup, Aseprite source, flattened reference image, or custom font was moved into `assets/` or committed.
 
 The inspected Work Aseprite mockup includes a hidden `SOURCE Sports Drink` layer whose third-party provenance is not sufficiently clear for redistribution. It remains reference-only in the ignored/local working material. The playable study therefore recreates the relevant vending-machine framing, product bays, retrieval opening, rail, product, and carriage as original code-native shapes. This is a deliberate production-safety decision, not a finding that the reference source is unusable under every possible license review.
+
+## VM-0.5.0-VIS-01 V2 runtime decision
+
+On 2026-09-01, Startup Lab approved the project-specific V2 adaptation package for runtime integration. V1 remains the visual-identity master, but its concept dimensions are not used at runtime because they did not map fairly to the frozen collision geometry. V2 provides exact integer-scale derivatives for the `32×48` technician, `72×72` falling product, `72×48` landed product, `96×28` retrieval carriage, and `24×24` Refund Coin envelopes.
+
+VIS-01 commits only twelve approved PNG runtime sheets plus the package manifest, Godot handoff, envelope metrics, and a SHA-256 provenance inventory. All primary V2 Aseprite masters were inspected read-only but remain in the authoritative external Work artifact package. No `.local_art_sources/` content, raw third-party pack, review-only comparison image, or scratch file was moved into the repository. See `docs/visual-assets/VM050_D3_V2_runtime_provenance.md` for the exact inventory.

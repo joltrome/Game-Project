@@ -6,10 +6,13 @@ const CONVEYOR_SCENE := preload("res://scenes/prototypes/conveyor.tscn")
 @export_enum("D2", "D3") var variant_id: String = "D2"
 @export var internal_size := Vector2i(1152, 480)
 @export var build_id_override: String = ""
+@export var v2_runtime_art_enabled: bool = false
+@export var v2_debug_overlay_enabled: bool = false
 
 var conveyor: ConveyorPrototype
 var background_drop_director: MotionBackgroundDropDirector
 var instrumentation: MotionLocalInstrumentation
+var v2_visual_integration: MotionV2VisualIntegration
 
 @onready var _viewport_frame: SubViewportContainer = $ViewportFrame
 @onready var _internal_viewport: SubViewport = $ViewportFrame/InternalViewport
@@ -30,6 +33,8 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	if conveyor == null:
+		return
+	if v2_runtime_art_enabled:
 		return
 	_apply_runtime_hazard_skin()
 
@@ -78,11 +83,19 @@ func _build_variant() -> void:
 		background_drop_director = MotionBackgroundDropDirector.new()
 		background_drop_director.name = "BackgroundDropDirector"
 		conveyor.add_child(background_drop_director)
+	if v2_runtime_art_enabled:
+		v2_visual_integration = MotionV2VisualIntegration.new()
+		v2_visual_integration.name = "V2VisualIntegration"
+		v2_visual_integration.conveyor = conveyor
+		v2_visual_integration.background_drop_director = background_drop_director
+		v2_visual_integration.debug_overlay_enabled = v2_debug_overlay_enabled
+		conveyor.add_child(v2_visual_integration)
 	instrumentation = MotionLocalInstrumentation.new()
 	instrumentation.name = "MotionLocalInstrumentation"
 	instrumentation.variant_id = variant_id
 	conveyor.add_child(instrumentation)
-	_apply_runtime_hazard_skin()
+	if not v2_runtime_art_enabled:
+		_apply_runtime_hazard_skin()
 
 
 func _configure_camera_and_hud() -> void:

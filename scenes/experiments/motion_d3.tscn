@@ -13,7 +13,8 @@ mouse_filter = 2
 script = ExtResource("1_shell")
 variant_id = "D3"
 internal_size = Vector2i(1152, 648)
-build_id_override = "VM-0.5.0-MOTION-02-D3-STRESS"
+build_id_override = "VM-0.5.0-VIS-01-D3-V2"
+v2_runtime_art_enabled = true
 
 [node name="Matte" type="ColorRect" parent="."]
 layout_mode = 1

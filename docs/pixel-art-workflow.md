@@ -36,3 +36,9 @@ This is a short production workflow, not an art tutorial. It assumes Startup Lab
 - Require explicit approval for protagonist, HUD, right housing, left chute, Sweeper mechanism, Refund Coin, product obstacles, and signage.
 - Commodity pipes, bolts, vents, wires, braces, motors, and background panels can use approved pack material when licenses, outline weight, scale, and palette are normalized.
 - Never commit raw third-party source packs. Commit only deliberately approved game-ready derivatives whose license permits their use in the shipped project, plus attribution/license records where required.
+
+## VIS-01 V2 runtime implementation
+
+The approved V2 package resolves the earlier collision-envelope problem with exact integer runtime mappings. Godot uses the exported horizontal PNG sheets at nearest-neighbour filtering, stable per-frame canvases, and fixed origins. The technician is `32×48` at `1×`; falling products are `36×36` at `2×`; landed products are `36×24` at `2×`; the carriage is `48×14` at `2×`; the Refund Coin is `12×12` at `2×`; and conveyor tiles are `32×16` at `2×`.
+
+Animation changes visuals only. Existing bodies continue to own translation, collision, support velocity, score, timing, and cleanup. The D3-only integration adapter maps gameplay state to animation state and preserves red/blue/green identity from the selected background rack product through falling and landed states. Editable Aseprite masters remain outside the public repository under the established art-source policy; runtime exports and provenance documentation are committed.
