@@ -275,3 +275,21 @@ The inspected Work Aseprite mockup includes a hidden `SOURCE Sports Drink` layer
 On 2026-09-01, Startup Lab approved the project-specific V2 adaptation package for runtime integration. V1 remains the visual-identity master, but its concept dimensions are not used at runtime because they did not map fairly to the frozen collision geometry. V2 provides exact integer-scale derivatives for the `32×48` technician, `72×72` falling product, `72×48` landed product, `96×28` retrieval carriage, and `24×24` Refund Coin envelopes.
 
 VIS-01 commits only twelve approved PNG runtime sheets plus the package manifest, Godot handoff, envelope metrics, and a SHA-256 provenance inventory. All primary V2 Aseprite masters were inspected read-only but remain in the authoritative external Work artifact package. No `.local_art_sources/` content, raw third-party pack, review-only comparison image, or scratch file was moved into the repository. See `docs/visual-assets/VM050_D3_V2_runtime_provenance.md` for the exact inventory.
+
+## VM-0.5.0-VIS-02 runtime correction
+
+On 2026-09-02, the approved VIS-02 package replaced only the D3 experiment's
+technician, rack, drop-warning, falling-product, and landed-product visuals.
+Eleven project-specific PNG runtime sheets were copied to
+`assets/vm050_d3_vis02/`; the Aseprite masters remain in the authoritative
+external Work package. The approved V2 carriage, Refund Coin, and conveyor
+visuals remain in use and were not revised.
+
+VIS-02 corrects runtime readability with a full-envelope `32×48` technician,
+common safe rack modules, a machine-integrated warning, clearer sideways
+landed drinks, and eight-frame rotation. The same art is used for the 72×72 and
+60×60 internal falling-collision builds. The collision comparison changes no
+asset provenance and does not make 60×60 a final decision. No raw pack,
+`.local_art_sources/` file, GIF/review board, Aseprite master, or Work scratch
+file was committed. See
+`docs/visual-assets/VM050_D3_VIS02_runtime_provenance.md` for hashes.

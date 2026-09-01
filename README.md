@@ -13,7 +13,7 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 **Build:** VM-0.4.7 external-playtest cleanup baseline
 
-**Phase:** Frozen gray-box core loop; VM-0.5.0-MOTION-02 D3 frequency stress test awaiting five-run founder review
+**Phase:** VM-0.5.0-VIS-02 internal falling-collision comparison awaiting Startup Lab manual review
 **Gameplay evidence:** A broader external playtest reported positive difficulty and replay reactions, and at least one tester deliberately pursued Refund Coins, accepted extra risk, and died because of that choice. This supports the intended survival-versus-score tension strongly enough to freeze the gray-box loop, subject to the limitations recorded in the roadmap. One tester missed the countdown, but the issue was not independently repeated after VM-0.4.4, so the timer was not redesigned again.
 
 Prototype B is now the primary direction. Prototype A remains preserved as a frozen comparison baseline and a possible future machine-jam event; that event is not implemented. The source project defaults to Prototype B for editor F5 testing.
@@ -21,7 +21,7 @@ Prototype B is now the primary direction. Prototype A remains preserved as a fro
 Prototype A is frozen on `master` and tag `VM-0.2.3-A-R1`. Its scene remains available at `scenes/prototypes/arena.tscn`.
 Prototype B's first externally preferred baseline is tagged `VM-0.3.4-B-EXTERNAL-PREFERRED`. The accepted endless collectible baseline is tagged `VM-0.4.0`. VM-0.4.1 defaults to a configurable 60-second round with Refund Coins as the only score; an exported `fixed_round_enabled` development setting can restore endless behavior.
 
-The branch `visual/vm-0.5.0-motion-01` contains two isolated internal wrappers around the unchanged conveyor scene. D2 remains the unmodified 1152×480 fallback. D3 is now the `VM-0.5.0-MOTION-02-D3-STRESS` build: a 1152×648 close-up with six recurring, safety-validated background drops per deterministic 60-second run. Each accepted drop reserves suppression of one ordinary product event, so the experiment changes source and vertical pressure rather than adding product hazards. The project-wide F5 scene remains the frozen conveyor baseline.
+The visual experiment lineage contains two isolated wrappers around the unchanged conveyor scene. D2 remains the unmodified 1152×480 fallback. D3 remains the 1152×648 close-up with six recurring, safety-validated background drops per deterministic 60-second run. VIS-02 integrates the approved chunky technician, common rack system, machine warning, revised landed products, and eight-frame rotational product art in two lightweight scenes. Their only intended gameplay difference is a 72×72 versus centered 60×60 falling-lethal collision. The project-wide F5 scene remains the frozen conveyor baseline.
 
 ## Open locally
 
@@ -100,12 +100,56 @@ five-run founder protocol.
 
 ## Next task
 
-Manually review `VM-0.5.0-VIS-01-D3-V2` in Startup Lab with one survival-first,
-one coin-greedy, and one natural run. Do not revise art, tune gameplay, merge the
-visual branch, or begin another milestone before that review. Player movement,
-the 60-second round, hazards, Refund Coin value and scoring, countdown, core
-offer system, conveyor speed curve, D3 cadence, and Sweeper behavior remain
-frozen except for a reproducible bug or fairness failure.
+Manually compare `VM-0.5.0-VIS-02-D3-FALL72` and
+`VM-0.5.0-VIS-02-D3-FALL60` in Startup Lab. Alternate 72, 60, 60, 72, 60 to
+reduce adaptation bias. Do not select a collision, revise art, tune gameplay,
+merge the visual branch, or begin another milestone in Codex before that
+review. Player movement, the 60-second round, hazards, Refund Coin value and
+scoring, countdown, core offer system, conveyor speed curve, D3 cadence, and
+Sweeper behavior remain frozen except for a reproducible bug or fairness
+failure.
+
+## VM-0.5.0-VIS-02 collision comparison
+
+Run either current scene with F6:
+
+- 72×72 baseline: `scenes/experiments/motion_vis02_fall72.tscn`
+- 60×60 retest: `scenes/experiments/motion_vis02_fall60.tscn`
+
+Both use the exact same VIS-02 art and frozen gameplay. The developer overlay
+is OFF by default; press F8 in a local debug run to show collision boxes,
+pivots, selected rack lane, D3 state, and `VIS02-FALL-72`/`VIS02-FALL-60` ID.
+
+Run the targeted suite:
+
+```bash
+/Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --headless --log-file /tmp/vms-vis02-runtime-retest.log --path . --script res://tests/test_vm050_vis02_runtime_retest.gd
+```
+
+Export the single-threaded Web builds:
+
+```bash
+mkdir -p builds/web-vis02-fall72 builds/web-vis02-fall60
+/Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --headless --path . --export-release "Web VIS-02 Fall 72" builds/web-vis02-fall72/index.html
+/Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --headless --path . --export-release "Web VIS-02 Fall 60" builds/web-vis02-fall60/index.html
+```
+
+Serve locally:
+
+```bash
+python3 -m http.server 8126 --bind 127.0.0.1 --directory builds/web-vis02-fall72
+python3 -m http.server 8127 --bind 127.0.0.1 --directory builds/web-vis02-fall60
+```
+
+Prepared internal archives:
+
+- `builds/VM-0.5.0-VIS-02-D3-FALL72-web.zip`
+- `builds/VM-0.5.0-VIS-02-D3-FALL60-web.zip`
+
+Generated builds remain ignored by Git and have not been uploaded. See
+[`docs/vm050-vis02-runtime-retest.md`](docs/vm050-vis02-runtime-retest.md) for
+asset mappings, the landed-Y fix, measured margins, screenshots, validation,
+and the manual comparison protocol.
 
 ## VM-0.5.0-VIS-01-D3-V2
 

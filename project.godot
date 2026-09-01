@@ -21,6 +21,8 @@ run/main_scene.playtest_ba="res://scenes/playtest/playtest_flow.tscn"
 run/main_scene.motion_d2="res://scenes/experiments/motion_d2.tscn"
 run/main_scene.motion_d3="res://scenes/experiments/motion_d3.tscn"
 run/main_scene.motion_d3_stress="res://scenes/experiments/motion_d3.tscn"
+run/main_scene.vis02_fall72="res://scenes/experiments/motion_vis02_fall72.tscn"
+run/main_scene.vis02_fall60="res://scenes/experiments/motion_vis02_fall60.tscn"
 config/features=PackedStringArray("4.7")
 
 [autoload]

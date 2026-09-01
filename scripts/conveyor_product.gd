@@ -8,6 +8,8 @@ signal exited_conveyor(product: ConveyorProduct)
 
 @onready var _moving_landed_body: AnimatableBody2D = $LandedBody
 
+var _landed_support_aligned: bool = false
+
 
 func _ready() -> void:
 	super._ready()
@@ -21,6 +23,7 @@ func _physics_process(delta: float) -> void:
 		return
 
 	_move_landed_components(-conveyor_speed * delta)
+	_align_landed_support_to_floor()
 	_update_platform_velocity()
 	if conveyor_center_x() + landed_size.x * 0.5 < cleanup_left_x:
 		exited_conveyor.emit(self)
@@ -35,7 +38,8 @@ func configure_conveyor(
 	drop_size: Vector2,
 	obstacle_size: Vector2,
 	scroll_speed: float,
-	left_cleanup_boundary: float
+	left_cleanup_boundary: float,
+	drop_collision_size: Vector2 = Vector2.ZERO
 ) -> void:
 	conveyor_speed = maxf(scroll_speed, 0.0)
 	cleanup_left_x = left_cleanup_boundary
@@ -45,7 +49,8 @@ func configure_conveyor(
 		lifetime,
 		warning_duration,
 		drop_size,
-		obstacle_size
+		obstacle_size,
+		drop_collision_size
 	)
 	if is_node_ready():
 		_update_platform_velocity()
@@ -83,3 +88,24 @@ func _move_landed_components(horizontal_delta: float) -> void:
 	_body_visual.position.x += horizontal_delta
 	_band_visual.position.x += horizontal_delta
 	_label.position.x += horizontal_delta
+
+
+func _align_landed_support_to_floor() -> void:
+	# AnimatableBody2D keeps its own synchronized physics transform. A product
+	# created by the external D3 source can otherwise preserve its release Y for
+	# one support body while the Area2D parent settles at the conveyor. Enforce
+	# the existing landed contract for every source without changing collision
+	# size, fall motion, conveyor speed, or support velocity.
+	if _landed_support_aligned:
+		return
+	var support_transform := _moving_landed_body.global_transform
+	support_transform.origin = Vector2(
+		global_position.x + _moving_landed_body.position.x,
+		global_position.y
+	)
+	PhysicsServer2D.body_set_state(
+		_moving_landed_body.get_rid(),
+		PhysicsServer2D.BODY_STATE_TRANSFORM,
+		support_transform
+	)
+	_landed_support_aligned = true

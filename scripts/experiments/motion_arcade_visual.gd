@@ -3,6 +3,7 @@ extends Node2D
 
 @export var foreground: bool = false
 @export var compact_crop: bool = false
+@export var vis02_consistent_rack: bool = false
 
 const NAVY := Color("17243a")
 const DEEP_NAVY := Color("0d1424")
@@ -45,7 +46,11 @@ func _draw_background() -> void:
 			# D3's first-row columns 4, 6, and 8 are owned by the
 			# stored/selected/released lifecycle director. Leaving the slots
 			# empty here prevents translucent duplicate products.
-			if not compact_crop and row == 0 and column in [4, 6, 8]:
+			if (
+				not compact_crop
+				and row == 0
+				and (vis02_consistent_rack or column in [4, 6, 8])
+			):
 				draw_rect(Rect2(center - Vector2(19.0, 27.0), Vector2(38.0, 54.0)), Color("142238"))
 				continue
 			var colors := [MUTED_BLUE, Color("58736f"), Color("716879")]

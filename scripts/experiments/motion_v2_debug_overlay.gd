@@ -39,7 +39,11 @@ func _draw() -> void:
 
 	for product in conveyor.active_falling_products():
 		if is_instance_valid(product):
-			_draw_centered_box(product.position, product.falling_size, FALLING_COLOR)
+			_draw_centered_box(
+				product.position,
+				product.effective_falling_collision_size(),
+				FALLING_COLOR
+			)
 			_draw_cross(product.position, PIVOT_COLOR)
 	for product in conveyor.active_landed_products():
 		if not is_instance_valid(product):
@@ -63,7 +67,13 @@ func _draw() -> void:
 	var state_text := "D3 state: unavailable"
 	if integration.background_drop_director != null:
 		var director := integration.background_drop_director
-		state_text = "D3 state: %s  selected lane: %d" % [
+		var variant_prefix := (
+			"%s  " % integration.falling_collision_variant_id()
+			if not integration.falling_collision_variant_id().is_empty()
+			else ""
+		)
+		state_text = "%sD3 state: %s  selected lane: %d" % [
+			variant_prefix,
 			director.visual_state_name(),
 			director.selected_lane_index,
 		]

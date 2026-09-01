@@ -42,3 +42,20 @@ This is a short production workflow, not an art tutorial. It assumes Startup Lab
 The approved V2 package resolves the earlier collision-envelope problem with exact integer runtime mappings. Godot uses the exported horizontal PNG sheets at nearest-neighbour filtering, stable per-frame canvases, and fixed origins. The technician is `32×48` at `1×`; falling products are `36×36` at `2×`; landed products are `36×24` at `2×`; the carriage is `48×14` at `2×`; the Refund Coin is `12×12` at `2×`; and conveyor tiles are `32×16` at `2×`.
 
 Animation changes visuals only. Existing bodies continue to own translation, collision, support velocity, score, timing, and cleanup. The D3-only integration adapter maps gameplay state to animation state and preserves red/blue/green identity from the selected background rack product through falling and landed states. Editable Aseprite masters remain outside the public repository under the established art-source policy; runtime exports and provenance documentation are committed.
+
+## VIS-02 runtime correction and collision review
+
+VIS-02 keeps the V2 integer-scale contracts while replacing the technician,
+rack, warning, falling, and landed sheets. The technician is `32×48` at `1×`;
+falling frames remain `36×36` at `2×`; landed frames remain `36×24` at `2×`.
+All runtime origins and frame canvases are stable and use nearest-neighbour
+filtering.
+
+The eight-frame rotational product intentionally does not fill a square
+collision equally in every pose. Review the actual runtime alpha bounds at
+vertical, diagonal, and horizontal frames. Prefer visible art outside collision
+over invisible lethal collision. The current internal comparison keeps the
+same `72×72` rendered art and tests centered `72×72` and `60×60` falling
+collisions; landed collision stays `72×48`. This is an isolated gameplay retest,
+not an instruction to resize future art, retune hazards, or adopt 60×60 without
+manual evidence.

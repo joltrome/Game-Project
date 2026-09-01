@@ -19,6 +19,7 @@ enum ProductState {
 @export var landed_lifetime: float = 2.0
 @export var despawn_warning_duration: float = 0.35
 @export var falling_size: Vector2 = Vector2(72.0, 72.0)
+@export var falling_collision_size: Vector2 = Vector2.ZERO
 @export var landed_size: Vector2 = Vector2(72.0, 48.0)
 
 var state: ProductState = ProductState.FALLING
@@ -69,13 +70,19 @@ func configure(
 	lifetime: float,
 	warning_duration: float,
 	drop_size: Vector2,
-	obstacle_size: Vector2
+	obstacle_size: Vector2,
+	drop_collision_size: Vector2 = Vector2.ZERO
 ) -> void:
 	fall_speed = speed
 	floor_y = floor_level
 	landed_lifetime = lifetime
 	despawn_warning_duration = warning_duration
 	falling_size = drop_size
+	falling_collision_size = (
+		drop_collision_size
+		if drop_collision_size.x > 0.0 and drop_collision_size.y > 0.0
+		else drop_size
+	)
 	landed_size = obstacle_size
 	if is_node_ready():
 		state = ProductState.FALLING
@@ -115,6 +122,12 @@ func is_falling_lethal() -> bool:
 
 func is_landed_solid() -> bool:
 	return is_landed() and not _landed_collision.disabled
+
+
+func effective_falling_collision_size() -> Vector2:
+	if falling_collision_size.x > 0.0 and falling_collision_size.y > 0.0:
+		return falling_collision_size
+	return falling_size
 
 
 func request_rolling_eviction(warning_duration: float) -> bool:
@@ -178,7 +191,7 @@ func _set_collision_mode(falling_lethal: bool, landed_solid: bool) -> void:
 
 func _update_collision_shapes() -> void:
 	var falling_rectangle := _falling_collision.shape as RectangleShape2D
-	falling_rectangle.size = falling_size
+	falling_rectangle.size = effective_falling_collision_size()
 	var landed_rectangle := _landed_collision.shape as RectangleShape2D
 	landed_rectangle.size = landed_size
 

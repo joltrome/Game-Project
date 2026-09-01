@@ -63,6 +63,7 @@ const DEFAULT_PLAYER_COLLISION_SIZE := Vector2(32.0, 48.0)
 @export var product_spawn_y: float = 176.0
 @export var floor_y: float = 584.0
 @export var product_size: Vector2 = Vector2(72.0, 72.0)
+@export var product_falling_collision_size: Vector2 = Vector2.ZERO
 @export var landed_product_size: Vector2 = Vector2(72.0, 48.0)
 
 @export_category("Timing")
@@ -504,6 +505,15 @@ func player_collision_size() -> Vector2:
 	if rectangle == null:
 		return DEFAULT_PLAYER_COLLISION_SIZE
 	return rectangle.size
+
+
+func effective_product_falling_collision_size() -> Vector2:
+	if (
+		product_falling_collision_size.x > 0.0
+		and product_falling_collision_size.y > 0.0
+	):
+		return product_falling_collision_size
+	return product_size
 
 
 func derived_sweeper_altitude() -> float:
@@ -1247,7 +1257,8 @@ func spawn_external_conveyor_product(
 		product_size,
 		landed_product_size,
 		conveyor_speed,
-		offscreen_cleanup_x
+		offscreen_cleanup_x,
+		effective_product_falling_collision_size()
 	)
 	product.player_hit.connect(_on_product_hit)
 	product.landed.connect(_on_product_landed)
@@ -2084,7 +2095,8 @@ func _drop_pending_product() -> ConveyorProduct:
 		product_size,
 		landed_product_size,
 		conveyor_speed,
-		offscreen_cleanup_x
+		offscreen_cleanup_x,
+		effective_product_falling_collision_size()
 	)
 	product.player_hit.connect(_on_product_hit)
 	product.landed.connect(_on_product_landed)

@@ -1373,6 +1373,38 @@
     text: 'The mandatory death-interactivity check passed before DEATH art was enabled: player control and processing, active hazards, active coin interaction, the collectible director, and score changes had already stopped. Twelve approved V2 runtime sheets were integrated through a D3-only visual adapter with nearest-neighbour filtering, integer scale, stable origins, deterministic red/blue/green rack-to-falling-to-landed identity, visual-only technician/product/carriage/coin/belt animation, and a default-off developer collision overlay. No collision shape or frozen gameplay value was changed. The new VIS-01 suite and all 22 existing test scripts passed; Prototype A, original Conveyor, D2, and D3 completed headless launches. Three deterministic D3 seeds retained six-drop cadence with first warnings at 9.8167 seconds and a 9.20-second maximum warning gap. The final single-threaded Web export loaded through localhost, restart worked, and the browser console contained zero warnings and zero errors. Technician prominence, the perceived depth transition, rack-warning and carriage readability at speed, clutter, identity, and human perceived-hitbox fairness remain unverified; this result is not a claim of final art quality.'
   };
 
+  const vm050Vis02CollisionEvidence = {
+    id: 'evidence-vm-0.5.0-vis-02-rotational-envelope-conflict',
+    type: 'Evidence',
+    date: '2026-09-02',
+    source: 'VIS-02 Work envelope study and runtime alpha measurement',
+    text: 'The approved VIS-02 eight-frame rotational product art uses approximate rendered envelopes of 52×70 in vertical poses, 64×64 diagonally, and 70×52 horizontally. Against the frozen 72×72 falling collision, the runtime PNG measurement reproduces a maximum 10-pixel invisible lethal margin at vertical or horizontal orientations. This exceeds the approximately four-pixel review target. The revised technician, common rack baseline, machine warning, landed products, and rotational art were approved for integration; the 72×72 falling collision was not approved as a final choice.'
+  };
+
+  const vm050Vis02RetestDecision = {
+    id: 'decision-vm-0.5.0-vis-02-falling-collision-retest',
+    type: 'Decision',
+    date: '2026-09-02',
+    source: 'Startup Lab VIS-02 runtime follow-up approval',
+    text: 'Integrate the approved VIS-02 visual corrections in isolated D3 builds and run an internal 72×72 versus centered 60×60 falling-lethal collision comparison. Both builds must share the exact art, trajectory, speed, warning, scheduler, source logic, player, conveyor, carriage, coin, landed 72×48 state, 60-second round, and D3 cadence. Correct the source-dependent landed-Y discrepancy as an integration bug using the invariant that the landed collision bottom equals the common conveyor surface. Do not compensate for the smaller collision, select a winner, change D2 or Prototype A, or add unrelated content.'
+  };
+
+  const vm050Vis02RetestHypothesis = {
+    id: 'hypothesis-vm-0.5.0-vis-02-centered-60-collision',
+    type: 'Hypothesis',
+    date: '2026-09-02',
+    source: 'VM-0.5.0-VIS-02-RT collision proposition',
+    text: 'A centered 60×60 falling collision may preserve the recognizable eight-frame rotational drink art while keeping invisible lethal margins near or below four pixels and retaining sufficient falling-product pressure. Because this reduces collision area from 5,184 to 3,600 square pixels, approximately 31 percent, whether it is materially too forgiving remains unverified and requires alternating internal play.'
+  };
+
+  const vm050Vis02RetestResult = {
+    id: 'result-vm-0.5.0-vis-02-runtime-retest',
+    type: 'Result',
+    date: '2026-09-02',
+    source: 'VM-0.5.0-VIS-02-RT implementation and technical validation',
+    text: 'Eleven approved VIS-02 PNG sheets now supply the chunky 32×48 technician, ten visually consistent non-colliding rack positions, selected/release/reset rack states, eight-frame 0.60-second rotational products, eight-frame machine warning, and revised 72×48 landed products. Two lightweight scenes expose VIS02-FALL-72 and VIS02-FALL-60 while sharing all gameplay code and values; only the falling lethal collision differs. Runtime alpha measurement found maximum invisible lethal margins of 10 pixels for 72×72 and 4 pixels for 60×60; the 60×60 collision permits at most 6 pixels of forgiving visible raster overhang. The landed-source bug came from the child AnimatableBody2D retaining its disabled release transform while the parent Area2D settled; a one-time physics-server transform correction now preserves synchronized moving-platform behavior and places both normal and D3 landed collision bottoms exactly at conveyor Y=584, with identical sprite and support Y. The targeted suite passed. One aggregate project run passed 22 of 23 scripts; the remaining pre-existing natural-offer lifecycle simulation missed one authored route for seed 1701, then passed independently without a code change. Prototype A, original Conveyor, D2, VIS-01 D3, and both VIS-02 scenes completed 180-frame headless launches. Both single-threaded Web builds exported, loaded locally with their correct IDs and 1280×720 display, and logged zero browser warnings/errors. The screenshots and tests establish geometry and implementation behavior only; they do not establish human fairness, difficulty, readability, preference, or a winning collision.'
+  };
+
   const vm050CoinClusteringHypothesis = {
     id: 'hypothesis-vm-0.5.0-pending-coin-route-footprint',
     type: 'Hypothesis',
@@ -1481,6 +1513,10 @@
     vm050V2IntegrationDecision,
     vm050V2IntegrationHypothesis,
     vm050V2IntegrationResult,
+    vm050Vis02CollisionEvidence,
+    vm050Vis02RetestDecision,
+    vm050Vis02RetestHypothesis,
+    vm050Vis02RetestResult,
     vm050CoinClusteringHypothesis
   ];
 

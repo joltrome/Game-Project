@@ -8,6 +8,7 @@ enum ProductVariant {
 }
 
 const ASSET_ROOT := "res://assets/vm050_d3_v2/"
+const VIS02_ASSET_ROOT := "res://assets/vm050_d3_vis02/"
 const TECHNICIAN_TEXTURE := preload(
 	ASSET_ROOT + "VM050_D3_V2_technician_runtime_sheet.png"
 )
@@ -36,6 +37,27 @@ const RACK_TEXTURE := preload(
 const WARNING_TEXTURE := preload(
 	ASSET_ROOT + "VM050_D3_V2_warning_column_sheet.png"
 )
+const VIS02_TECHNICIAN_TEXTURE := preload(
+	VIS02_ASSET_ROOT + "VM050_D3_VIS02_technician_chunky_runtime_sheet.png"
+)
+const VIS02_FALLING_TEXTURES: Array[Texture2D] = [
+	preload(VIS02_ASSET_ROOT + "VM050_D3_VIS02_falling_red_soda_runtime_sheet.png"),
+	preload(VIS02_ASSET_ROOT + "VM050_D3_VIS02_falling_blue_coffee_runtime_sheet.png"),
+	preload(VIS02_ASSET_ROOT + "VM050_D3_VIS02_falling_green_sports_runtime_sheet.png"),
+]
+const VIS02_LANDED_TEXTURES: Array[Texture2D] = [
+	preload(VIS02_ASSET_ROOT + "VM050_D3_VIS02_landed_red_soda_runtime_sheet.png"),
+	preload(VIS02_ASSET_ROOT + "VM050_D3_VIS02_landed_blue_coffee_runtime_sheet.png"),
+	preload(VIS02_ASSET_ROOT + "VM050_D3_VIS02_landed_green_sports_runtime_sheet.png"),
+]
+const VIS02_RACK_TEXTURES: Array[Texture2D] = [
+	preload(VIS02_ASSET_ROOT + "VM050_D3_VIS02_rack_slot_red_sheet.png"),
+	preload(VIS02_ASSET_ROOT + "VM050_D3_VIS02_rack_slot_blue_sheet.png"),
+	preload(VIS02_ASSET_ROOT + "VM050_D3_VIS02_rack_slot_green_sheet.png"),
+]
+const VIS02_WARNING_TEXTURE := preload(
+	VIS02_ASSET_ROOT + "VM050_D3_VIS02_drop_warning_runtime_sheet.png"
+)
 
 const TECHNICIAN_FRAME_SIZE := Vector2i(32, 48)
 const FALLING_FRAME_SIZE := Vector2i(36, 36)
@@ -44,21 +66,26 @@ const CARRIAGE_FRAME_SIZE := Vector2i(48, 14)
 const COIN_FRAME_SIZE := Vector2i(12, 12)
 const BELT_FRAME_SIZE := Vector2i(32, 16)
 const RACK_FRAME_SIZE := Vector2i(72, 44)
+const VIS02_RACK_FRAME_SIZE := Vector2i(28, 38)
 const WARNING_FRAME_SIZE := Vector2i(24, 96)
 
 const PRODUCT_VARIANT_NAMES := ["red_soda", "blue_coffee", "green_sports"]
 const RACK_SELECTED_FRAMES := [3, 1, 2]
 const RACK_ALIGNMENT_OFFSETS := [23.0, 9.0, -7.0]
 const BELT_TILE_COUNT := 14
+const VIS02_RACK_COLUMN_COUNT := 10
+const VIS02_ACTIVE_RACK_COLUMNS := [4, 6, 8]
 
 var conveyor: ConveyorPrototype
 var background_drop_director: MotionBackgroundDropDirector
 var debug_overlay_enabled: bool = false
+var vis02_enabled: bool = false
 
 var _technician_anchor: Node2D
 var _technician_sprite: AnimatedSprite2D
 var _debug_overlay: MotionV2DebugOverlay
 var _rack_sprites: Array[AnimatedSprite2D] = []
+var _all_rack_sprites: Array[AnimatedSprite2D] = []
 var _d3_warning_sprite: AnimatedSprite2D
 var _ordinary_warning_sprite: AnimatedSprite2D
 var _belt_sprites: Array[AnimatedSprite2D] = []
@@ -67,6 +94,7 @@ var _landed_frames: Array[SpriteFrames] = []
 var _carriage_frames: SpriteFrames
 var _coin_frames: SpriteFrames
 var _rack_frames: SpriteFrames
+var _rack_variant_frames: Array[SpriteFrames] = []
 var _warning_frames: SpriteFrames
 var _belt_frames: SpriteFrames
 var _ordinary_variant_cursor: int = 0
@@ -124,9 +152,16 @@ func runtime_contract_matches() -> bool:
 	if conveyor == null:
 		return false
 	var collectibles := conveyor.get_node_or_null("CollectibleDirector") as CollectibleDirector
+	var falling_collision := conveyor.effective_product_falling_collision_size()
+	var collision_matches := (
+		falling_collision in [Vector2(72.0, 72.0), Vector2(60.0, 60.0)]
+		if vis02_enabled
+		else falling_collision == Vector2(72.0, 72.0)
+	)
 	return (
 		conveyor.player_collision_size() == Vector2(32.0, 48.0)
 		and conveyor.product_size == Vector2(72.0, 72.0)
+		and collision_matches
 		and conveyor.landed_product_size == Vector2(72.0, 48.0)
 		and conveyor.sweeper_size == Vector2(96.0, 28.0)
 		and collectibles != null
@@ -157,6 +192,24 @@ func rack_sprite_for_lane(lane_index: int) -> AnimatedSprite2D:
 	if lane_index < 0 or lane_index >= _rack_sprites.size():
 		return null
 	return _rack_sprites[lane_index]
+
+
+func all_rack_sprites() -> Array[AnimatedSprite2D]:
+	return _all_rack_sprites.duplicate()
+
+
+func runtime_profile_name() -> String:
+	return "VIS-02" if vis02_enabled else "V2"
+
+
+func falling_collision_variant_id() -> String:
+	if not vis02_enabled:
+		return ""
+	return (
+		"VIS02-FALL-60"
+		if conveyor.effective_product_falling_collision_size() == Vector2(60.0, 60.0)
+		else "VIS02-FALL-72"
+	)
 
 
 func d3_warning_sprite() -> AnimatedSprite2D:
@@ -213,21 +266,25 @@ static func technician_animation_for_state(
 
 
 func _build_frame_resources() -> void:
+	var falling_textures := VIS02_FALLING_TEXTURES if vis02_enabled else FALLING_TEXTURES
+	var landed_textures := VIS02_LANDED_TEXTURES if vis02_enabled else LANDED_TEXTURES
+	var falling_last_frame := 7 if vis02_enabled else 3
+	var falling_frame_seconds := 0.075 if vis02_enabled else 0.085
 	_falling_frames = [
-		_make_frames(FALLING_TEXTURES[0], FALLING_FRAME_SIZE, [
-			_animation(&"fall_tumble", 0, 3, 1.0 / 0.085, true),
+		_make_frames(falling_textures[0], FALLING_FRAME_SIZE, [
+			_animation(&"fall_tumble", 0, falling_last_frame, 1.0 / falling_frame_seconds, true),
 		]),
-		_make_frames(FALLING_TEXTURES[1], FALLING_FRAME_SIZE, [
-			_animation(&"fall_tumble", 0, 3, 1.0 / 0.085, true),
+		_make_frames(falling_textures[1], FALLING_FRAME_SIZE, [
+			_animation(&"fall_tumble", 0, falling_last_frame, 1.0 / falling_frame_seconds, true),
 		]),
-		_make_frames(FALLING_TEXTURES[2], FALLING_FRAME_SIZE, [
-			_animation(&"fall_tumble", 0, 3, 1.0 / 0.085, true),
+		_make_frames(falling_textures[2], FALLING_FRAME_SIZE, [
+			_animation(&"fall_tumble", 0, falling_last_frame, 1.0 / falling_frame_seconds, true),
 		]),
 	]
 	_landed_frames = [
-		_make_landed_frames(LANDED_TEXTURES[0]),
-		_make_landed_frames(LANDED_TEXTURES[1]),
-		_make_landed_frames(LANDED_TEXTURES[2]),
+		_make_landed_frames(landed_textures[0]),
+		_make_landed_frames(landed_textures[1]),
+		_make_landed_frames(landed_textures[2]),
 	]
 	_carriage_frames = _make_frames(CARRIAGE_TEXTURE, CARRIAGE_FRAME_SIZE, [
 		_animation(&"telegraph", 0, 2, 1.0 / 0.11, true),
@@ -240,20 +297,44 @@ func _build_frame_resources() -> void:
 	_belt_frames = _make_frames(BELT_TEXTURE, BELT_FRAME_SIZE, [
 		_animation(&"belt_loop", 0, 3, 10.0, true),
 	])
-	_rack_frames = _make_frames(RACK_TEXTURE, RACK_FRAME_SIZE, [
-		_animation(&"stored", 0, 0, 1.0, false),
-		_animation(&"selected_red", RACK_SELECTED_FRAMES[0], RACK_SELECTED_FRAMES[0], 1.0, false),
-		_animation(&"selected_blue", RACK_SELECTED_FRAMES[1], RACK_SELECTED_FRAMES[1], 1.0, false),
-		_animation(&"selected_green", RACK_SELECTED_FRAMES[2], RACK_SELECTED_FRAMES[2], 1.0, false),
-		_animation(&"release", 4, 5, 10.0, false),
-	])
-	_warning_frames = _make_frames(WARNING_TEXTURE, WARNING_FRAME_SIZE, [
-		_animation(&"warning", 0, 3, 10.0, true),
-		_animation(&"release", 4, 5, 10.0, false),
-	])
+	if vis02_enabled:
+		_rack_variant_frames = []
+		for texture in VIS02_RACK_TEXTURES:
+			_rack_variant_frames.append(_make_frames(texture, VIS02_RACK_FRAME_SIZE, [
+				_timed_animation(&"normal", 0, 0, [0.18], false),
+				_timed_animation(&"selected", 1, 4, [0.10, 0.10, 0.10, 0.10], true),
+				_timed_animation(&"release", 5, 6, [0.10, 0.14], false),
+				_timed_animation(&"reset", 7, 7, [0.18], false),
+			]))
+		_warning_frames = _make_frames(VIS02_WARNING_TEXTURE, WARNING_FRAME_SIZE, [
+			_timed_animation(
+				&"machine_warning",
+				0,
+				7,
+				[0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10],
+				true
+			),
+		])
+	else:
+		_rack_frames = _make_frames(RACK_TEXTURE, RACK_FRAME_SIZE, [
+			_animation(&"stored", 0, 0, 1.0, false),
+			_animation(&"selected_red", RACK_SELECTED_FRAMES[0], RACK_SELECTED_FRAMES[0], 1.0, false),
+			_animation(&"selected_blue", RACK_SELECTED_FRAMES[1], RACK_SELECTED_FRAMES[1], 1.0, false),
+			_animation(&"selected_green", RACK_SELECTED_FRAMES[2], RACK_SELECTED_FRAMES[2], 1.0, false),
+			_animation(&"release", 4, 5, 10.0, false),
+		])
+		_warning_frames = _make_frames(WARNING_TEXTURE, WARNING_FRAME_SIZE, [
+			_animation(&"warning", 0, 3, 10.0, true),
+			_animation(&"release", 4, 5, 10.0, false),
+		])
 
 
 func _make_landed_frames(texture: Texture2D) -> SpriteFrames:
+	if vis02_enabled:
+		return _make_frames(texture, LANDED_FRAME_SIZE, [
+			_timed_animation(&"impact", 0, 1, [0.07, 0.08], false),
+			_timed_animation(&"settled", 2, 3, [0.16, 0.16], true),
+		])
 	return _make_frames(texture, LANDED_FRAME_SIZE, [
 		_animation(&"impact", 0, 1, 1.0 / 0.075, false),
 		_animation(&"settled", 2, 3, 1.0 / 0.16, true),
@@ -273,6 +354,23 @@ func _animation(
 		"last": last_frame,
 		"fps": fps,
 		"loop": looping,
+	}
+
+
+func _timed_animation(
+	name: StringName,
+	first_frame: int,
+	last_frame: int,
+	durations: Array,
+	looping: bool
+) -> Dictionary:
+	return {
+		"name": name,
+		"first": first_frame,
+		"last": last_frame,
+		"fps": 1.0,
+		"loop": looping,
+		"durations": durations,
 	}
 
 
@@ -297,7 +395,11 @@ func _make_frames(
 				frame_size.x,
 				frame_size.y
 			)
-			frames.add_frame(animation_name, atlas)
+			var durations: Array = definition.get("durations", [])
+			var duration := 1.0
+			if not durations.is_empty():
+				duration = float(durations[frame_index - int(definition.first)])
+			frames.add_frame(animation_name, atlas, duration)
 	return frames
 
 
@@ -318,16 +420,28 @@ func _install_technician() -> void:
 	_technician_anchor.position = Vector2(0.0, 24.0)
 	_technician_anchor.z_index = 20
 	player.add_child(_technician_anchor)
-	var frames := _make_frames(TECHNICIAN_TEXTURE, TECHNICIAN_FRAME_SIZE, [
-		_animation(&"idle", 0, 2, 1.0 / 0.16, true),
-		_animation(&"run", 3, 8, 1.0 / 0.08, true),
-		_animation(&"jump", 9, 10, 1.0 / 0.12, true),
-		_animation(&"fall", 11, 12, 1.0 / 0.12, true),
-		_animation(&"land", 13, 15, 1.0 / 0.087, false),
-		_animation(&"death", 16, 18, 1.0 / 0.14, false),
-	])
+	var technician_texture := VIS02_TECHNICIAN_TEXTURE if vis02_enabled else TECHNICIAN_TEXTURE
+	var frames := (
+		_make_frames(technician_texture, TECHNICIAN_FRAME_SIZE, [
+			_timed_animation(&"idle", 0, 2, [0.16, 0.16, 0.16], true),
+			_timed_animation(&"run", 3, 8, [0.08, 0.08, 0.08, 0.08, 0.08, 0.08], true),
+			_timed_animation(&"jump", 9, 10, [0.12, 0.12], true),
+			_timed_animation(&"fall", 11, 12, [0.12, 0.12], true),
+			_timed_animation(&"land", 13, 15, [0.07, 0.07, 0.12], false),
+			_timed_animation(&"death", 16, 18, [0.14, 0.14, 0.14], false),
+		])
+		if vis02_enabled
+		else _make_frames(technician_texture, TECHNICIAN_FRAME_SIZE, [
+			_animation(&"idle", 0, 2, 1.0 / 0.16, true),
+			_animation(&"run", 3, 8, 1.0 / 0.08, true),
+			_animation(&"jump", 9, 10, 1.0 / 0.12, true),
+			_animation(&"fall", 11, 12, 1.0 / 0.12, true),
+			_animation(&"land", 13, 15, 1.0 / 0.087, false),
+			_animation(&"death", 16, 18, 1.0 / 0.14, false),
+		])
+	)
 	_technician_sprite = _new_sprite(frames)
-	_technician_sprite.name = "V2Technician"
+	_technician_sprite.name = "VIS02Technician" if vis02_enabled else "V2Technician"
 	_technician_sprite.centered = false
 	_technician_sprite.position = Vector2(-16.0, -48.0)
 	_technician_anchor.add_child(_technician_sprite)
@@ -357,18 +471,23 @@ func _install_warning_visuals() -> void:
 	(conveyor.get_node("SourceRack/SourceCarriage/WarningColumn") as CanvasItem).visible = false
 	(conveyor.get_node("SourceRack/SourceCarriage/WarningText") as CanvasItem).visible = false
 	_ordinary_warning_sprite = _new_sprite(_warning_frames, 4.0)
-	_ordinary_warning_sprite.name = "V2OrdinaryWarning"
+	_ordinary_warning_sprite.name = (
+		"VIS02OrdinaryWarning" if vis02_enabled else "V2OrdinaryWarning"
+	)
 	_ordinary_warning_sprite.position = Vector2(0.0, 266.0)
 	_ordinary_warning_sprite.z_index = 3
 	_ordinary_warning_sprite.visible = false
 	source_carriage.add_child(_ordinary_warning_sprite)
 
 	_d3_warning_sprite = _new_sprite(_warning_frames, 4.0)
-	_d3_warning_sprite.name = "V2BackgroundWarning"
+	_d3_warning_sprite.name = (
+		"VIS02BackgroundWarning" if vis02_enabled else "V2BackgroundWarning"
+	)
 	_d3_warning_sprite.position.y = 392.0
 	_d3_warning_sprite.z_index = 3
 	_d3_warning_sprite.visible = false
-	_d3_warning_sprite.animation_finished.connect(_on_d3_warning_animation_finished)
+	if not vis02_enabled:
+		_d3_warning_sprite.animation_finished.connect(_on_d3_warning_animation_finished)
 	conveyor.add_child(_d3_warning_sprite)
 
 
@@ -378,6 +497,22 @@ func _install_rack_visuals() -> void:
 	# The original director keeps processing and emitting its frozen schedule;
 	# only its code-drawn presentation is hidden.
 	background_drop_director.visible = false
+	if vis02_enabled:
+		var active_lane_by_column := {4: 0, 6: 1, 8: 2}
+		for column in range(VIS02_RACK_COLUMN_COUNT):
+			var active_lane := int(active_lane_by_column.get(column, -1))
+			var variant := active_lane if active_lane >= 0 else posmod(column, ProductVariant.size())
+			var rack := _new_sprite(_rack_variant_frames[variant])
+			rack.name = "VIS02RackColumn%d" % column
+			rack.position = Vector2(166.0 + column * 60.0, 192.0)
+			rack.z_index = -8
+			rack.animation_finished.connect(_on_rack_animation_finished.bind(rack))
+			rack.play(&"normal")
+			conveyor.add_child(rack)
+			_all_rack_sprites.append(rack)
+			if active_lane >= 0:
+				_rack_sprites.append(rack)
+		return
 	for lane_index in range(background_drop_director.candidate_lane_x.size()):
 		var variant := posmod(lane_index, ProductVariant.size())
 		var rack := _new_sprite(_rack_frames)
@@ -391,6 +526,7 @@ func _install_rack_visuals() -> void:
 		rack.play(&"stored")
 		conveyor.add_child(rack)
 		_rack_sprites.append(rack)
+		_all_rack_sprites.append(rack)
 
 
 func _connect_runtime_signals() -> void:
@@ -496,10 +632,33 @@ func _ensure_product_landed_visual(product: ConveyorProduct) -> void:
 	var landed_sprite := product_landed_sprite(product)
 	if falling_sprite == null or landed_sprite == null:
 		return
+	_normalize_landed_alignment(product, landed_sprite)
 	falling_sprite.visible = false
 	if not landed_sprite.visible:
 		landed_sprite.visible = true
 		landed_sprite.play(&"impact")
+
+
+func _normalize_landed_alignment(
+	product: ConveyorProduct,
+	landed_sprite: AnimatedSprite2D
+) -> void:
+	# Both ordinary and D3 products share this exact settled invariant. Keeping
+	# it here prevents source timing or presentation state from offsetting the
+	# landed collision, sprite origin, or conveyor contact plane.
+	var landed_body := product.get_node("LandedBody") as AnimatableBody2D
+	var landed_collision := (
+		product.get_node("LandedBody/CollisionShape2D") as CollisionShape2D
+	)
+	product.position.y = conveyor.floor_y - product.landed_size.y * 0.5
+	landed_collision.position.y = 0.0
+	landed_sprite.position.y = 0.0
+
+
+func landed_collision_bottom_y(product: ConveyorProduct) -> float:
+	var collision := product.get_node("LandedBody/CollisionShape2D") as CollisionShape2D
+	var rectangle := collision.shape as RectangleShape2D
+	return collision.global_position.y + rectangle.size.y * 0.5
 
 
 func _ensure_carriage_visual(sweeper: AirSweeper) -> void:
@@ -618,7 +777,9 @@ func _update_ordinary_warning() -> void:
 	var warning_visible := conveyor.warning_is_visible()
 	if warning_visible and not _ordinary_warning_was_visible:
 		_ordinary_warning_sprite.visible = true
-		_ordinary_warning_sprite.play(&"warning")
+		_ordinary_warning_sprite.play(
+			&"machine_warning" if vis02_enabled else &"warning"
+		)
 	elif not warning_visible:
 		_ordinary_warning_sprite.visible = false
 	_ordinary_warning_was_visible = warning_visible
@@ -680,17 +841,23 @@ func _on_d3_warning_started(
 	lane_x: float,
 	_started_at: float
 ) -> void:
-	_reset_rack_visuals()
+	_reset_rack_visuals(false)
 	if lane_index >= 0 and lane_index < _rack_sprites.size():
-		var selected_name: StringName = [
-			&"selected_red",
-			&"selected_blue",
-			&"selected_green",
-		][posmod(lane_index, ProductVariant.size())]
+		var selected_name: StringName = (
+			&"selected"
+			if vis02_enabled
+			else [
+				&"selected_red",
+				&"selected_blue",
+				&"selected_green",
+			][posmod(lane_index, ProductVariant.size())]
+		)
 		_rack_sprites[lane_index].play(selected_name)
 	_d3_warning_sprite.position.x = lane_x
 	_d3_warning_sprite.visible = true
-	_d3_warning_sprite.play(&"warning")
+	_d3_warning_sprite.play(
+		&"machine_warning" if vis02_enabled else &"warning"
+	)
 
 
 func _on_d3_product_released(
@@ -705,27 +872,39 @@ func _on_d3_product_released(
 		_ensure_product_visual(product, variant)
 	if lane_index >= 0 and lane_index < _rack_sprites.size():
 		_rack_sprites[lane_index].play(&"release")
-	_d3_warning_sprite.play(&"release")
+	if vis02_enabled:
+		_d3_warning_sprite.visible = false
+	else:
+		_d3_warning_sprite.play(&"release")
 
 
 func _on_d3_visual_cycle_reset(_schedule_index: int, _reset_at: float) -> void:
-	_reset_rack_visuals()
+	_reset_rack_visuals(true)
 	_d3_warning_sprite.visible = false
 
 
 func _on_d3_sequence_stopped(_outcome: String, _stopped_at: float) -> void:
-	_reset_rack_visuals()
+	_reset_rack_visuals(false)
 	_d3_warning_sprite.visible = false
 
 
-func _reset_rack_visuals() -> void:
+func _reset_rack_visuals(play_reset: bool = false) -> void:
 	for rack in _rack_sprites:
-		rack.play(&"stored")
+		rack.play(
+			&"reset" if vis02_enabled and play_reset
+			else &"normal" if vis02_enabled
+			else &"stored"
+		)
 
 
 func _on_d3_warning_animation_finished() -> void:
 	if _d3_warning_sprite.animation == &"release":
 		_d3_warning_sprite.visible = false
+
+
+func _on_rack_animation_finished(rack: AnimatedSprite2D) -> void:
+	if is_instance_valid(rack) and rack.animation == &"reset":
+		rack.play(&"normal")
 
 
 func _on_landed_animation_finished(sprite: AnimatedSprite2D) -> void:

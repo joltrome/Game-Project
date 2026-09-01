@@ -7,6 +7,8 @@ const CONVEYOR_SCENE := preload("res://scenes/prototypes/conveyor.tscn")
 @export var internal_size := Vector2i(1152, 480)
 @export var build_id_override: String = ""
 @export var v2_runtime_art_enabled: bool = false
+@export var vis02_runtime_art_enabled: bool = false
+@export var vis02_falling_collision_size := Vector2(72.0, 72.0)
 @export var v2_debug_overlay_enabled: bool = false
 
 var conveyor: ConveyorPrototype
@@ -34,7 +36,7 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if conveyor == null:
 		return
-	if v2_runtime_art_enabled:
+	if v2_runtime_art_enabled or vis02_runtime_art_enabled:
 		return
 	_apply_runtime_hazard_skin()
 
@@ -66,6 +68,16 @@ func uses_nearest_filtering() -> bool:
 	)
 
 
+func falling_collision_variant_id() -> String:
+	if not vis02_runtime_art_enabled:
+		return ""
+	return (
+		"VIS02-FALL-60"
+		if vis02_falling_collision_size == Vector2(60.0, 60.0)
+		else "VIS02-FALL-72"
+	)
+
+
 func _update_contained_viewport() -> void:
 	if not is_node_ready():
 		return
@@ -76,6 +88,8 @@ func _update_contained_viewport() -> void:
 
 func _build_variant() -> void:
 	conveyor = CONVEYOR_SCENE.instantiate() as ConveyorPrototype
+	if vis02_runtime_art_enabled:
+		conveyor.product_falling_collision_size = vis02_falling_collision_size
 	_internal_viewport.add_child(conveyor)
 	_configure_camera_and_hud()
 	_install_project_owned_visuals()
@@ -83,18 +97,19 @@ func _build_variant() -> void:
 		background_drop_director = MotionBackgroundDropDirector.new()
 		background_drop_director.name = "BackgroundDropDirector"
 		conveyor.add_child(background_drop_director)
-	if v2_runtime_art_enabled:
+	if v2_runtime_art_enabled or vis02_runtime_art_enabled:
 		v2_visual_integration = MotionV2VisualIntegration.new()
 		v2_visual_integration.name = "V2VisualIntegration"
 		v2_visual_integration.conveyor = conveyor
 		v2_visual_integration.background_drop_director = background_drop_director
+		v2_visual_integration.vis02_enabled = vis02_runtime_art_enabled
 		v2_visual_integration.debug_overlay_enabled = v2_debug_overlay_enabled
 		conveyor.add_child(v2_visual_integration)
 	instrumentation = MotionLocalInstrumentation.new()
 	instrumentation.name = "MotionLocalInstrumentation"
 	instrumentation.variant_id = variant_id
 	conveyor.add_child(instrumentation)
-	if not v2_runtime_art_enabled:
+	if not v2_runtime_art_enabled and not vis02_runtime_art_enabled:
 		_apply_runtime_hazard_skin()
 
 
@@ -116,7 +131,11 @@ func _configure_camera_and_hud() -> void:
 	build_label.offset_right = 286.0
 
 	var experiment_label := conveyor.get_node("HUD/ExperimentId") as Label
-	experiment_label.text = "INTERNAL MOTION STUDY  %s" % variant_id
+	experiment_label.text = (
+		"INTERNAL VIS-02 COLLISION RETEST  %s" % falling_collision_variant_id()
+		if vis02_runtime_art_enabled
+		else "INTERNAL MOTION STUDY  %s" % variant_id
+	)
 	experiment_label.add_theme_color_override("font_color", Color("2ca6a4"))
 	experiment_label.offset_right = 286.0
 
@@ -161,6 +180,7 @@ func _install_project_owned_visuals() -> void:
 	var background := MotionArcadeVisual.new()
 	background.name = "MotionArcadeBackground"
 	background.compact_crop = variant_id == "D2"
+	background.vis02_consistent_rack = vis02_runtime_art_enabled
 	conveyor.add_child(background)
 	var foreground := MotionArcadeVisual.new()
 	foreground.name = "MotionArcadeForeground"
