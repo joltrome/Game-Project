@@ -23,6 +23,8 @@ run/main_scene.motion_d3="res://scenes/experiments/motion_d3.tscn"
 run/main_scene.motion_d3_stress="res://scenes/experiments/motion_d3.tscn"
 run/main_scene.vis02_fall72="res://scenes/experiments/motion_vis02_fall72.tscn"
 run/main_scene.vis02_fall60="res://scenes/experiments/motion_vis02_fall60.tscn"
+run/main_scene.vis03_debug="res://scenes/experiments/motion_vis03_debug.tscn"
+run/main_scene.vis03_test="res://scenes/experiments/motion_vis03_test.tscn"
 config/features=PackedStringArray("4.7")
 
 [autoload]

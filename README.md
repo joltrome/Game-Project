@@ -11,9 +11,9 @@ No daily challenges, leaderboards, ads, cosmetics, accounts, monetization, meta-
 
 ## Current state
 
-**Build:** VM-0.4.7 external-playtest cleanup baseline
+**Build:** VM-0.5.0-VIS-03-D3-TEST internal runtime candidate
 
-**Phase:** VM-0.5.0-VIS-02 internal falling-collision comparison awaiting Startup Lab manual review
+**Phase:** VM-0.5.0-VIS-03 runtime motion/readability review awaiting Startup Lab
 **Gameplay evidence:** A broader external playtest reported positive difficulty and replay reactions, and at least one tester deliberately pursued Refund Coins, accepted extra risk, and died because of that choice. This supports the intended survival-versus-score tension strongly enough to freeze the gray-box loop, subject to the limitations recorded in the roadmap. One tester missed the countdown, but the issue was not independently repeated after VM-0.4.4, so the timer was not redesigned again.
 
 Prototype B is now the primary direction. Prototype A remains preserved as a frozen comparison baseline and a possible future machine-jam event; that event is not implemented. The source project defaults to Prototype B for editor F5 testing.
@@ -21,7 +21,7 @@ Prototype B is now the primary direction. Prototype A remains preserved as a fro
 Prototype A is frozen on `master` and tag `VM-0.2.3-A-R1`. Its scene remains available at `scenes/prototypes/arena.tscn`.
 Prototype B's first externally preferred baseline is tagged `VM-0.3.4-B-EXTERNAL-PREFERRED`. The accepted endless collectible baseline is tagged `VM-0.4.0`. VM-0.4.1 defaults to a configurable 60-second round with Refund Coins as the only score; an exported `fixed_round_enabled` development setting can restore endless behavior.
 
-The visual experiment lineage contains two isolated wrappers around the unchanged conveyor scene. D2 remains the unmodified 1152×480 fallback. D3 remains the 1152×648 close-up with six recurring, safety-validated background drops per deterministic 60-second run. VIS-02 integrates the approved chunky technician, common rack system, machine warning, revised landed products, and eight-frame rotational product art in two lightweight scenes. Their only intended gameplay difference is a 72×72 versus centered 60×60 falling-lethal collision. The project-wide F5 scene remains the frozen conveyor baseline.
+The visual experiment lineage contains isolated wrappers around the unchanged conveyor scene. D2 remains the unmodified 1152×480 fallback. D3 remains the 1152×648 close-up with six recurring, safety-validated background drops per deterministic 60-second run. Startup Lab selected the centered 60×60 VIS-02 falling collision. VIS-03 adds the approved rigid-block technician, coherent full rack and lighter lane-local warning in separate clean/debug scenes without retuning gameplay. The project-wide F5 scene remains the frozen conveyor baseline.
 
 ## Open locally
 
@@ -108,6 +108,54 @@ review. Player movement, the 60-second round, hazards, Refund Coin value and
 scoring, countdown, core offer system, conveyor speed curve, D3 cadence, and
 Sweeper behavior remain frozen except for a reproducible bug or fairness
 failure.
+
+## VM-0.5.0-VIS-03 runtime candidate
+
+Run either scene with F6:
+
+- Clean Startup Lab candidate:
+  `scenes/experiments/motion_vis03_test.tscn`
+- Developer/debug candidate:
+  `scenes/experiments/motion_vis03_debug.tscn`
+
+The clean build hides internal labels, local instrumentation, and overlay
+access. It shows only a compact ASCII control hint for four seconds. The debug
+build uses the same gameplay values and retains F8 collision/pivot/D3-state
+diagnostics. Both select the centered 60×60 falling collision and unchanged
+72×48 landed collision.
+
+Run the targeted suite:
+
+```bash
+/Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --headless --log-file /tmp/vms-vis03-runtime.log --path . --script res://tests/test_vm050_vis03_runtime_integration.gd
+```
+
+Export the single-threaded Web builds:
+
+```bash
+mkdir -p builds/web-vis03-debug builds/web-vis03-test
+/Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --headless --log-file /tmp/vms-vis03-debug-export.log --path . --export-release "Web VIS-03 Debug" builds/web-vis03-debug/index.html
+/Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --headless --log-file /tmp/vms-vis03-test-export.log --path . --export-release "Web VIS-03 Test" builds/web-vis03-test/index.html
+```
+
+Serve locally:
+
+```bash
+python3 -m http.server 8130 --bind 127.0.0.1 --directory builds/web-vis03-debug
+python3 -m http.server 8131 --bind 127.0.0.1 --directory builds/web-vis03-test
+```
+
+Prepared internal archives and evidence recordings:
+
+- `builds/VM-0.5.0-VIS-03-D3-DEBUG-web.zip`
+- `builds/VM-0.5.0-VIS-03-D3-TEST-web.zip`
+- `builds/VM-0.5.0-VIS-03-D3-TEST-motion.mp4`
+- `builds/VM-0.5.0-VIS-03-D3-TEST-warning.mp4`
+
+Generated builds and recordings remain ignored and have not been uploaded.
+See [`docs/vm050-vis03-runtime-integration.md`](docs/vm050-vis03-runtime-integration.md)
+for exact art mapping, validation results, screenshots, and the four-run manual
+review protocol.
 
 ## VM-0.5.0-VIS-02 collision comparison
 

@@ -2,6 +2,7 @@ class_name MotionExperimentShell
 extends Control
 
 const CONVEYOR_SCENE := preload("res://scenes/prototypes/conveyor.tscn")
+const VIS03_FALLING_COLLISION_SIZE := Vector2(60.0, 60.0)
 
 @export_enum("D2", "D3") var variant_id: String = "D2"
 @export var internal_size := Vector2i(1152, 480)
@@ -9,12 +10,18 @@ const CONVEYOR_SCENE := preload("res://scenes/prototypes/conveyor.tscn")
 @export var v2_runtime_art_enabled: bool = false
 @export var vis02_runtime_art_enabled: bool = false
 @export var vis02_falling_collision_size := Vector2(72.0, 72.0)
+@export var vis03_runtime_art_enabled: bool = false
 @export var v2_debug_overlay_enabled: bool = false
+@export var debug_overlay_toggle_allowed: bool = true
+@export var clean_tester_presentation: bool = false
+@export var clean_control_hint_duration: float = 4.0
+@export var local_instrumentation_enabled: bool = true
 
 var conveyor: ConveyorPrototype
 var background_drop_director: MotionBackgroundDropDirector
 var instrumentation: MotionLocalInstrumentation
 var v2_visual_integration: MotionV2VisualIntegration
+var _clean_control_hint_remaining: float = 0.0
 
 @onready var _viewport_frame: SubViewportContainer = $ViewportFrame
 @onready var _internal_viewport: SubViewport = $ViewportFrame/InternalViewport
@@ -33,10 +40,11 @@ func _ready() -> void:
 	set_process(true)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if conveyor == null:
 		return
-	if v2_runtime_art_enabled or vis02_runtime_art_enabled:
+	_update_clean_control_hint(delta)
+	if v2_runtime_art_enabled or vis02_runtime_art_enabled or vis03_runtime_art_enabled:
 		return
 	_apply_runtime_hazard_skin()
 
@@ -69,6 +77,8 @@ func uses_nearest_filtering() -> bool:
 
 
 func falling_collision_variant_id() -> String:
+	if vis03_runtime_art_enabled:
+		return "VIS03-FALL-60"
 	if not vis02_runtime_art_enabled:
 		return ""
 	return (
@@ -90,6 +100,8 @@ func _build_variant() -> void:
 	conveyor = CONVEYOR_SCENE.instantiate() as ConveyorPrototype
 	if vis02_runtime_art_enabled:
 		conveyor.product_falling_collision_size = vis02_falling_collision_size
+	elif vis03_runtime_art_enabled:
+		conveyor.product_falling_collision_size = VIS03_FALLING_COLLISION_SIZE
 	_internal_viewport.add_child(conveyor)
 	_configure_camera_and_hud()
 	_install_project_owned_visuals()
@@ -97,19 +109,22 @@ func _build_variant() -> void:
 		background_drop_director = MotionBackgroundDropDirector.new()
 		background_drop_director.name = "BackgroundDropDirector"
 		conveyor.add_child(background_drop_director)
-	if v2_runtime_art_enabled or vis02_runtime_art_enabled:
+	if v2_runtime_art_enabled or vis02_runtime_art_enabled or vis03_runtime_art_enabled:
 		v2_visual_integration = MotionV2VisualIntegration.new()
 		v2_visual_integration.name = "V2VisualIntegration"
 		v2_visual_integration.conveyor = conveyor
 		v2_visual_integration.background_drop_director = background_drop_director
 		v2_visual_integration.vis02_enabled = vis02_runtime_art_enabled
+		v2_visual_integration.vis03_enabled = vis03_runtime_art_enabled
 		v2_visual_integration.debug_overlay_enabled = v2_debug_overlay_enabled
+		v2_visual_integration.debug_overlay_toggle_allowed = debug_overlay_toggle_allowed
 		conveyor.add_child(v2_visual_integration)
-	instrumentation = MotionLocalInstrumentation.new()
-	instrumentation.name = "MotionLocalInstrumentation"
-	instrumentation.variant_id = variant_id
-	conveyor.add_child(instrumentation)
-	if not v2_runtime_art_enabled and not vis02_runtime_art_enabled:
+	if local_instrumentation_enabled:
+		instrumentation = MotionLocalInstrumentation.new()
+		instrumentation.name = "MotionLocalInstrumentation"
+		instrumentation.variant_id = variant_id
+		conveyor.add_child(instrumentation)
+	if not v2_runtime_art_enabled and not vis02_runtime_art_enabled and not vis03_runtime_art_enabled:
 		_apply_runtime_hazard_skin()
 
 
@@ -131,11 +146,14 @@ func _configure_camera_and_hud() -> void:
 	build_label.offset_right = 286.0
 
 	var experiment_label := conveyor.get_node("HUD/ExperimentId") as Label
-	experiment_label.text = (
-		"INTERNAL VIS-02 COLLISION RETEST  %s" % falling_collision_variant_id()
-		if vis02_runtime_art_enabled
-		else "INTERNAL MOTION STUDY  %s" % variant_id
-	)
+	if vis03_runtime_art_enabled:
+		experiment_label.text = "INTERNAL VIS-03 RUNTIME REVIEW"
+	elif vis02_runtime_art_enabled:
+		experiment_label.text = (
+			"INTERNAL VIS-02 COLLISION RETEST  %s" % falling_collision_variant_id()
+		)
+	else:
+		experiment_label.text = "INTERNAL MOTION STUDY  %s" % variant_id
 	experiment_label.add_theme_color_override("font_color", Color("2ca6a4"))
 	experiment_label.offset_right = 286.0
 
@@ -160,6 +178,18 @@ func _configure_camera_and_hud() -> void:
 	controls.add_theme_color_override("font_color", Color("f2e7c9"))
 	controls.add_theme_color_override("font_outline_color", Color("0d1424"))
 	controls.add_theme_constant_override("outline_size", 3)
+	if clean_tester_presentation:
+		build_label.visible = false
+		experiment_label.visible = false
+		controls.text = "MOVE: A/D OR LEFT/RIGHT   JUMP: SPACE\nRESTART: R"
+		controls.offset_left = 16.0
+		controls.offset_top = 8.0
+		controls.offset_right = 330.0
+		controls.offset_bottom = 54.0
+		controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		controls.add_theme_font_size_override("font_size", 11)
+		_clean_control_hint_remaining = maxf(clean_control_hint_duration, 0.0)
+		controls.visible = _clean_control_hint_remaining > 0.0
 
 	var death_message := conveyor.get_node("HUD/DeathMessage") as Label
 	if variant_id == "D2":
@@ -181,6 +211,7 @@ func _install_project_owned_visuals() -> void:
 	background.name = "MotionArcadeBackground"
 	background.compact_crop = variant_id == "D2"
 	background.vis02_consistent_rack = vis02_runtime_art_enabled
+	background.vis03_full_rack = vis03_runtime_art_enabled
 	conveyor.add_child(background)
 	var foreground := MotionArcadeVisual.new()
 	foreground.name = "MotionArcadeForeground"
@@ -219,6 +250,20 @@ func _install_project_owned_visuals() -> void:
 	entry_slot.color = Color("17243a")
 	var cue := conveyor.get_node("SweeperEntry/ActivationCue") as Polygon2D
 	cue.color = Color("f2ba45")
+
+
+func clean_control_hint_is_visible() -> bool:
+	if conveyor == null:
+		return false
+	return (conveyor.get_node("HUD/Controls") as Label).visible
+
+
+func _update_clean_control_hint(delta: float) -> void:
+	if not clean_tester_presentation or _clean_control_hint_remaining <= 0.0:
+		return
+	_clean_control_hint_remaining = maxf(_clean_control_hint_remaining - delta, 0.0)
+	if _clean_control_hint_remaining <= 0.0:
+		(conveyor.get_node("HUD/Controls") as Label).visible = false
 
 
 func _apply_runtime_hazard_skin() -> void:

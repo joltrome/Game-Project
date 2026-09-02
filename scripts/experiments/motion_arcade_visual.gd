@@ -4,6 +4,7 @@ extends Node2D
 @export var foreground: bool = false
 @export var compact_crop: bool = false
 @export var vis02_consistent_rack: bool = false
+@export var vis03_full_rack: bool = false
 
 const NAVY := Color("17243a")
 const DEEP_NAVY := Color("0d1424")
@@ -40,27 +41,31 @@ func _draw_background() -> void:
 	# Safe background inventory. It is intentionally muted and sits behind play.
 	draw_rect(Rect2(122.0, 146.0, 642.0, 246.0), Color("263b54"))
 	draw_rect(Rect2(134.0, 158.0, 618.0, 222.0), Color("1b2a40"))
-	for row in range(3):
-		for column in range(10):
-			var center := Vector2(166.0 + column * 60.0, 192.0 + row * 64.0)
-			# D3's first-row columns 4, 6, and 8 are owned by the
-			# stored/selected/released lifecycle director. Leaving the slots
-			# empty here prevents translucent duplicate products.
-			if (
-				not compact_crop
-				and row == 0
-				and (vis02_consistent_rack or column in [4, 6, 8])
-			):
-				draw_rect(Rect2(center - Vector2(19.0, 27.0), Vector2(38.0, 54.0)), Color("142238"))
-				continue
-			var colors := [MUTED_BLUE, Color("58736f"), Color("716879")]
-			_draw_product(center, colors[(row + column) % colors.size()], true)
-		draw_line(
-			Vector2(142.0, 222.0 + row * 64.0),
-			Vector2(744.0, 222.0 + row * 64.0),
-			Color("496077"),
-			4.0
-		)
+	if not vis03_full_rack:
+		for row in range(3):
+			for column in range(10):
+				var center := Vector2(166.0 + column * 60.0, 192.0 + row * 64.0)
+				# D3's first-row columns 4, 6, and 8 are owned by the
+				# stored/selected/released lifecycle director. Leaving the slots
+				# empty here prevents translucent duplicate products.
+				if (
+					not compact_crop
+					and row == 0
+					and (vis02_consistent_rack or column in [4, 6, 8])
+				):
+					draw_rect(
+						Rect2(center - Vector2(19.0, 27.0), Vector2(38.0, 54.0)),
+						Color("142238")
+					)
+					continue
+				var colors := [MUTED_BLUE, Color("58736f"), Color("716879")]
+				_draw_product(center, colors[(row + column) % colors.size()], true)
+			draw_line(
+				Vector2(142.0, 222.0 + row * 64.0),
+				Vector2(744.0, 222.0 + row * 64.0),
+				Color("496077"),
+				4.0
+			)
 
 	# Left retrieval chute and right product elevator establish source/destination.
 	draw_rect(Rect2(96.0, 414.0, 72.0, 170.0), Color("1a2c40"))

@@ -1405,6 +1405,38 @@
     text: 'Eleven approved VIS-02 PNG sheets now supply the chunky 32×48 technician, ten visually consistent non-colliding rack positions, selected/release/reset rack states, eight-frame 0.60-second rotational products, eight-frame machine warning, and revised 72×48 landed products. Two lightweight scenes expose VIS02-FALL-72 and VIS02-FALL-60 while sharing all gameplay code and values; only the falling lethal collision differs. Runtime alpha measurement found maximum invisible lethal margins of 10 pixels for 72×72 and 4 pixels for 60×60; the 60×60 collision permits at most 6 pixels of forgiving visible raster overhang. The landed-source bug came from the child AnimatableBody2D retaining its disabled release transform while the parent Area2D settled; a one-time physics-server transform correction now preserves synchronized moving-platform behavior and places both normal and D3 landed collision bottoms exactly at conveyor Y=584, with identical sprite and support Y. The targeted suite passed. One aggregate project run passed 22 of 23 scripts; the remaining pre-existing natural-offer lifecycle simulation missed one authored route for seed 1701, then passed independently without a code change. Prototype A, original Conveyor, D2, VIS-01 D3, and both VIS-02 scenes completed 180-frame headless launches. Both single-threaded Web builds exported, loaded locally with their correct IDs and 1280×720 display, and logged zero browser warnings/errors. The screenshots and tests establish geometry and implementation behavior only; they do not establish human fairness, difficulty, readability, preference, or a winning collision.'
   };
 
+  const vm050Vis03SelectionEvidence = {
+    id: 'evidence-vm-0.5.0-vis-03-pre-runtime-selection',
+    type: 'Evidence',
+    date: '2026-09-02',
+    source: 'Startup Lab VIS-02 comparison and VIS-03 Work-package review',
+    text: 'Startup Lab selected the centered 60×60 falling collision after direct internal comparison with 72×72; it reported substantially better visual/hitbox correspondence without a meaningful observed loss of pressure and authorized no compensating speed or frequency change. The approved VIS-03 asset review presents one coherent full-rack storage system, a lighter lane-local warning, and a rigid-block technician whose limb construction better matches the geometric character and environment language than the prior articulated construction. These decisions authorize runtime evaluation but do not establish live warning readability, locomotion quality, fairness, or external-test readiness.'
+  };
+
+  const vm050Vis03IntegrationDecision = {
+    id: 'decision-vm-0.5.0-vis-03-runtime-integration',
+    type: 'Decision',
+    date: '2026-09-02',
+    source: 'Startup Lab VM-0.5.0-VIS-03-RT approval',
+    text: 'Advance D3 with the centered 60×60 falling collision, integrate the approved VIS-03 full rack, lane overlays, lighter warning, and rigid-block technician on an isolated branch, and prepare separate clean and debug candidates. Preserve the 32×48 player collision, 72×48 landed collision, VIS-02 rotational products, V2 carriage/coin/belt, D3 six-drop cadence, player, conveyor, hazards, score, and round. Return to Startup Lab for runtime motion and readability review before any external distribution or art correction.'
+  };
+
+  const vm050Vis03RuntimeHypothesis = {
+    id: 'hypothesis-vm-0.5.0-vis-03-runtime-coherence',
+    type: 'Hypothesis',
+    date: '2026-09-02',
+    source: 'VM-0.5.0-VIS-03-RT proposition',
+    text: 'The four-frame rigid-block RUN may feel coherent at actual controller and conveyor speed, while the unified product rack and lighter lane-local warning may improve world consistency without reducing hazard clarity during survival and Refund Coin pursuit. Starts, stops, rapid reversals, jump/land transitions, carriage readability, background clutter, and fresh-user comprehension remain unverified until Startup Lab plays the clean runtime candidate.'
+  };
+
+  const vm050Vis03IntegrationResult = {
+    id: 'result-vm-0.5.0-vis-03-runtime-integration',
+    type: 'Result',
+    date: '2026-09-02',
+    source: 'VM-0.5.0-VIS-03-RT implementation and technical validation',
+    text: 'Six approved runtime PNGs now supply a 40×48 rigid-block technician, 312×108 common rack baseline, three hidden 24×31 lane overlays, and eight-frame lane warning. RUN maps only atlas indices 3–6 at 80 ms each; the stable bottom-center visual anchor maps to the unchanged 32×48 player collision, LAND remains visual-only, and DEATH begins only after player interaction is disabled. The existing three lane centers remain 406/526/646; only the selected lane shows SELECTED and RELEASE before RESET restores the hidden common baseline, with red/blue/green identity preserved into the existing VIS-02 falling and landed art. The warning remains non-colliding and the gameplay warning remains 1.10 seconds. Both clean and debug candidates select a centered 60×60 falling collision and retain the 72×48 landed collision and source-independent conveyor Y=584 alignment. The clean build hides internal IDs, diagnostics, instrumentation, and overlay access while showing a four-second compact ASCII control hint; the debug build retains F8 diagnostics. All 24 test scripts passed after one timing-sensitive legacy D3 product-count assertion passed on immediate independent rerun without a code change. VIS-03 Debug, VIS-03 Test, D2, and Prototype A launched headlessly. Both single-threaded Web builds loaded on localhost at a 1280×720 CSS canvas with zero browser warnings/errors; ZIP roots were verified and no build was uploaded. These are implementation results, not human readability, fairness, locomotion-quality, or external-validation claims.'
+  };
+
   const vm050CoinClusteringHypothesis = {
     id: 'hypothesis-vm-0.5.0-pending-coin-route-footprint',
     type: 'Hypothesis',
@@ -1517,6 +1549,10 @@
     vm050Vis02RetestDecision,
     vm050Vis02RetestHypothesis,
     vm050Vis02RetestResult,
+    vm050Vis03SelectionEvidence,
+    vm050Vis03IntegrationDecision,
+    vm050Vis03RuntimeHypothesis,
+    vm050Vis03IntegrationResult,
     vm050CoinClusteringHypothesis
   ];
 
@@ -1529,7 +1565,7 @@
   ];
 
   const defaultState = {
-    version: 29,
+    version: 30,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

@@ -13,6 +13,7 @@ This backlog records ideas without granting implementation approval. Evidence, h
 - **Separate Endless mode:** Possible future selectable mode; do not implement as an automatic continuation or before mode scope is approved.
 - **Harder fixed-duration tiers:** Possible future difficulty structure; do not add until the standard 60-second baseline is externally tested.
 - **Local personal-best tracking:** Possible local-only replay aid; do not implement until score behavior is validated and persistence is explicitly approved.
+- **Right-side VEND ELEVATOR visual revision:** VIS-03 preserves the current schematic elevator because it does not block the runtime review. Revisit only after Startup Lab evaluates the integrated rack/warning candidate; do not change its gameplay source, geometry, timing, or collision while addressing visual coherence.
 
 ## Rejected for the current direction
 
