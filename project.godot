@@ -25,6 +25,10 @@ run/main_scene.vis02_fall72="res://scenes/experiments/motion_vis02_fall72.tscn"
 run/main_scene.vis02_fall60="res://scenes/experiments/motion_vis02_fall60.tscn"
 run/main_scene.vis03_debug="res://scenes/experiments/motion_vis03_debug.tscn"
 run/main_scene.vis03_test="res://scenes/experiments/motion_vis03_test.tscn"
+run/main_scene.vis04_pa_ca="res://scenes/experiments/motion_vis04_pa_ca.tscn"
+run/main_scene.vis04_pb_ca="res://scenes/experiments/motion_vis04_pb_ca.tscn"
+run/main_scene.vis04_pb_cb="res://scenes/experiments/motion_vis04_pb_cb.tscn"
+run/main_scene.vis04_provisional="res://scenes/experiments/motion_vis04_provisional.tscn"
 config/features=PackedStringArray("4.7")
 
 [autoload]

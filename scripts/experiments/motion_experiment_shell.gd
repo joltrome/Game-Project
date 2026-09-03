@@ -3,6 +3,7 @@ extends Control
 
 const CONVEYOR_SCENE := preload("res://scenes/prototypes/conveyor.tscn")
 const VIS03_FALLING_COLLISION_SIZE := Vector2(60.0, 60.0)
+const VIS04_BASELINE_COIN_COLLISION_SIZE := Vector2(24.0, 24.0)
 
 @export_enum("D2", "D3") var variant_id: String = "D2"
 @export var internal_size := Vector2i(1152, 480)
@@ -11,6 +12,10 @@ const VIS03_FALLING_COLLISION_SIZE := Vector2(60.0, 60.0)
 @export var vis02_runtime_art_enabled: bool = false
 @export var vis02_falling_collision_size := Vector2(72.0, 72.0)
 @export var vis03_runtime_art_enabled: bool = false
+@export var vis04_runtime_art_enabled: bool = false
+@export var vis04_carriage_raise_pixels: float = 0.0
+@export var vis04_coin_collision_size := VIS04_BASELINE_COIN_COLLISION_SIZE
+@export var vis04_configuration_id: String = ""
 @export var v2_debug_overlay_enabled: bool = false
 @export var debug_overlay_toggle_allowed: bool = true
 @export var clean_tester_presentation: bool = false
@@ -44,7 +49,12 @@ func _process(delta: float) -> void:
 	if conveyor == null:
 		return
 	_update_clean_control_hint(delta)
-	if v2_runtime_art_enabled or vis02_runtime_art_enabled or vis03_runtime_art_enabled:
+	if (
+		v2_runtime_art_enabled
+		or vis02_runtime_art_enabled
+		or vis03_runtime_art_enabled
+		or vis04_runtime_art_enabled
+	):
 		return
 	_apply_runtime_hazard_skin()
 
@@ -77,6 +87,8 @@ func uses_nearest_filtering() -> bool:
 
 
 func falling_collision_variant_id() -> String:
+	if vis04_runtime_art_enabled:
+		return "VIS04-FALL-60"
 	if vis03_runtime_art_enabled:
 		return "VIS03-FALL-60"
 	if not vis02_runtime_art_enabled:
@@ -102,6 +114,16 @@ func _build_variant() -> void:
 		conveyor.product_falling_collision_size = vis02_falling_collision_size
 	elif vis03_runtime_art_enabled:
 		conveyor.product_falling_collision_size = VIS03_FALLING_COLLISION_SIZE
+	elif vis04_runtime_art_enabled:
+		conveyor.product_falling_collision_size = VIS03_FALLING_COLLISION_SIZE
+		# Godot's positive Y points downward. Increasing the existing grounded
+		# clearance therefore derives a smaller sweeper centre Y and raises the
+		# complete warning/path/collision configuration without changing its X
+		# path, size, speed, or timing.
+		conveyor.grounded_sweeper_clearance += maxf(
+			vis04_carriage_raise_pixels,
+			0.0
+		)
 	_internal_viewport.add_child(conveyor)
 	_configure_camera_and_hud()
 	_install_project_owned_visuals()
@@ -109,13 +131,23 @@ func _build_variant() -> void:
 		background_drop_director = MotionBackgroundDropDirector.new()
 		background_drop_director.name = "BackgroundDropDirector"
 		conveyor.add_child(background_drop_director)
-	if v2_runtime_art_enabled or vis02_runtime_art_enabled or vis03_runtime_art_enabled:
+	if (
+		v2_runtime_art_enabled
+		or vis02_runtime_art_enabled
+		or vis03_runtime_art_enabled
+		or vis04_runtime_art_enabled
+	):
 		v2_visual_integration = MotionV2VisualIntegration.new()
 		v2_visual_integration.name = "V2VisualIntegration"
 		v2_visual_integration.conveyor = conveyor
 		v2_visual_integration.background_drop_director = background_drop_director
 		v2_visual_integration.vis02_enabled = vis02_runtime_art_enabled
-		v2_visual_integration.vis03_enabled = vis03_runtime_art_enabled
+		v2_visual_integration.vis03_enabled = (
+			vis03_runtime_art_enabled or vis04_runtime_art_enabled
+		)
+		v2_visual_integration.vis04_enabled = vis04_runtime_art_enabled
+		v2_visual_integration.vis04_coin_collision_size = vis04_coin_collision_size
+		v2_visual_integration.vis04_configuration_id = vis04_configuration_id
 		v2_visual_integration.debug_overlay_enabled = v2_debug_overlay_enabled
 		v2_visual_integration.debug_overlay_toggle_allowed = debug_overlay_toggle_allowed
 		conveyor.add_child(v2_visual_integration)
@@ -124,7 +156,12 @@ func _build_variant() -> void:
 		instrumentation.name = "MotionLocalInstrumentation"
 		instrumentation.variant_id = variant_id
 		conveyor.add_child(instrumentation)
-	if not v2_runtime_art_enabled and not vis02_runtime_art_enabled and not vis03_runtime_art_enabled:
+	if (
+		not v2_runtime_art_enabled
+		and not vis02_runtime_art_enabled
+		and not vis03_runtime_art_enabled
+		and not vis04_runtime_art_enabled
+	):
 		_apply_runtime_hazard_skin()
 
 
@@ -146,7 +183,9 @@ func _configure_camera_and_hud() -> void:
 	build_label.offset_right = 286.0
 
 	var experiment_label := conveyor.get_node("HUD/ExperimentId") as Label
-	if vis03_runtime_art_enabled:
+	if vis04_runtime_art_enabled:
+		experiment_label.text = "INTERNAL VIS-04  %s" % vis04_configuration_id
+	elif vis03_runtime_art_enabled:
 		experiment_label.text = "INTERNAL VIS-03 RUNTIME REVIEW"
 	elif vis02_runtime_art_enabled:
 		experiment_label.text = (
@@ -211,7 +250,7 @@ func _install_project_owned_visuals() -> void:
 	background.name = "MotionArcadeBackground"
 	background.compact_crop = variant_id == "D2"
 	background.vis02_consistent_rack = vis02_runtime_art_enabled
-	background.vis03_full_rack = vis03_runtime_art_enabled
+	background.vis03_full_rack = vis03_runtime_art_enabled or vis04_runtime_art_enabled
 	conveyor.add_child(background)
 	var foreground := MotionArcadeVisual.new()
 	foreground.name = "MotionArcadeForeground"

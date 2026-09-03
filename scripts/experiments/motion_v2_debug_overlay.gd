@@ -2,10 +2,12 @@ class_name MotionV2DebugOverlay
 extends Node2D
 
 const PLAYER_COLOR := Color("4ee6a8")
+const PLAYER_VISUAL_COLOR := Color("c98cff")
 const FALLING_COLOR := Color("ff5d67")
 const LANDED_COLOR := Color("56b8ff")
 const CARRIAGE_COLOR := Color("ffb84a")
 const COIN_COLOR := Color("ffe66d")
+const COIN_VISUAL_COLOR := Color("ff8ddd")
 const PIVOT_COLOR := Color("ffffff")
 
 var integration: MotionV2VisualIntegration
@@ -36,6 +38,16 @@ func _draw() -> void:
 		player.position + Vector2(0.0, conveyor.player_collision_size().y * 0.5),
 		PIVOT_COLOR
 	)
+	if integration.vis04_enabled:
+		var player_visual_rect := integration.technician_visual_rect()
+		draw_rect(player_visual_rect, PLAYER_VISUAL_COLOR, false, 2.0)
+
+	draw_line(
+		Vector2(conveyor.sweeper_spawn_x, conveyor.sweeper_altitude),
+		Vector2(conveyor.sweeper_exit_x, conveyor.sweeper_altitude),
+		Color(CARRIAGE_COLOR.r, CARRIAGE_COLOR.g, CARRIAGE_COLOR.b, 0.55),
+		1.0
+	)
 
 	for product in conveyor.active_falling_products():
 		if is_instance_valid(product):
@@ -61,7 +73,17 @@ func _draw() -> void:
 	if collectibles != null:
 		for coin in collectibles.active_collectibles():
 			if is_instance_valid(coin):
-				_draw_centered_box(coin.position, coin.collectible_size, COIN_COLOR)
+				_draw_centered_box(
+					coin.position,
+					integration.coin_collision_size(coin),
+					COIN_COLOR
+				)
+				if integration.vis04_enabled:
+					_draw_centered_box(
+						coin.position,
+						integration.coin_visual_size(),
+						COIN_VISUAL_COLOR
+					)
 				_draw_cross(coin.position, PIVOT_COLOR)
 
 	var state_text := "D3 state: unavailable"
@@ -72,10 +94,16 @@ func _draw() -> void:
 			if not integration.falling_collision_variant_id().is_empty()
 			else ""
 		)
-		state_text = "%sD3 state: %s  selected lane: %d" % [
+		var configuration_suffix := (
+			"  %s" % integration.vis04_configuration_id
+			if integration.vis04_enabled
+			else ""
+		)
+		state_text = "%sD3 state: %s  selected lane: %d%s" % [
 			variant_prefix,
 			director.visual_state_name(),
 			director.selected_lane_index,
+			configuration_suffix,
 		]
 		if director.selected_lane_index >= 0 and not is_nan(director.selected_lane_x):
 			draw_line(

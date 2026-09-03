@@ -10,6 +10,7 @@ enum ProductVariant {
 const ASSET_ROOT := "res://assets/vm050_d3_v2/"
 const VIS02_ASSET_ROOT := "res://assets/vm050_d3_vis02/"
 const VIS03_ASSET_ROOT := "res://assets/vm050_d3_vis03/"
+const VIS04_ASSET_ROOT := "res://assets/vm050_vis04/"
 const TECHNICIAN_TEXTURE := preload(
 	ASSET_ROOT + "VM050_D3_V2_technician_runtime_sheet.png"
 )
@@ -73,9 +74,17 @@ const VIS03_RACK_TEXTURES: Array[Texture2D] = [
 const VIS03_WARNING_TEXTURE := preload(
 	VIS03_ASSET_ROOT + "VM050_D3_VIS03_drop_warning_runtime_sheet.png"
 )
+const VIS04_S1_RUN_TEXTURE := preload(
+	VIS04_ASSET_ROOT + "VM050_VIS04_S1_50x60_run_sheet.png"
+)
+const VIS04_C1_COIN_TEXTURE := preload(
+	VIS04_ASSET_ROOT + "VM050_VIS04_C1_16x16_coin_sheet.png"
+)
 
 const TECHNICIAN_FRAME_SIZE := Vector2i(32, 48)
 const VIS03_TECHNICIAN_FRAME_SIZE := Vector2i(40, 48)
+const VIS04_S1_FRAME_SIZE := Vector2i(50, 60)
+const VIS04_C1_COIN_FRAME_SIZE := Vector2i(16, 16)
 const FALLING_FRAME_SIZE := Vector2i(36, 36)
 const LANDED_FRAME_SIZE := Vector2i(36, 24)
 const CARRIAGE_FRAME_SIZE := Vector2i(48, 14)
@@ -99,6 +108,9 @@ var debug_overlay_enabled: bool = false
 var debug_overlay_toggle_allowed: bool = true
 var vis02_enabled: bool = false
 var vis03_enabled: bool = false
+var vis04_enabled: bool = false
+var vis04_coin_collision_size := Vector2(24.0, 24.0)
+var vis04_configuration_id: String = ""
 
 var _technician_anchor: Node2D
 var _technician_sprite: AnimatedSprite2D
@@ -227,12 +239,16 @@ func rack_baseline_sprite() -> Sprite2D:
 
 
 func runtime_profile_name() -> String:
+	if vis04_enabled:
+		return "VIS-04"
 	if vis03_enabled:
 		return "VIS-03"
 	return "VIS-02" if vis02_enabled else "V2"
 
 
 func falling_collision_variant_id() -> String:
+	if vis04_enabled:
+		return "VIS04-FALL-60"
 	if vis03_enabled:
 		return "VIS03-FALL-60"
 	if not vis02_enabled:
@@ -277,6 +293,35 @@ func carriage_sprite(sweeper: AirSweeper) -> AnimatedSprite2D:
 
 func coin_sprite(coin: ConveyorCollectible) -> AnimatedSprite2D:
 	return coin.get_node_or_null("V2CoinVisual") as AnimatedSprite2D
+
+
+func technician_visual_size() -> Vector2:
+	return Vector2(VIS04_S1_FRAME_SIZE) if vis04_enabled else Vector2(
+		VIS03_TECHNICIAN_FRAME_SIZE if vis03_enabled else TECHNICIAN_FRAME_SIZE
+	)
+
+
+func technician_visual_rect() -> Rect2:
+	if conveyor == null or _technician_anchor == null:
+		return Rect2()
+	var visual_size := technician_visual_size()
+	return Rect2(
+		conveyor.player.position
+			+ Vector2(-visual_size.x * 0.5, 24.0 - visual_size.y),
+		visual_size
+	)
+
+
+func coin_collision_size(coin: ConveyorCollectible) -> Vector2:
+	var collision := coin.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if collision == null:
+		return Vector2.ZERO
+	var rectangle := collision.shape as RectangleShape2D
+	return rectangle.size if rectangle != null else Vector2.ZERO
+
+
+func coin_visual_size() -> Vector2:
+	return Vector2(32.0, 32.0) if vis04_enabled else Vector2(24.0, 24.0)
 
 
 static func technician_animation_for_state(
@@ -328,7 +373,11 @@ func _build_frame_resources() -> void:
 		_animation(&"active_sweep", 3, 6, 1.0 / 0.07, true),
 		_animation(&"return", 7, 8, 1.0 / 0.12, false),
 	])
-	_coin_frames = _make_frames(COIN_TEXTURE, COIN_FRAME_SIZE, [
+	var coin_texture := VIS04_C1_COIN_TEXTURE if vis04_enabled else COIN_TEXTURE
+	var coin_frame_size := (
+		VIS04_C1_COIN_FRAME_SIZE if vis04_enabled else COIN_FRAME_SIZE
+	)
+	_coin_frames = _make_frames(coin_texture, coin_frame_size, [
 		_animation(&"spin", 0, 5, 1.0 / 0.09, true),
 	])
 	_belt_frames = _make_frames(BELT_TEXTURE, BELT_FRAME_SIZE, [
@@ -467,6 +516,38 @@ func _new_sprite(frames: SpriteFrames, runtime_scale: float = 1.0) -> AnimatedSp
 	return sprite
 
 
+func _make_vis04_technician_frames() -> SpriteFrames:
+	# Work supplied S1 as a dedicated six-frame RUN sheet. The remaining state
+	# art stays sourced from VIS-03 and is uniformly enlarged at runtime; no new
+	# poses are invented in this integration experiment.
+	var frames := _make_frames(VIS03_TECHNICIAN_TEXTURE, VIS03_TECHNICIAN_FRAME_SIZE, [
+		_timed_animation(&"idle", 0, 2, [0.16, 0.16, 0.16], true),
+		_timed_animation(&"jump", 9, 10, [0.12, 0.12], true),
+		_timed_animation(&"fall", 11, 12, [0.12, 0.12], true),
+		_timed_animation(&"land", 13, 15, [0.07, 0.07, 0.12], false),
+		_timed_animation(&"death", 16, 18, [0.14, 0.14, 0.14], false),
+	])
+	var run_frames := _make_frames(VIS04_S1_RUN_TEXTURE, VIS04_S1_FRAME_SIZE, [
+		_timed_animation(
+			&"run",
+			0,
+			5,
+			[0.06, 0.06, 0.06, 0.06, 0.06, 0.06],
+			true
+		),
+	])
+	frames.add_animation(&"run")
+	frames.set_animation_speed(&"run", run_frames.get_animation_speed(&"run"))
+	frames.set_animation_loop(&"run", true)
+	for frame_index in range(run_frames.get_frame_count(&"run")):
+		frames.add_frame(
+			&"run",
+			run_frames.get_frame_texture(&"run", frame_index),
+			run_frames.get_frame_duration(&"run", frame_index)
+		)
+	return frames
+
+
 func _install_technician() -> void:
 	var player := conveyor.player
 	(player.get_node("Body") as CanvasItem).visible = false
@@ -478,7 +559,11 @@ func _install_technician() -> void:
 	var technician_texture := TECHNICIAN_TEXTURE
 	var technician_frame_size := TECHNICIAN_FRAME_SIZE
 	var technician_animations: Array
-	if vis03_enabled:
+	if vis04_enabled:
+		technician_texture = VIS04_S1_RUN_TEXTURE
+		technician_frame_size = VIS04_S1_FRAME_SIZE
+		technician_animations = []
+	elif vis03_enabled:
 		technician_texture = VIS03_TECHNICIAN_TEXTURE
 		technician_frame_size = VIS03_TECHNICIAN_FRAME_SIZE
 		technician_animations = [
@@ -508,25 +593,35 @@ func _install_technician() -> void:
 			_animation(&"land", 13, 15, 1.0 / 0.087, false),
 			_animation(&"death", 16, 18, 1.0 / 0.14, false),
 		]
-	var frames := _make_frames(
-		technician_texture,
-		technician_frame_size,
-		technician_animations
+	var frames := (
+		_make_vis04_technician_frames()
+		if vis04_enabled
+		else _make_frames(
+			technician_texture,
+			technician_frame_size,
+			technician_animations
+		)
 	)
 	_technician_sprite = _new_sprite(frames)
 	_technician_sprite.name = (
-		"VIS03Technician"
+		"VIS04S1Technician"
+		if vis04_enabled
+		else "VIS03Technician"
 		if vis03_enabled
 		else "VIS02Technician" if vis02_enabled
 		else "V2Technician"
 	)
 	_technician_sprite.centered = false
 	_technician_sprite.position = (
-		Vector2(-20.0, -48.0)
+		Vector2(-25.0, -60.0)
+		if vis04_enabled
+		else Vector2(-20.0, -48.0)
 		if vis03_enabled
 		else Vector2(-16.0, -48.0)
 	)
 	_technician_anchor.add_child(_technician_sprite)
+	if vis04_enabled:
+		_technician_sprite.scale = Vector2.ONE * 1.25
 	_technician_sprite.play(&"idle")
 
 
@@ -804,6 +899,15 @@ func _ensure_coin_visual(coin: ConveyorCollectible) -> void:
 	sprite.z_index = 12
 	sprite.play(&"spin")
 	coin.add_child(sprite)
+	if vis04_enabled:
+		# Keep CollectibleDirector.collectible_size at its frozen 24x24 route
+		# footprint. Only the instantiated Area2D shape changes for the C-B
+		# pickup comparison, so authored routes and offer validation are stable.
+		var collision := coin.get_node("CollisionShape2D") as CollisionShape2D
+		collision.shape = collision.shape.duplicate()
+		var rectangle := collision.shape as RectangleShape2D
+		rectangle.size = vis04_coin_collision_size
+		coin.set_meta("vis04_coin_collision_size", vis04_coin_collision_size)
 
 
 func _update_technician(delta: float) -> void:
@@ -825,6 +929,13 @@ func _update_technician(delta: float) -> void:
 		input_axis,
 		_land_visual_remaining > 0.0
 	)
+	if vis04_enabled:
+		# The authored S1 RUN is already 50x60. Other states retain VIS-03's
+		# 40x48 art and use one uniform 1.25x nearest-neighbour scale so their
+		# bottom-centred visual footprint remains 50x60 across transitions.
+		_technician_sprite.scale = (
+			Vector2.ONE if animation == &"run" else Vector2.ONE * 1.25
+		)
 	if _technician_sprite.animation != animation:
 		_technician_sprite.play(animation)
 	if not is_zero_approx(input_axis):

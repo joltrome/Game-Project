@@ -1,0 +1,46 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/experiments/motion_experiment_shell.gd" id="1_shell"]
+
+[node name="MotionExperimentVIS04Provisional" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_shell")
+variant_id = "D3"
+internal_size = Vector2i(1152, 648)
+build_id_override = "VM-0.5.0-VIS04-PROVISIONAL"
+vis04_runtime_art_enabled = true
+vis04_carriage_raise_pixels = 12.0
+vis04_coin_collision_size = Vector2(32, 32)
+vis04_configuration_id = "VIS04-PROVISIONAL"
+v2_debug_overlay_enabled = false
+debug_overlay_toggle_allowed = false
+clean_tester_presentation = true
+clean_control_hint_duration = 4.0
+local_instrumentation_enabled = false
+
+[node name="Matte" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.025, 0.035, 0.055, 1)
+
+[node name="ViewportFrame" type="SubViewportContainer" parent="."]
+layout_mode = 0
+offset_right = 1152.0
+offset_bottom = 648.0
+stretch = true
+
+[node name="InternalViewport" type="SubViewport" parent="ViewportFrame"]
+handle_input_locally = false
+size = Vector2i(1152, 648)
+render_target_update_mode = 4
