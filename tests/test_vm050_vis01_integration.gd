@@ -196,8 +196,9 @@ func _test_carriage_coin_belt_and_debug_mapping() -> void:
 	_check(
 		belt_layer.get_child_count() == 14
 		and (belt_layer.get_child(0) as AnimatedSprite2D).scale == Vector2(2.0, 2.0)
+		and (belt_layer.get_child(0) as AnimatedSprite2D).get_playing_speed() < 0.0
 		and d3.conveyor.belt_support_velocity() == belt_velocity_before,
-		"Four-frame 2x belt tiles replace presentation without changing support physics"
+		"Four-frame 2x belt tiles play leftward without changing support physics"
 	)
 	var cue_started := d3.conveyor._start_sweeper_entry_cue(
 		d3.conveyor.sweeper_speed,

@@ -638,7 +638,7 @@ func _install_conveyor_tiles() -> void:
 		tile.name = "Tile%02d" % index
 		tile.centered = false
 		tile.position = Vector2(conveyor.belt_left_x + index * 64.0, conveyor.floor_y)
-		tile.play(&"belt_loop")
+		tile.play_backwards(&"belt_loop")
 		belt_layer.add_child(tile)
 		_belt_sprites.append(tile)
 

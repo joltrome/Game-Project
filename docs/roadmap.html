@@ -1509,6 +1509,30 @@
     text: 'Only the safe-versus-risk authored geometry changed: its four centres are now (610,550), (546,550), (482,500), and (578,474), forming two ground coins, a leftward low-air jump, and a modest rightward low-air tail. The action simulator measured no-input/same-input/passive-jump/aggressive collection as 1/2/3/4, with safe abandonment collecting one; the route remained valid at the maximum conveyor speed. Existing simple horizontal trails and compact clusters remain. Developer-only archetypes classify LINEAR, STAIR_UP, STAIR_DOWN, ARC, STAGGER, RISK_TAIL, and CLUSTER. Spawn validation now compares actual player and 24×24 coin geometry plus an exported 8 px padding; it shifts the entire offer through bounded existing/derived placements, never one sibling independently. Staggered future siblings retry at 0.10-second intervals up to four retries, then skip that sibling cleanly rather than use collection lockout or an unbounded loop. Neutral deterministic seeds 401/1701/4202 exactly retained 22 offers, first offer at 1.750 seconds, and 54/55/55 offered coins. Aggregate multi-offer archetypes remained ARC 9, LINEAR 9, STAGGER 10, STAIR_DOWN 9, CLUSTER 3, and RISK_TAIL 5; per-run multi-coin sizes were one 2-coin offer, 10–11 3-coin offers, and 3–4 4-coin offers. In isolated ground-position audits, 8/10/10 offers used alternate whole-route placement after 18/22/22 overlap and 9/11/11 buffer encounters across placement attempts; all three seeds still launched 22 offers and had zero spawn-frame player intersections. All 26 automated test scripts passed at 60 Hz; Arena, base Conveyor, and selected P-A/C-A scenes launched for 180 frames; the single-threaded Web export loaded locally at 1280×720 with no browser-console warnings or errors. Player movement, hazards, D3, conveyor, round, score value, coin art/collider, and gameplay scenes were unchanged. These are implementation and deterministic-validation results, not evidence that the revised route is more enjoyable or balanced.'
   };
 
+  const vm060ConveyorVisualDirectionEvidence = {
+    id: 'evidence-vm-0.6.0-conveyor-visual-direction-mismatch',
+    type: 'Evidence',
+    date: '2026-09-08',
+    source: 'User screen recording and runtime/code inspection',
+    text: 'The supplied gameplay recording showed the player physically drifting left while the visible pixel-belt phase advanced toward the right. Runtime inspection confirmed that conveyor support remained negative/leftward, while the VIS pixel-art belt animation was playing its authored frames forward. This was a presentation-to-physics mismatch, not evidence of reversed conveyor physics.'
+  };
+
+  const vm060ConveyorVisualDirectionDecision = {
+    id: 'decision-vm-0.6.0-conveyor-visual-direction-correction',
+    type: 'Decision',
+    date: '2026-09-08',
+    source: 'Approved VM-0.6.0 known-bug correction',
+    text: 'Reverse only the VIS pixel-belt animation playback so the presentation travels left with the frozen conveyor physics. Preserve support velocity, player-relative movement, landed-product movement, controller, collisions, hazards, D3 cadence, coin behavior, and all gameplay timing.'
+  };
+
+  const vm060ConveyorVisualDirectionResult = {
+    id: 'result-vm-0.6.0-conveyor-visual-direction-correction',
+    type: 'Result',
+    date: '2026-09-08',
+    source: 'VM-0.6.0 conveyor visual-direction implementation and validation',
+    text: 'The VIS belt tiles now play the existing four-frame belt_loop animation backwards. A regression asserts negative visual playback while preserving the exact conveyor support velocity. The physical-conveyor test retained no-input/right/left world speeds of approximately -140/+160/-440 px/s, confirming that rightward input overcomes but is reduced by the leftward belt and leftward input combines with it. All 26 automated test scripts passed at 60 Hz; the selected single-threaded Web build exported and loaded through localhost at 1280×720 with no browser-console warnings or errors. No gameplay, collision, scene, asset, hazard, D3, coin, or timing value changed. Human confirmation that the corrected animation now reads leftward remains pending.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1625,7 +1649,10 @@
     vm060ExternalStandardEvidence,
     vm060StandardDecision,
     vm060CoinMicroPassHypothesis,
-    vm060CoinMicroPassResult
+    vm060CoinMicroPassResult,
+    vm060ConveyorVisualDirectionEvidence,
+    vm060ConveyorVisualDirectionDecision,
+    vm060ConveyorVisualDirectionResult
   ];
 
   const defaultFindings = [
@@ -1637,7 +1664,7 @@
   ];
 
   const defaultState = {
-    version: 31,
+    version: 32,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []
