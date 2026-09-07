@@ -1477,6 +1477,38 @@
     text: 'Some routes containing three or more Refund Coins may need a total footprint around 35–60 percent of the usable horizontal playfield or clearer vertical branching to require a renewed decision after the first coin. Keep the VM-0.4.7 director unchanged during the visual slice; first measure template-specific behavior and whether new art improves or harms branch legibility.'
   };
 
+  const vm060ExternalStandardEvidence = {
+    id: 'evidence-vm-0.6.0-standard-selection',
+    type: 'Evidence',
+    date: '2026-09-07',
+    source: 'Startup Lab synthesis of the VIS-04 P-A/C-A external playtest',
+    text: 'Approximately 6–7 external testers played the selected VIS-04 P-A/C-A configuration. All were reported to understand the game immediately, describe it as fun and challenging, and voluntarily retry after dying; no blocking gameplay, readability, or usability issue was reported. This is meaningful behavioral evidence for preserving the current 60-second D3 core, but the sample size, tester relationship, device/browser distribution, completion rate, run count, and observation protocol were not supplied, so it does not establish commercial success or universal usability.'
+  };
+
+  const vm060StandardDecision = {
+    id: 'decision-vm-0.6.0-standard-and-final-coin-pass',
+    type: 'Decision',
+    date: '2026-09-07',
+    source: 'Startup Lab VM-0.6.0 handoff plus approved sections 4A/4B',
+    text: 'Select VIS-04 P-A/C-A as the provisional Standard Mode baseline: S1 approximately 50×60 technician visual over the unchanged 32×48 collision, P-A carriage Y=518, C1 32×32 coin visual with the existing C-A 24×24 pickup collider, 60×60 falling-product collision, 72×48 landed collision, current D3 cadence, hazards, conveyor, movement, scoring, and 60-second round. Before presentation/audio work, allow exactly one narrow Standard Mode micro-pass: revise only enough authored coin topology to add decision separation and prevent offers spawning on or immediately against the player. Stop for manual acceptance before presentation/audio implementation, then freeze Standard gameplay again.'
+  };
+
+  const vm060CoinMicroPassHypothesis = {
+    id: 'hypothesis-vm-0.6.0-coin-topology-and-spawn-safety',
+    type: 'Hypothesis',
+    date: '2026-09-07',
+    source: 'Startup Lab final Standard Mode micro-correction',
+    text: 'Keeping simple clusters while changing the safe-versus-risk offer into two accessible ground coins followed by a leftward jump and optional modest rightward tail may sometimes require a second positioning/jump or continue/abandon decision after the first coin without reducing coin availability. Rejecting player-overlapping placements, preserving sibling offsets during whole-offer relocation, and using an 8 px buffer may ensure coins are visible before collection without starving the offer cadence. Human decision quality and perceived cadence remain pending manual coin-greedy and natural runs.'
+  };
+
+  const vm060CoinMicroPassResult = {
+    id: 'result-vm-0.6.0-standard-coin-micro-pass',
+    type: 'Result',
+    date: '2026-09-07',
+    source: 'VM-0.6.0 final Standard coin micro-pass implementation and validation',
+    text: 'Only the safe-versus-risk authored geometry changed: its four centres are now (610,550), (546,550), (482,500), and (578,474), forming two ground coins, a leftward low-air jump, and a modest rightward low-air tail. The action simulator measured no-input/same-input/passive-jump/aggressive collection as 1/2/3/4, with safe abandonment collecting one; the route remained valid at the maximum conveyor speed. Existing simple horizontal trails and compact clusters remain. Developer-only archetypes classify LINEAR, STAIR_UP, STAIR_DOWN, ARC, STAGGER, RISK_TAIL, and CLUSTER. Spawn validation now compares actual player and 24×24 coin geometry plus an exported 8 px padding; it shifts the entire offer through bounded existing/derived placements, never one sibling independently. Staggered future siblings retry at 0.10-second intervals up to four retries, then skip that sibling cleanly rather than use collection lockout or an unbounded loop. Neutral deterministic seeds 401/1701/4202 exactly retained 22 offers, first offer at 1.750 seconds, and 54/55/55 offered coins. Aggregate multi-offer archetypes remained ARC 9, LINEAR 9, STAGGER 10, STAIR_DOWN 9, CLUSTER 3, and RISK_TAIL 5; per-run multi-coin sizes were one 2-coin offer, 10–11 3-coin offers, and 3–4 4-coin offers. In isolated ground-position audits, 8/10/10 offers used alternate whole-route placement after 18/22/22 overlap and 9/11/11 buffer encounters across placement attempts; all three seeds still launched 22 offers and had zero spawn-frame player intersections. All 26 automated test scripts passed at 60 Hz; Arena, base Conveyor, and selected P-A/C-A scenes launched for 180 frames; the single-threaded Web export loaded locally at 1280×720 with no browser-console warnings or errors. Player movement, hazards, D3, conveyor, round, score value, coin art/collider, and gameplay scenes were unchanged. These are implementation and deterministic-validation results, not evidence that the revised route is more enjoyable or balanced.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1589,7 +1621,11 @@
     vm050Vis04RuntimeDecision,
     vm050Vis04RuntimeHypothesis,
     vm050Vis04RuntimeResult,
-    vm050CoinClusteringHypothesis
+    vm050CoinClusteringHypothesis,
+    vm060ExternalStandardEvidence,
+    vm060StandardDecision,
+    vm060CoinMicroPassHypothesis,
+    vm060CoinMicroPassResult
   ];
 
   const defaultFindings = [
@@ -1601,7 +1637,7 @@
   ];
 
   const defaultState = {
-    version: 30,
+    version: 31,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

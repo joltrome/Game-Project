@@ -176,6 +176,13 @@ func _test_ground_and_low_air_collection() -> void:
 		),
 		"Ground Refund Coin spawns in a valid empty state"
 	)
+	var ground_coin := director.active_collectible()
+	_check(
+		director.score == 0
+		and director.player_spawn_rejection_reason_for_test(ground_coin.global_position).is_empty(),
+		"Ground Refund Coin appears outside the player safety buffer before collection"
+	)
+	conveyor.player.global_position = ground_coin.global_position
 	await _wait_physics_frames(3)
 	_check(
 		director.score == 1,
@@ -253,6 +260,9 @@ func _test_coin_motion_score_and_expiration() -> void:
 	director.candidate_x_positions = PackedFloat32Array([600.0])
 	var timer_before_collection := round_controller.round_time_remaining
 	_check(director.try_spawn_for_test(), "Collection timer fixture spawns")
+	var collection_coin := director.active_collectible()
+	_check(director.score == 0, "Collection timer fixture does not score on its spawn frame")
+	conveyor.player.global_position = collection_coin.global_position
 	await _wait_physics_frames(3)
 	_check(
 		director.score == 1

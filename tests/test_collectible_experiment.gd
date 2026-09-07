@@ -79,6 +79,12 @@ func _test_single_instance_collection_and_expiration() -> void:
 		and collectible.collision_mask == 1,
 		"Collectible detects the player without adding a solid collision layer"
 	)
+	_check(
+		director.score == 0
+		and director.player_spawn_rejection_reason_for_test(collectible.global_position).is_empty(),
+		"Forced offer relocates safely and exists before the player collects it"
+	)
+	conveyor.player.global_position = collectible.global_position
 	await _wait_physics_frames(3)
 	_check(
 		director.score == 1

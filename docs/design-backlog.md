@@ -4,6 +4,9 @@ This backlog records ideas without granting implementation approval. Evidence, h
 
 ## Postponed
 
+- **Overload Mode:** Possible separate mode where Refund Coins add time while the machine escalates toward a visually explicit overload. This changes coins from optional score temptation into a survival resource, so it must not replace or modify Standard Mode without a separate hypothesis and playtest.
+- **Can-platform bonus routes:** Possible high Refund Coin routes that are comfortably reachable only by using a landed product as a platform. This may deepen scoring decisions, but it creates hazard-state-dependent reachability and is not part of the final Standard coin micro-pass.
+- **Time bonuses for coins:** Do not add time to Standard Mode coins. Revisit only inside a separately approved Overload Mode experiment.
 - **Prototype A machine-jam event:** Preserve the frozen arena as a possible short event inside the conveyor game. Do not implement it yet.
 - **Moving-height Sweeper Arms:** Reconsider only if new playtest evidence identifies a specific decision or fairness problem the current fixed height cannot address.
 - **Additional can sizes and speeds:** Reconsider only after the single collectible experiment and further conveyor testing; do not add variants as content volume alone.

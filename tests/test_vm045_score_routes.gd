@@ -116,9 +116,13 @@ func _test_route_geometry_and_weights() -> void:
 	var arc := director.template_candidates_for_test(CollectibleDirector.OfferTemplate.LOW_AIR_ARC, 4)
 	_check(
 		safe_risk[0].band == CollectibleDirector.PlacementBand.GROUND
-		and safe_risk[1].band == CollectibleDirector.PlacementBand.LOW_AIR
-		and safe_risk[0].position.x - safe_risk[-1].position.x >= typical_spacing * 2.5,
-		"Safe coin is followed by a materially spaced risky extension"
+		and safe_risk[1].band == CollectibleDirector.PlacementBand.GROUND
+		and safe_risk[2].band == CollectibleDirector.PlacementBand.LOW_AIR
+		and safe_risk[3].band == CollectibleDirector.PlacementBand.LOW_AIR
+		and safe_risk[2].position.x < safe_risk[1].position.x
+		and safe_risk[3].position.x > safe_risk[1].position.x
+		and safe_risk[3].position.y < safe_risk[2].position.y,
+		"Safe route offers two ground coins before a jump and reverse-direction risk tail"
 	)
 	_check(
 		fork[0].band == CollectibleDirector.PlacementBand.GROUND

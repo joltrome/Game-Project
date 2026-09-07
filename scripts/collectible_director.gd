@@ -34,6 +34,16 @@ enum OfferSide {
 	AHEAD,
 }
 
+enum RouteArchetype {
+	LINEAR,
+	STAIR_UP,
+	STAIR_DOWN,
+	ARC,
+	STAGGER,
+	RISK_TAIL,
+	CLUSTER,
+}
+
 const COLLECTIBLE_SCENE := preload(
 	"res://scenes/collectibles/conveyor_collectible.tscn"
 )
@@ -47,6 +57,8 @@ const REJECTION_JUMP_MARGIN := "invalid jump margin"
 const REJECTION_LIFETIME := "invalid lifetime"
 const REJECTION_SIBLING := "sibling geometry conflict"
 const REJECTION_ROUND_ENDING := "round ending"
+const REJECTION_PLAYER_OVERLAP := "player overlap"
+const REJECTION_PLAYER_BUFFER := "player safety buffer"
 const REJECTION_UNKNOWN := "unknown"
 
 @export_category("Offer Timing")
@@ -99,6 +111,8 @@ const REJECTION_UNKNOWN := "unknown"
 @export_range(0.35, 0.55, 0.01) var horizontal_trail_span_ratio: float = 0.45
 @export_range(0.35, 0.70, 0.01) var staggered_coin_interval: float = 0.50
 @export var minimum_route_response_time: float = 0.55
+@export var player_spawn_safety_padding: float = 8.0
+@export var maximum_delayed_coin_spawn_retries: int = 4
 
 @export_category("Route Validation")
 @export var trajectory_simulation_step: float = 1.0 / 120.0
@@ -137,6 +151,10 @@ var _score_pulse_remaining: float = 0.0
 var _score_pulse_count: int = 0
 var _recent_natural_templates: Array[int] = []
 var _consecutive_behind_offers: int = 0
+var _alternate_placement_count: int = 0
+var _delayed_player_safety_retry_count: int = 0
+var _delayed_candidate_skip_count: int = 0
+var _player_safety_encounter_counts: Dictionary = {}
 
 @onready var _conveyor: ConveyorPrototype = get_parent() as ConveyorPrototype
 @onready var _score_label: Label = _conveyor.get_node("HUD/ScoreGroup/CollectibleScore")
@@ -216,6 +234,22 @@ func offer_log() -> Array[Dictionary]:
 
 func rejection_counts() -> Dictionary:
 	return _rejection_counts.duplicate(true)
+
+
+func alternate_placement_count() -> int:
+	return _alternate_placement_count
+
+
+func delayed_player_safety_retry_count() -> int:
+	return _delayed_player_safety_retry_count
+
+
+func delayed_candidate_skip_count() -> int:
+	return _delayed_candidate_skip_count
+
+
+func player_safety_encounter_counts() -> Dictionary:
+	return _player_safety_encounter_counts.duplicate(true)
 
 
 func longest_offer_gap() -> float:
@@ -473,41 +507,54 @@ func _try_spawn_template(
 		"behind_streak_before": behind_streak_before,
 		"behind_streak_after": behind_streak_before,
 		"anti_streak_requested": anti_streak_requested,
+		"route_archetype": route_archetype_name(template),
+		"placement_attempts": 1,
+		"alternate_placement_selected": false,
+		"placement_shift_x": 0.0,
+		"player_safety_rejections": 0,
+		"player_overlap_rejections": 0,
+		"player_buffer_rejections": 0,
 	}
 	if _conveyor.gameplay_is_stopped() or _stopped:
 		return _reject_attempt(log_entry, REJECTION_ROUND_ENDING)
 	if not _can_open_another_offer():
 		return _reject_attempt(log_entry, REJECTION_ACTIVE_LIMIT)
-	var candidates := _template_candidates(
+	var original_candidates := _template_candidates(
 		template,
 		intended_count,
 		side_preference
 	)
-	if candidates.is_empty():
+	if original_candidates.is_empty():
 		return _reject_attempt(log_entry, REJECTION_UNKNOWN)
+	var candidates := original_candidates
+	var validation := _offer_candidate_rejection(candidates)
+	if _is_player_safety_rejection(String(validation.reason)):
+		_record_player_safety_encounter(String(validation.reason), log_entry)
+		var alternatives := _whole_offer_relocation_candidates(original_candidates)
+		for alternative in alternatives:
+			log_entry.placement_attempts = int(log_entry.placement_attempts) + 1
+			var alternative_validation := _offer_candidate_rejection(alternative)
+			if _is_player_safety_rejection(String(alternative_validation.reason)):
+				_record_player_safety_encounter(String(alternative_validation.reason), log_entry)
+			if String(alternative_validation.reason).is_empty():
+				candidates = alternative
+				validation = alternative_validation
+				log_entry.alternate_placement_selected = true
+				log_entry.placement_shift_x = (
+					float(candidates[0].position.x)
+					- float(original_candidates[0].position.x)
+				)
+				_alternate_placement_count += 1
+				break
+	if not String(validation.reason).is_empty():
+		return _reject_attempt(log_entry, String(validation.reason))
 	for candidate_data in candidates:
 		if candidate_data.band == PlacementBand.GROUND:
 			log_entry.intended_ground_count = int(log_entry.intended_ground_count) + 1
 		else:
 			log_entry.intended_low_air_count = int(log_entry.intended_low_air_count) + 1
 	log_entry.intended_count = candidates.size()
-	var accepted_candidates: Array[Dictionary] = []
-	var first_rejection := ""
-	for candidate_index in range(candidates.size()):
-		var candidate_data: Dictionary = candidates[candidate_index]
-		var reason := _candidate_rejection_reason(
-			candidate_data.position,
-			candidate_data.band,
-			accepted_candidates,
-			candidate_index == 0,
-			bool(candidate_data.get("allow_right_edge", false))
-		)
-		if not reason.is_empty():
-			first_rejection = reason
-			break
-		accepted_candidates.append(candidate_data)
-	if not first_rejection.is_empty():
-		return _reject_attempt(log_entry, first_rejection)
+	var accepted_candidates: Array[Dictionary] = candidates
 	if not _offer_has_reachable_response(accepted_candidates):
 		return _reject_attempt(log_entry, REJECTION_UNREACHABLE)
 	if _is_post_teaching_route(template):
@@ -540,6 +587,7 @@ func _try_spawn_template(
 		"coins": coins,
 		"pending_candidates": pending_candidates,
 		"next_subspawn_time": _conveyor.survival_time + staggered_coin_interval,
+		"pending_retry_count": 0,
 		"total_count": accepted_candidates.size(),
 		"spawn_time": _conveyor.survival_time,
 		"collected": 0,
@@ -625,13 +673,29 @@ func _update_staggered_offers() -> void:
 		if pending.is_empty() or _conveyor.survival_time + 0.0001 < float(offer.next_subspawn_time):
 			continue
 		var candidate_data: Dictionary = pending[0]
-		var reason := _candidate_rejection_reason(
-			candidate_data.position,
-			candidate_data.band,
-			[],
-			false
-		)
+		var reason := _player_spawn_rejection_reason(candidate_data.position)
+		if reason.is_empty():
+			reason = _candidate_rejection_reason(
+				candidate_data.position,
+				candidate_data.band,
+				[],
+				false
+			)
 		if not reason.is_empty():
+			var retry_count := int(offer.get("pending_retry_count", 0)) + 1
+			offer.pending_retry_count = retry_count
+			if _is_player_safety_rejection(reason):
+				_delayed_player_safety_retry_count += 1
+				_record_player_safety_encounter(reason)
+			_record_subspawn_event("subspawn_rejected", offer, candidate_data, reason, retry_count)
+			if retry_count > maxi(maximum_delayed_coin_spawn_retries, 0):
+				pending.pop_front()
+				offer.pending_candidates = pending
+				offer.pending_retry_count = 0
+				offer.expired = int(offer.expired) + 1
+				_delayed_candidate_skip_count += 1
+				_record_skipped_candidate_resolution(offer)
+				_record_subspawn_event("subspawn_skipped", offer, candidate_data, reason, retry_count)
 			offer.next_subspawn_time = _conveyor.survival_time + minf(failed_spawn_retry_delay, staggered_coin_interval)
 			_active_offers[offer_index] = offer
 			continue
@@ -640,9 +704,189 @@ func _update_staggered_offers() -> void:
 		var coin := _spawn_offer_coin(candidate_data, int(offer.id), coin_index)
 		offer.coins.append(coin)
 		offer.pending_candidates = pending
+		offer.pending_retry_count = 0
 		offer.next_subspawn_time = _conveyor.survival_time + staggered_coin_interval
 		_active_offers[offer_index] = offer
 		spawn_count += 1
+
+
+func _offer_candidate_rejection(candidates: Array[Dictionary]) -> Dictionary:
+	var accepted_siblings: Array[Dictionary] = []
+	for candidate_index in range(candidates.size()):
+		var candidate_data: Dictionary = candidates[candidate_index]
+		var player_reason := _player_spawn_rejection_reason(candidate_data.position)
+		if not player_reason.is_empty():
+			return {"reason": player_reason, "candidate_index": candidate_index}
+		var reason := _candidate_rejection_reason(
+			candidate_data.position,
+			candidate_data.band,
+			accepted_siblings,
+			candidate_index == 0,
+			bool(candidate_data.get("allow_right_edge", false))
+		)
+		if not reason.is_empty():
+			return {"reason": reason, "candidate_index": candidate_index}
+		accepted_siblings.append(candidate_data)
+	return {"reason": "", "candidate_index": -1}
+
+
+func _player_spawn_rejection_reason(candidate: Vector2) -> String:
+	if not is_instance_valid(_conveyor.player):
+		return ""
+	var player_size := _conveyor.player_collision_size()
+	var coin_size := collectible_size
+	var player_center := _conveyor.player.global_position
+	var actual_overlap := _rectangles_overlap(
+		candidate,
+		coin_size,
+		player_center,
+		player_size
+	)
+	if actual_overlap:
+		return REJECTION_PLAYER_OVERLAP
+	var padding := maxf(player_spawn_safety_padding, 0.0)
+	if padding <= 0.0:
+		return ""
+	var padded_player_size := player_size + Vector2.ONE * padding * 2.0
+	if _rectangles_overlap(candidate, coin_size, player_center, padded_player_size):
+		return REJECTION_PLAYER_BUFFER
+	return ""
+
+
+func player_spawn_rejection_reason_for_test(candidate: Vector2) -> String:
+	return _player_spawn_rejection_reason(candidate)
+
+
+func _is_player_safety_rejection(reason: String) -> bool:
+	return reason in [REJECTION_PLAYER_OVERLAP, REJECTION_PLAYER_BUFFER]
+
+
+func _record_player_safety_encounter(reason: String, log_entry: Dictionary = {}) -> void:
+	if not _is_player_safety_rejection(reason):
+		return
+	_player_safety_encounter_counts[reason] = int(
+		_player_safety_encounter_counts.get(reason, 0)
+	) + 1
+	if log_entry.is_empty():
+		return
+	log_entry.player_safety_rejections = int(log_entry.player_safety_rejections) + 1
+	var field := (
+		"player_overlap_rejections"
+		if reason == REJECTION_PLAYER_OVERLAP
+		else "player_buffer_rejections"
+	)
+	log_entry[field] = int(log_entry.get(field, 0)) + 1
+
+
+func _whole_offer_relocation_candidates(
+	original: Array[Dictionary]
+) -> Array[Array]:
+	var alternatives: Array[Array] = []
+	var original_primary := offer_primary_x_for_test(original)
+	if is_nan(original_primary):
+		return alternatives
+	var used_shifts := PackedFloat32Array([0.0])
+	var target_primaries := PackedFloat32Array()
+	for configured_x in candidate_x_positions:
+		target_primaries.append(configured_x)
+	var minimum_x := INF
+	var maximum_x := -INF
+	for candidate in original:
+		minimum_x = minf(minimum_x, float(candidate.position.x))
+		maximum_x = maxf(maximum_x, float(candidate.position.x))
+	var horizontal_clearance := (
+		(_conveyor.player_collision_size().x + collectible_size.x) * 0.5
+		+ maxf(player_spawn_safety_padding, 0.0)
+		+ 0.01
+	)
+	var player_x := _conveyor.player.global_position.x
+	target_primaries.append(
+		original_primary + player_x - horizontal_clearance - maximum_x
+	)
+	target_primaries.append(
+		original_primary + player_x + horizontal_clearance - minimum_x
+	)
+	for target_primary in target_primaries:
+		var alternative := _shift_whole_offer_to_primary_x(original, target_primary)
+		if alternative.is_empty():
+			continue
+		var shift := float(alternative[0].position.x) - float(original[0].position.x)
+		var duplicate := false
+		for used_shift in used_shifts:
+			if is_equal_approx(shift, used_shift):
+				duplicate = true
+				break
+		if duplicate:
+			continue
+		used_shifts.append(shift)
+		alternatives.append(alternative)
+	return alternatives
+
+
+func _shift_whole_offer_to_primary_x(
+	original: Array[Dictionary],
+	target_primary_x: float
+) -> Array[Dictionary]:
+	if original.is_empty():
+		return []
+	var minimum_x := INF
+	var maximum_x := -INF
+	var allow_right_edge := true
+	for candidate in original:
+		minimum_x = minf(minimum_x, float(candidate.position.x))
+		maximum_x = maxf(maximum_x, float(candidate.position.x))
+		allow_right_edge = allow_right_edge and bool(candidate.get("allow_right_edge", false))
+	var bounds := _route_bounds()
+	if allow_right_edge:
+		bounds.y = _conveyor.control_band_right - collectible_size.x * 0.5
+	var desired_shift := target_primary_x - offer_primary_x_for_test(original)
+	var applied_shift := clampf(
+		desired_shift,
+		bounds.x - minimum_x,
+		bounds.y - maximum_x
+	)
+	var shifted_candidates: Array[Dictionary] = []
+	for candidate in original:
+		var shifted: Dictionary = candidate.duplicate(true)
+		shifted.position = Vector2(
+			float(candidate.position.x) + applied_shift,
+			float(candidate.position.y)
+		)
+		shifted_candidates.append(shifted)
+	return shifted_candidates
+
+
+func _record_subspawn_event(
+	event_name: String,
+	offer: Dictionary,
+	candidate_data: Dictionary,
+	reason: String,
+	retry_count: int
+) -> void:
+	_offer_log.append({
+		"event": event_name,
+		"time": _conveyor.survival_time,
+		"phase": phase_at(_conveyor.survival_time),
+		"template": int(offer.template),
+		"template_name": template_name(int(offer.template)),
+		"route_archetype": route_archetype_name(int(offer.template)),
+		"candidate_position": candidate_data.position,
+		"rejection_reason": reason,
+		"retry_count": retry_count,
+		"offer_id": int(offer.id),
+	})
+
+
+func _record_skipped_candidate_resolution(offer: Dictionary) -> void:
+	var log_index := int(offer.get("log_index", -1))
+	if log_index < 0 or log_index >= _offer_log.size():
+		return
+	_offer_log[log_index].expired = int(offer.expired)
+	if (
+		int(offer.collected) + int(offer.expired)
+		>= int(offer.get("total_count", offer.coins.size()))
+	):
+		_offer_log[log_index].resolve_timestamp = _conveyor.survival_time
 
 
 func _reject_attempt(log_entry: Dictionary, reason: String) -> bool:
@@ -665,6 +909,8 @@ func known_rejection_reasons() -> PackedStringArray:
 		REJECTION_LIFETIME,
 		REJECTION_SIBLING,
 		REJECTION_ROUND_ENDING,
+		REJECTION_PLAYER_OVERLAP,
+		REJECTION_PLAYER_BUFFER,
 		REJECTION_UNKNOWN,
 	])
 
@@ -686,6 +932,23 @@ func template_name(template: int) -> String:
 		OfferTemplate.STAGGERED_ROUTE:
 			return "staggered aerial route"
 	return "unknown"
+
+
+func route_archetype_name(template: int) -> String:
+	match template:
+		OfferTemplate.LOW_AIR_ARC:
+			return "ARC"
+		OfferTemplate.SAFE_VERSUS_RISK:
+			return "RISK_TAIL"
+		OfferTemplate.HORIZONTAL_LINE:
+			return "LINEAR"
+		OfferTemplate.MIXED_ROUTE:
+			return "STAIR_DOWN"
+		OfferTemplate.COMPACT_BURST:
+			return "CLUSTER"
+		OfferTemplate.STAGGERED_ROUTE:
+			return "STAGGER"
+	return "LINEAR"
 
 
 func _template_candidates(
@@ -720,16 +983,26 @@ func _template_candidates(
 		OfferTemplate.SAFE_VERSUS_RISK:
 			count = clampi(count, 3, 4)
 			var risk_anchor := _route_anchor_x(spacing * float(count - 1))
-			candidates.append({"position": Vector2(risk_anchor, ground_y), "band": PlacementBand.GROUND})
-			for index in range(count - 1):
-				var extension_rise := 26.0 if index % 2 == 1 else 0.0
+			candidates.append({
+				"position": Vector2(risk_anchor, ground_y),
+				"band": PlacementBand.GROUND,
+				"route_branch": "safe_start",
+			})
+			candidates.append({
+				"position": Vector2(risk_anchor - spacing, ground_y),
+				"band": PlacementBand.GROUND,
+				"route_branch": "safe_continuation",
+			})
+			candidates.append({
+				"position": Vector2(risk_anchor - spacing * 2.0, low_y + 6.0),
+				"band": PlacementBand.LOW_AIR,
+				"route_branch": "risk_tail_left",
+			})
+			if count >= 4:
 				candidates.append({
-					"position": Vector2(
-						risk_anchor - spacing * float(index + 1),
-						low_y + 6.0 - extension_rise
-					),
+					"position": Vector2(risk_anchor - spacing * 0.5, low_y - 20.0),
 					"band": PlacementBand.LOW_AIR,
-					"route_branch": "extension",
+					"route_branch": "risk_tail_reverse",
 				})
 		OfferTemplate.HORIZONTAL_LINE:
 			count = clampi(count, 3, 3)
@@ -1010,7 +1283,10 @@ func route_action_validation_for_test(template: int, intended_count: int = 4) ->
 	var valid := not candidates.is_empty()
 	if template not in [OfferTemplate.GROUND_SINGLE, OfferTemplate.LOW_AIR_ARC, OfferTemplate.COMPACT_BURST]:
 		valid = valid and int(results[RouteTrajectory.NO_FURTHER_INPUT].collected_count) < total
-	if template in [OfferTemplate.MIXED_ROUTE, OfferTemplate.STAGGERED_ROUTE]:
+	if template in [
+		OfferTemplate.MIXED_ROUTE,
+		OfferTemplate.STAGGERED_ROUTE,
+	]:
 		valid = valid and int(results[RouteTrajectory.SAME_INPUT_CONTINUATION].collected_count) < total
 	if template in [OfferTemplate.SAFE_VERSUS_RISK, OfferTemplate.MIXED_ROUTE, OfferTemplate.STAGGERED_ROUTE]:
 		valid = valid and int(results[RouteTrajectory.PASSIVE_JUMP].collected_count) < total
@@ -1073,7 +1349,7 @@ func _trajectory_jump_times(
 		RouteTrajectory.INTENDED_AGGRESSIVE:
 			match template:
 				OfferTemplate.SAFE_VERSUS_RISK:
-					return PackedFloat32Array([0.12])
+					return PackedFloat32Array([0.10, 0.82])
 				OfferTemplate.MIXED_ROUTE:
 					return PackedFloat32Array([0.08])
 				OfferTemplate.STAGGERED_ROUTE:
@@ -1097,6 +1373,8 @@ func _trajectory_input_direction(template: int, trajectory: int, time_seconds: f
 			return 1.0 if time_seconds < 0.22 else 0.0
 		RouteTrajectory.INTENDED_AGGRESSIVE:
 			match template:
+				OfferTemplate.SAFE_VERSUS_RISK:
+					return -1.0 if time_seconds < 0.45 else 1.0
 				OfferTemplate.MIXED_ROUTE:
 					return 1.0
 				OfferTemplate.COMPACT_BURST:
