@@ -1545,6 +1545,12 @@
     text: 'A small Standard session wrapper now owns Menu, Game, Results and Credits, one continuous music player, Music/SFX mute controls and local ConfigFile best score. It instantiates the accepted P-A/C-A scene only on Play/Retry and removes the entire old run on replacement or menu return. Results are connected after physics callbacks to safely freeze the full run. Original gameplay scripts/scenes are unchanged. The supplied Miraie MP3 is a byte-identical TEMPORARY COMPOSER DEMO and plays once including its quiet tail; final seamless loop and explicit commercial confirmation remain pending. Future SFX hooks are silent. Normal presentation hides experiment identifiers and requires both a debug build and a dedicated feature for F8. RC0 is for local Startup Lab review only, not automatically distributed. See docs/vm060-presentation-audio.md for test, browser, export and screenshot evidence, including environment warnings and QA-only completion isolation.'
   };
 
+  const vm060FunctionalAcceptance = {
+    id: 'decision-vm-0.6.0-rc0-functional-acceptance-ui-direction',
+    type: 'Decision', date: '2026-09-08', source: 'Startup Lab RC0 review and preservation instruction',
+    text: 'Functionally accept VM-0.6.0-STANDARD-RC0 at 1dcaae7 as the presentation/audio engineering baseline, preserving menu/results/credits, input, fresh-run Retry, local best score, persistent music, buses, silent SFX hooks, debug gating and frozen Standard regressions. Reject the present menu/results visual presentation as the final UI direction: it is too static, rectangular, dashboard-like, generic, restrained and typographically bland. A dedicated Work session will explore a playful, animated, game-specific arcade direction. No visual or behavior change is authorized in this preservation pass. The exact RC0 commit was pushed and its remote HEAD verified before a separate documentation pass. See docs/vm060-ui-functional-contract.md for the behavior contract, replaceable visual layer, death-cause data gap and future proposal. Founder-reported non-fade/fade WAV masters are context only; final audio conversion/loop validation/swap remains a later authorized task.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1666,7 +1672,8 @@
     vm060ConveyorVisualDirectionDecision,
     vm060ConveyorVisualDirectionResult,
     vm060AcceptedFreeze,
-    vm060PresentationResult
+    vm060PresentationResult,
+    vm060FunctionalAcceptance
   ];
 
   const defaultFindings = [
@@ -1678,7 +1685,7 @@
   ];
 
   const defaultState = {
-    version: 33,
+    version: 34,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

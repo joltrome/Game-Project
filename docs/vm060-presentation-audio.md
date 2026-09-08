@@ -1,5 +1,7 @@
 # VM-0.6.0 — Presentation & Audio Foundation
 
+**Subsequent Startup Lab review:** RC0 is functionally accepted as the presentation/audio engineering baseline. The current menu/results visuals are rejected as the final direction; Work will explore their replacement. Commit `1dcaae7` has since been pushed unchanged. The implementation/QA record below describes the original RC0 task; its “unpushed”/no-push references are historical. See [UI functional contract](vm060-ui-functional-contract.md).
+
 Date: 2026-09-08 JST. Candidate: **VM-0.6.0-STANDARD-RC0**, for Startup Lab review only. No itch.io upload or external distribution.
 
 ## Acceptance and repository state

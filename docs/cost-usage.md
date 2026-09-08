@@ -55,6 +55,8 @@ Codex authentication mode, model identity, remaining subscription allowance, and
 
 | 2026-09-08 JST | VM-0.6.0 presentation/audio RC0 | ChatGPT/Codex session; exact auth details not exposed | GPT-6 family; Astra requested by user, exact runtime variant/reasoning not independently exposed | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Local Godot implementation/tests, composer demo byte-copy, official Godot documentation lookup, local HTTP/browser QA, screenshots, ZIP packaging, and local Git only. No OpenAI API, paid audio, paid hosting, purchased assets, analytics, distribution or itch upload. |
 
+| 2026-09-08 JST | Preserve accepted VM-0.6.0 RC0 and document Work UI contract | ChatGPT/Codex context; exact auth details not exposed | GPT-6 family; exact runtime variant/reasoning not independently exposed | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Verified and pushed existing RC0, inspected runtime input/death/audio/persistence code read-only, checked named WAV availability in task-relevant locations, created the functional UI contract and updated decision/history documentation. Documentation kept in a separate commit. No gameplay/UI/audio/asset/copy/message changes, paid services, conversion, export or itch distribution. |
+
 ## Paid API session fields
 
 For any approved paid API session, append an entry containing all fields the provider exposes:
