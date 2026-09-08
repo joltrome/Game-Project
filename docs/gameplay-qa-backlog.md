@@ -11,3 +11,7 @@ This list preserves gameplay observations during the visual transition. It does 
 - **Automated result:** the revised route is collectible with the locked controller, is not completed by no input, unchanged left input, or one passive jump, and preserves a one-coin abandonment path. Three deterministic 60-second seeds retained the exact 54/55/55 offered-coin totals and 22-offer cadence from the measured baseline.
 - **Pending manual validation:** during natural and coin-greedy runs, record whether later coins sometimes require another jump, horizontal adjustment, or continue/abandon choice after the first pickup; also record if the route is confusing, exhausting, or effectively automatic. Freeze Standard Mode coin gameplay after acceptance.
 - **Visual-integration risk:** background detail, machine framing, or product art could make an already compact route harder to parse. That is a readability bug to correct visually, not automatic permission to retune the director.
+
+## Accepted Standard baseline — 2026-09-08
+
+Startup Lab has now accepted the final coin topology/spawn-safety micro-pass and leftward conveyor visual correction. Earlier pending-acceptance requests in this file are historical. Preserve current gameplay through VM-0.6.0; unrelated findings belong to backlog, not opportunistic fixes.

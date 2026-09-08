@@ -1,3 +1,15 @@
+# VM-0.6.0 Standard presentation/audio candidate
+
+F5 now opens the main menu. PLAY starts the accepted S1/P-A/C-A Standard scene. Move with A/D or Left/Right; jump with Space. Results offer RETRY and MENU; R retries, Escape returns from results/credits. Music and SFX have independent mute controls. Best score is local to the device/browser.
+
+The Miraie theme is a temporary composer demo, plays once per session, and has a quiet tail. Final seamless audio and explicit commercial confirmation remain pending. No SFX assets or new gameplay were added.
+
+Review [VM-0.6.0 handoff](docs/vm060-presentation-audio.md) and [audio provenance](docs/audio-source-inventory.md). Export with the `Web Standard RC0` preset to `builds/VM-0.6.0-STANDARD-RC0/index.html`. Do not upload or distribute before Startup Lab review.
+
+The earlier implementation records below are historical. Prototype A, D2, and comparison scenes remain available independently.
+
+---
+
 # Vending Machine Survival
 
 Gray-box survival prototype developed from an initial comparison between:

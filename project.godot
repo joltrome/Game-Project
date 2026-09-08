@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Vending Machine Survival"
-run/main_scene="res://scenes/prototypes/conveyor.tscn"
+run/main_scene="res://scenes/presentation/standard_session.tscn"
 run/main_scene.playtest_ab="res://scenes/playtest/playtest_flow.tscn"
 run/main_scene.playtest_ba="res://scenes/playtest/playtest_flow.tscn"
 run/main_scene.motion_d2="res://scenes/experiments/motion_d2.tscn"

@@ -73,8 +73,8 @@ func _test_isolated_profiles_and_frozen_values() -> void:
 		"Both motion variants preserve the frozen VM-0.4.7 gameplay values"
 	)
 	_check(
-		ProjectSettings.get_setting("application/run/main_scene") == CONVEYOR_SCENE_PATH,
-		"The project-wide default scene remains the frozen conveyor"
+		ProjectSettings.get_setting("application/run/main_scene") == "res://scenes/presentation/standard_session.tscn",
+		"The project-wide default scene is the Standard presentation wrapper"
 	)
 	_check(
 		load(ARENA_SCENE_PATH) != null,

@@ -1,7 +1,7 @@
 # VM-0.6.0 Final Standard Coin Micro-Pass
 
 Date: 2026-09-07 JST  
-Status: implemented and technically validated; pending manual Startup Lab acceptance
+Status: accepted by Startup Lab; Standard gameplay frozen (confirmed 2026-09-08)
 
 ## Scope
 
@@ -86,7 +86,7 @@ Encounter counts include rejected alternatives within a placement attempt, so th
 
 Web review build: `builds/web-vis04-pa-ca/index.html` (generated and ignored by Git).
 
-## Manual acceptance questions
+## Historical manual acceptance questions
 
 Play at least three natural runs and three coin-greedy runs. For each multi-coin offer, note:
 
@@ -97,4 +97,4 @@ Play at least three natural runs and three coin-greedy runs. For each multi-coin
 5. Did offers visibly disappear or pause because the player occupied a common spawn area?
 6. Did the overall cadence or score availability feel materially reduced?
 
-Do not infer success from the automated route simulator. Manual acceptance is required before Standard Mode coin gameplay is frozen again and VM-0.6.0 presentation/audio work begins.
+Startup Lab has now manually accepted this pass, including occasional simple/clumped offers. The founder reconfirmed acceptance on 2026-09-08. No further coin-topology tuning is authorized during presentation/audio work.

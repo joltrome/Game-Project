@@ -39,3 +39,9 @@ These suggestions came from external playtesting. They are not requirements and 
 ## Directional-pressure hypothesis to observe
 
 - **Missile and conveyor direction:** One external tester reported that leftward conveyor force combined with missiles entering from the left may feel overly compressed and suggested reversing missile direction. Status: unvalidated hypothesis; no baseline change approved. In later sessions, record whether missile deaths feel unavoidable because of conveyor motion, whether players are forced to camp right, and whether telegraph and reaction margins remain adequate. If independently repeated, A/B-test left-entry versus right-entry missiles before changing the frozen baseline. The primary risk of an immediate reversal is replacing a tested pressure relationship with a different untested dominant strategy.
+
+## After accepted Standard freeze — 2026-09-08
+
+Startup Lab accepts the final coin micro-pass and leftward conveyor visuals. No further Standard gameplay pass is authorized. Backlog only (not release commitments): separate Overload Mode, time-giving coins in Overload only, escalating overload intensity, landed-can-required high coin routes, and right-side vend elevator polish if later player evidence warrants it.
+
+Expected review sequence: VM-0.6.0 presentation/audio foundation → VM-0.6.1 audio content/SFX → VM-0.6.2 release-candidate QA and finished-experience external test → soft release. Each later milestone requires authorization; none was started here.

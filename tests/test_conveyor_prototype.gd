@@ -46,8 +46,8 @@ func _test_independent_scene_loading_and_configuration() -> void:
 
 	_check(
 		ProjectSettings.get_setting("application/run/main_scene")
-			== CONVEYOR_SCENE_PATH,
-		"Prototype B branch runs the conveyor scene with F5"
+			== "res://scenes/presentation/standard_session.tscn",
+		"F5 enters Standard presentation while both prototypes remain loadable"
 	)
 	_check(
 		conveyor.player.maximum_speed == 300.0

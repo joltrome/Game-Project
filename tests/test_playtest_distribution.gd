@@ -57,8 +57,8 @@ func _test_configuration() -> void:
 	)
 	_check(
 		str(ProjectSettings.get_setting("application/run/main_scene"))
-			== GAME_B_SCENE_PATH,
-		"Normal editor F5 launch remains the current conveyor game"
+			== "res://scenes/presentation/standard_session.tscn",
+		"Normal editor F5 launch enters the Standard main menu"
 	)
 	_check(
 		str(
