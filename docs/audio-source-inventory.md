@@ -41,3 +41,7 @@ Technical inspection found approximately 30.167 ms of trailing silence. The foun
 ## 2026-09-09 — authorized derived-loop experiment
 
 Startup Lab authorized a separate 41-bar trim and minimal seam experiment. [A/B report](vm061-derived-loop-experiment.md): A retains 4,541,538 original frames; B adds a 96-frame/2 ms raised-cosine offset correction at the start while retaining identical duration. Original source remains unchanged; both candidates passed three continuous native Godot mixer wraps. Listening selection is pending. Candidates stay under ignored `builds/audio-loop-experiment-vm061/`; neither has replaced the runtime demo or been converted to OGG.
+
+## 2026-09-09 — A/B rejected; Candidate C for listening
+
+Startup Lab rejected the 41-bar A/B restart perceptually and authorized the [40-bar Candidate C experiment](vm061-candidate-c-loop.md). Exact C retains frames [0,4430769); a bounded ±2 ms waveform comparison supplies an optional endpoint at 4430863 (+1.958 ms). Both preserve the original non-fade PCM prefix without sample editing or fades, and both passed three native Godot mixer wraps. Repeated previews contain three joins with four-bar context. Human musical approval is pending; if C remains wrong, stop for manual/composer loop markers. Originals and runtime demo remain unchanged.

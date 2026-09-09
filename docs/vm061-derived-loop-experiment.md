@@ -2,6 +2,8 @@
 
 Date: 2026-09-09 JST. Status: **two candidates ready for listening; no runtime selection**.
 
+Subsequent decision: **Startup Lab rejected both A and B perceptually** because their musical restart is wrong. Do not reuse the 41-bar solution. The separately authorized [Candidate C experiment](vm061-candidate-c-loop.md) tests a 40-bar endpoint. This A/B report is historical.
+
 ## Authorization and scope
 
 Startup Lab lifted the previous audio stop condition only for a non-destructive derived-loop experiment: retain the non-fade master, trim to the 41-bar boundary at 104 BPM, and compare the smallest seam treatment if needed. UI integration, final runtime replacement and distribution have not resumed in this experiment. The original [stop report](vm061-rc1-audio-stop.md) remains historical evidence of the untrimmed source's audible gap/click.

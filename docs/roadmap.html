@@ -1563,6 +1563,12 @@
     text: 'The previous audio stop is lifted only for a derived-loop experiment. A preserves source frames [0,4541538), removing 1443 padding frames; B adds a 96-frame/2 ms raised-cosine initial offset correction, preserving length and all later samples. Both last 94.615375 seconds and passed three continuous native Godot mixer wraps. Original master and all RC0 runtime files remain unchanged. A retains a 0.04047 sample-amplitude boundary step; B removes that step numerically. A/B listening selection is pending: this is not a claim of audible seamlessness or an accepted runtime swap. Previews, exact edits and limitations: docs/vm061-derived-loop-experiment.md. No OGG, Web export, paid service or distribution occurred.'
   };
 
+  const vm061CandidateC = {
+    id: 'result-vm-0.6.1-candidate-c-40-bar-loop',
+    type: 'Result', date: '2026-09-09', source: 'Startup Lab perceptual rejection of A/B and explicit Candidate C authorization',
+    text: 'Startup Lab rejects the musical restart of both 41-bar candidates and authorizes only a 40-bar non-fade-source loop experiment. Exact C retains 4430769 frames (92.3076875 seconds). A bounded waveform comparison supplies a nearby endpoint at 4430863 frames (+1.958 ms), reducing the sample jump while preserving all retained source samples. Neither candidate has a fade or sample treatment. Three-join listening previews and three native Godot mixer wraps per variant are prepared; musical acceptance remains pending. Master and RC0 runtime unchanged. Do not retry 41 bars; if C remains musically wrong, stop for manual Audacity/REAPER or Miraie DAW markers. See docs/vm061-candidate-c-loop.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1687,7 +1693,8 @@
     vm060PresentationResult,
     vm060FunctionalAcceptance,
     vm061AudioStop,
-    vm061LoopExperiment
+    vm061LoopExperiment,
+    vm061CandidateC
   ];
 
   const defaultFindings = [
@@ -1699,7 +1706,7 @@
   ];
 
   const defaultState = {
-    version: 36,
+    version: 37,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []
