@@ -1,5 +1,7 @@
 # VM-0.6.1 RC1 — stopped at the music loop gate
 
+> SUPERSEDED: Startup Lab rejected every A/B/C endpoint. The untouched full original WAV is accepted; the founder approved the corrected native capture and authorized RC1 to resume. See [original WAV investigation](vm061-original-wav-investigation.md). Historical observations below are not current runtime instructions.
+
 Date: 2026-09-09 JST. **RC1 is not implemented or ready for review/export. Return to Startup Lab now.**
 
 Subsequent authorization: Startup Lab lifted this stop only for the [derived-loop A/B experiment](vm061-derived-loop-experiment.md). The original findings below remain historical; runtime selection and RC1 integration are still pending.

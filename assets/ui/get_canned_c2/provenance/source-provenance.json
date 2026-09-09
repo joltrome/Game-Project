@@ -1,0 +1,27 @@
+[
+  {
+    "copy": "motion/sources/technician-run.png",
+    "source": "/Users/jeromenicholaz/Documents/GameProject/vending-machine-survival-starter/assets/vm050_vis04/VM050_VIS04_S1_50x60_run_sheet.png",
+    "sha256": "62ceeddcbfbe00d74c5481d13252ca7d835ed9934e62609a076d883bc2fb4ebc"
+  },
+  {
+    "copy": "motion/sources/technician-states.png",
+    "source": "/Users/jeromenicholaz/Documents/GameProject/vending-machine-survival-starter/assets/vm050_d3_vis03/VM050_VIS03_technician_rigid_block_limbs_sheet.png",
+    "sha256": "19c5b01405764c60ad7fe1a1418a7150405603a98055c2ad02ae476a97cc5b88"
+  },
+  {
+    "copy": "motion/sources/coin.png",
+    "source": "/Users/jeromenicholaz/Documents/GameProject/vending-machine-survival-starter/assets/vm050_vis04/VM050_VIS04_C1_16x16_coin_sheet.png",
+    "sha256": "5453420ab18a9fcef9ddce5832ba33f7ce8a9d244eb69955f016862de062c6d8"
+  },
+  {
+    "copy": "motion/sources/landed-red.png",
+    "source": "/Users/jeromenicholaz/Documents/GameProject/vending-machine-survival-starter/assets/vm050_d3_vis02/VM050_D3_VIS02_landed_red_soda_runtime_sheet.png",
+    "sha256": "1b9d08aa0d3621ac151f261b622281431dfd9629878fa15ebdbd21ad7475172c"
+  },
+  {
+    "copy": "motion/sources/conveyor.png",
+    "source": "/Users/jeromenicholaz/Documents/GameProject/vending-machine-survival-starter/assets/vm050_d3_v2/VM050_D3_V2_conveyor_tile_sheet.png",
+    "sha256": "f45663e1667d86040b3a7afe8701d5dd6e1dbc25f000045eb7fc1826a13f0035"
+  }
+]

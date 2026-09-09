@@ -21,6 +21,10 @@ signal right_pressure_launched(target_x: float, launched_at: float)
 signal ordinary_product_event_replaced(pattern_type: int, replacement_id: String)
 signal player_died
 
+enum DeathCause { UNKNOWN, FALLING_PRODUCT, BACKGROUND_PRODUCT, RETRIEVAL_CARRIAGE, LEFT_OUT }
+
+var death_cause: DeathCause = DeathCause.UNKNOWN
+
 enum PatternType {
 	CAN_ONLY,
 	SWEEPER_ONLY,
@@ -1260,6 +1264,7 @@ func spawn_external_conveyor_product(
 		offscreen_cleanup_x,
 		effective_product_falling_collision_size()
 	)
+	product.set_meta(&"background_product", true)
 	product.player_hit.connect(_on_product_hit)
 	product.landed.connect(_on_product_landed)
 	product.cleared.connect(_on_product_cleared)
@@ -2140,7 +2145,7 @@ func _update_source_visuals() -> void:
 func _on_product_hit(product: FallingProduct) -> void:
 	if is_dead or not product.is_falling_lethal():
 		return
-	_kill_player()
+	_kill_player(DeathCause.BACKGROUND_PRODUCT if product.get_meta(&"background_product", false) else DeathCause.FALLING_PRODUCT)
 
 
 func _on_product_landed(product: FallingProduct) -> void:
@@ -2171,7 +2176,7 @@ func _on_product_cleared(product: FallingProduct) -> void:
 func _on_sweeper_hit(_sweeper: AirSweeper) -> void:
 	if is_dead:
 		return
-	_kill_player()
+	_kill_player(DeathCause.RETRIEVAL_CARRIAGE)
 
 
 func _on_sweeper_cleared(sweeper: AirSweeper) -> void:
@@ -2182,12 +2187,13 @@ func _on_sweeper_cleared(sweeper: AirSweeper) -> void:
 func _on_off_belt_kill_region_body_entered(body: Node2D) -> void:
 	if not left_failure_enabled or is_dead or body != player:
 		return
-	_kill_player()
+	_kill_player(DeathCause.LEFT_OUT)
 
 
-func _kill_player() -> void:
+func _kill_player(cause: DeathCause = DeathCause.UNKNOWN) -> void:
 	if is_dead or is_round_complete:
 		return
+	death_cause = cause
 	is_dead = true
 	_stop_active_gameplay()
 	_death_label.visible = true

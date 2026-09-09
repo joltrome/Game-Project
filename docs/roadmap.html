@@ -1569,6 +1569,12 @@
     text: 'Startup Lab rejects the musical restart of both 41-bar candidates and authorizes only a 40-bar non-fade-source loop experiment. Exact C retains 4430769 frames (92.3076875 seconds). A bounded waveform comparison supplies a nearby endpoint at 4430863 frames (+1.958 ms), reducing the sample jump while preserving all retained source samples. Neither candidate has a fade or sample treatment. Three-join listening previews and three native Godot mixer wraps per variant are prepared; musical acceptance remains pending. Master and RC0 runtime unchanged. Do not retry 41 bars; if C remains musically wrong, stop for manual Audacity/REAPER or Miraie DAW markers. See docs/vm061-candidate-c-loop.md.'
   };
 
+  const vm061RC1 = {
+    id: 'result-vm-0.6.1-get-canned-rc1',
+    type: 'Result', date: '2026-09-09', source: 'Founder native-audio listening acceptance and RC1 implementation/QA',
+    text: 'SUPERSEDES the earlier audio stops and all rejected A/B/C endpoints. Founder validated the untouched original end-to-start in Audacity and accepted the corrected native Godot capture. RC1 integrates GET CANNED!, C2 Minimal/L1, CLOCK IN without exclamation, menu-only VENTASTIC, one shared cause-specific result screen, CLOCKED OUT. success, Space/W/Up, 0.75-second frozen death beat and scoped landscape touch buttons. A typed first-death cause and a post-stop pickup guard freeze the outcome without retuning gameplay. Original WAV stays byte-identical; explicit STREAM plus a verified decoded first-frame guard matches direct concatenation across three wraps. No OGG. All 30 scripts pass, 12 retries preserve one music instance, copied Work art is exact, Web emulation supports simultaneous direction/jump and gesture audio. Physical mobile and itch iframe QA remain unverified; a live DPR/orientation resize produced Chromium WebGL warnings without visible failure. Export/ZIP is local for Startup Lab review only. See docs/vm061-get-canned-rc1.md and docs/vm061-original-wav-investigation.md. No upload, SFX sourcing, Overload or frozen gameplay tuning.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1694,7 +1700,8 @@
     vm060FunctionalAcceptance,
     vm061AudioStop,
     vm061LoopExperiment,
-    vm061CandidateC
+    vm061CandidateC,
+    vm061RC1
   ];
 
   const defaultFindings = [
@@ -1706,7 +1713,7 @@
   ];
 
   const defaultState = {
-    version: 37,
+    version: 38,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

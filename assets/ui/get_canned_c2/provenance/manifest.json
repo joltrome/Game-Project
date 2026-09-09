@@ -1,0 +1,1681 @@
+{
+  "version": "C2-L1-production-1",
+  "logical_size": [
+    1152,
+    648
+  ],
+  "palette": {
+    "ink": "#0d1424",
+    "interior": "#1b2a40",
+    "red": "#c93c45",
+    "red_dark": "#7f2634",
+    "cream": "#f2e7c9",
+    "metal": "#74878b",
+    "rail": "#37505a",
+    "teal": "#2ca6a4",
+    "gold": "#f2ba45",
+    "muted": "#f2e7c9"
+  },
+  "origin": "top-left",
+  "global_fit": "min(viewport_width/1152,viewport_height/648); center with letterboxing; no crop",
+  "pixel_rule": "nearest; integer source-frame enlargement; no mipmaps; snap native coordinates; fractional viewport scaling is tested separately",
+  "assets": {
+    "logo/get-canned-L1.png": {
+      "dimensions": [
+        552,
+        184
+      ],
+      "role": "locked runtime logo",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "TextureRect; mouse_filter IGNORE unless control texture"
+    },
+    "logo/get-canned-L1-small.png": {
+      "dimensions": [
+        276,
+        92
+      ],
+      "role": "half-size derivative; 276x92 minimum supplied size",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "TextureRect; mouse_filter IGNORE unless control texture",
+      "screen_use": "reference only; do not enlarge for menu"
+    },
+    "menu/chassis.png": {
+      "dimensions": [
+        1152,
+        648
+      ],
+      "role": "shared opaque chassis + OUT opening + seam",
+      "alpha": false,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "TextureRect; mouse_filter IGNORE unless control texture"
+    },
+    "menu/common-lettering.png": {
+      "dimensions": [
+        1152,
+        648
+      ],
+      "role": "shared static OUT label",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "TextureRect; mouse_filter IGNORE unless control texture"
+    },
+    "menu/static-lettering.png": {
+      "dimensions": [
+        1152,
+        648
+      ],
+      "role": "static menu labels; no scores or controls",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "TextureRect; mouse_filter IGNORE unless control texture"
+    },
+    "results/static-lettering.png": {
+      "dimensions": [
+        1152,
+        648
+      ],
+      "role": "shared result labels",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "TextureRect; mouse_filter IGNORE unless control texture"
+    },
+    "ventastic/ventastic.png": {
+      "dimensions": [
+        102,
+        14
+      ],
+      "role": "one static incidental manufacturer mark",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "TextureRect; mouse_filter IGNORE unless control texture"
+    },
+    "buttons/clock-in/idle.png": {
+      "dimensions": [
+        344,
+        94
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "idle",
+      "label": "CLOCK IN",
+      "position": [
+        404,
+        460
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        416,
+        472,
+        320,
+        70
+      ]
+    },
+    "buttons/clock-in/focus.png": {
+      "dimensions": [
+        344,
+        94
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "focus",
+      "label": "CLOCK IN",
+      "position": [
+        404,
+        460
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        416,
+        472,
+        320,
+        70
+      ]
+    },
+    "buttons/clock-in/pressed.png": {
+      "dimensions": [
+        344,
+        94
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "pressed",
+      "label": "CLOCK IN",
+      "position": [
+        404,
+        460
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        416,
+        472,
+        320,
+        70
+      ]
+    },
+    "buttons/retry/idle.png": {
+      "dimensions": [
+        304,
+        94
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "idle",
+      "label": "RETRY",
+      "position": [
+        324,
+        460
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        336,
+        472,
+        280,
+        70
+      ]
+    },
+    "buttons/retry/focus.png": {
+      "dimensions": [
+        304,
+        94
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "focus",
+      "label": "RETRY",
+      "position": [
+        324,
+        460
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        336,
+        472,
+        280,
+        70
+      ]
+    },
+    "buttons/retry/pressed.png": {
+      "dimensions": [
+        304,
+        94
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "pressed",
+      "label": "RETRY",
+      "position": [
+        324,
+        460
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        336,
+        472,
+        280,
+        70
+      ]
+    },
+    "buttons/menu/idle.png": {
+      "dimensions": [
+        144,
+        64
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "idle",
+      "label": "MENU",
+      "position": [
+        644,
+        478
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        644,
+        478,
+        144,
+        64
+      ]
+    },
+    "buttons/menu/focus.png": {
+      "dimensions": [
+        144,
+        64
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "focus",
+      "label": "MENU",
+      "position": [
+        644,
+        478
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        644,
+        478,
+        144,
+        64
+      ]
+    },
+    "buttons/menu/pressed.png": {
+      "dimensions": [
+        144,
+        64
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "pressed",
+      "label": "MENU",
+      "position": [
+        644,
+        478
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        644,
+        478,
+        144,
+        64
+      ]
+    },
+    "buttons/credits/idle.png": {
+      "dimensions": [
+        112,
+        44
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "idle",
+      "label": "CREDITS",
+      "position": [
+        660,
+        557
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        660,
+        557,
+        112,
+        44
+      ]
+    },
+    "buttons/credits/focus.png": {
+      "dimensions": [
+        112,
+        44
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "focus",
+      "label": "CREDITS",
+      "position": [
+        660,
+        557
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        660,
+        557,
+        112,
+        44
+      ]
+    },
+    "buttons/credits/pressed.png": {
+      "dimensions": [
+        112,
+        44
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "pressed",
+      "label": "CREDITS",
+      "position": [
+        660,
+        557
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        660,
+        557,
+        112,
+        44
+      ]
+    },
+    "buttons/music-on/idle.png": {
+      "dimensions": [
+        136,
+        44
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "idle",
+      "label": "MUSIC ON",
+      "position": [
+        808,
+        557
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        808,
+        557,
+        136,
+        44
+      ]
+    },
+    "buttons/music-on/focus.png": {
+      "dimensions": [
+        136,
+        44
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "focus",
+      "label": "MUSIC ON",
+      "position": [
+        808,
+        557
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        808,
+        557,
+        136,
+        44
+      ]
+    },
+    "buttons/music-on/pressed.png": {
+      "dimensions": [
+        136,
+        44
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "pressed",
+      "label": "MUSIC ON",
+      "position": [
+        808,
+        557
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        808,
+        557,
+        136,
+        44
+      ]
+    },
+    "buttons/music-off/idle.png": {
+      "dimensions": [
+        136,
+        44
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "idle",
+      "label": "MUSIC OFF",
+      "position": [
+        808,
+        557
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        808,
+        557,
+        136,
+        44
+      ]
+    },
+    "buttons/music-off/focus.png": {
+      "dimensions": [
+        136,
+        44
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "focus",
+      "label": "MUSIC OFF",
+      "position": [
+        808,
+        557
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        808,
+        557,
+        136,
+        44
+      ]
+    },
+    "buttons/music-off/pressed.png": {
+      "dimensions": [
+        136,
+        44
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "pressed",
+      "label": "MUSIC OFF",
+      "position": [
+        808,
+        557
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        808,
+        557,
+        136,
+        44
+      ]
+    },
+    "buttons/sfx-on/idle.png": {
+      "dimensions": [
+        122,
+        44
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "idle",
+      "label": "SFX ON",
+      "position": [
+        962,
+        557
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        962,
+        557,
+        122,
+        44
+      ]
+    },
+    "buttons/sfx-on/focus.png": {
+      "dimensions": [
+        122,
+        44
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "focus",
+      "label": "SFX ON",
+      "position": [
+        962,
+        557
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        962,
+        557,
+        122,
+        44
+      ]
+    },
+    "buttons/sfx-on/pressed.png": {
+      "dimensions": [
+        122,
+        44
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "pressed",
+      "label": "SFX ON",
+      "position": [
+        962,
+        557
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        962,
+        557,
+        122,
+        44
+      ]
+    },
+    "buttons/sfx-off/idle.png": {
+      "dimensions": [
+        122,
+        44
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "idle",
+      "label": "SFX OFF",
+      "position": [
+        962,
+        557
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        962,
+        557,
+        122,
+        44
+      ]
+    },
+    "buttons/sfx-off/focus.png": {
+      "dimensions": [
+        122,
+        44
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "focus",
+      "label": "SFX OFF",
+      "position": [
+        962,
+        557
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        962,
+        557,
+        122,
+        44
+      ]
+    },
+    "buttons/sfx-off/pressed.png": {
+      "dimensions": [
+        122,
+        44
+      ],
+      "role": "control state",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "One focusable Button with transparent background and fixed hit rectangle; child texture offset by negative padding; focus=hover; pressed wins; no texture hit mask",
+      "state": "pressed",
+      "label": "SFX OFF",
+      "position": [
+        962,
+        557
+      ],
+      "z": 50,
+      "hit_rectangle": [
+        962,
+        557,
+        122,
+        44
+      ]
+    },
+    "results/headlines/canned.png": {
+      "dimensions": [
+        864,
+        112
+      ],
+      "role": "dynamic result headline",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "TextureRect; mouse_filter IGNORE unless control texture",
+      "position": [
+        144,
+        112
+      ],
+      "z": 40,
+      "text": "CANNED.",
+      "ink_cap_height": 81
+    },
+    "results/headlines/grabbed.png": {
+      "dimensions": [
+        864,
+        112
+      ],
+      "role": "dynamic result headline",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "TextureRect; mouse_filter IGNORE unless control texture",
+      "position": [
+        144,
+        112
+      ],
+      "z": 40,
+      "text": "GRABBED.",
+      "ink_cap_height": 81
+    },
+    "results/headlines/vended.png": {
+      "dimensions": [
+        864,
+        112
+      ],
+      "role": "dynamic result headline",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "TextureRect; mouse_filter IGNORE unless control texture",
+      "position": [
+        144,
+        112
+      ],
+      "z": 40,
+      "text": "VENDED.",
+      "ink_cap_height": 81
+    },
+    "results/headlines/game-over.png": {
+      "dimensions": [
+        864,
+        112
+      ],
+      "role": "dynamic result headline",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "TextureRect; mouse_filter IGNORE unless control texture",
+      "position": [
+        144,
+        112
+      ],
+      "z": 40,
+      "text": "GAME OVER.",
+      "ink_cap_height": 81
+    },
+    "results/headlines/clocked-out.png": {
+      "dimensions": [
+        864,
+        112
+      ],
+      "role": "dynamic result headline",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "none",
+      "godot": "TextureRect; mouse_filter IGNORE unless control texture",
+      "position": [
+        144,
+        112
+      ],
+      "z": 40,
+      "text": "CLOCKED OUT.",
+      "ink_cap_height": 81
+    },
+    "motion/sources/technician-run.png": {
+      "dimensions": [
+        300,
+        60
+      ],
+      "role": "byte-identical approved source sheet",
+      "alpha": true,
+      "frame_count": 6,
+      "frame_size": [
+        50,
+        60
+      ],
+      "frame_duration_ms": 60,
+      "play_order": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "position": [
+        504,
+        352
+      ],
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "z": 30,
+      "source_reuse": true,
+      "godot": "AtlasTexture region or existing SpriteFrames; presentation only, no gameplay actors"
+    },
+    "motion/sources/technician-states.png": {
+      "dimensions": [
+        760,
+        48
+      ],
+      "role": "byte-identical approved source sheet",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_size": [
+        40,
+        48
+      ],
+      "frame_duration_ms": null,
+      "play_order": [
+        0
+      ],
+      "position": [
+        504,
+        352
+      ],
+      "anchor": "top-left",
+      "scale": 1.25,
+      "filter": "nearest",
+      "z": 30,
+      "source_reuse": true,
+      "godot": "AtlasTexture region or existing SpriteFrames; presentation only, no gameplay actors"
+    },
+    "motion/sources/coin.png": {
+      "dimensions": [
+        96,
+        16
+      ],
+      "role": "byte-identical approved source sheet",
+      "alpha": true,
+      "frame_count": 6,
+      "frame_size": [
+        16,
+        16
+      ],
+      "frame_duration_ms": 90,
+      "play_order": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "position": [
+        689,
+        376
+      ],
+      "anchor": "top-left",
+      "scale": 2,
+      "filter": "nearest",
+      "z": 35,
+      "source_reuse": true,
+      "godot": "AtlasTexture region or existing SpriteFrames; presentation only, no gameplay actors"
+    },
+    "motion/sources/landed-red.png": {
+      "dimensions": [
+        144,
+        24
+      ],
+      "role": "byte-identical approved source sheet",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_size": [
+        36,
+        24
+      ],
+      "frame_duration_ms": null,
+      "play_order": [
+        2
+      ],
+      "position": [
+        582,
+        364
+      ],
+      "anchor": "top-left",
+      "scale": 2,
+      "filter": "nearest",
+      "z": 30,
+      "source_reuse": true,
+      "godot": "AtlasTexture region or existing SpriteFrames; presentation only, no gameplay actors"
+    },
+    "motion/sources/conveyor.png": {
+      "dimensions": [
+        128,
+        16
+      ],
+      "role": "byte-identical approved source sheet",
+      "alpha": true,
+      "frame_count": 4,
+      "frame_size": [
+        32,
+        16
+      ],
+      "frame_duration_ms": 100,
+      "play_order": [
+        3,
+        2,
+        1,
+        0
+      ],
+      "position": [
+        136,
+        412
+      ],
+      "anchor": "top-left",
+      "scale": 2,
+      "filter": "nearest",
+      "z": 20,
+      "source_reuse": true,
+      "godot": "AtlasTexture region or existing SpriteFrames; presentation only, no gameplay actors",
+      "repeat_clip_rectangle": [
+        136,
+        412,
+        912,
+        32
+      ]
+    },
+    "glyphs/display.png": {
+      "dimensions": [
+        128,
+        78
+      ],
+      "role": "white alpha bitmap font atlas",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "cream or ink",
+      "godot": "TextureRect; mouse_filter IGNORE unless control texture",
+      "base_cap_height": 9
+    },
+    "glyphs/small.png": {
+      "dimensions": [
+        128,
+        66
+      ],
+      "role": "white alpha bitmap font atlas",
+      "alpha": true,
+      "frame_count": 1,
+      "frame_duration_ms": null,
+      "anchor": "top-left",
+      "scale": 1,
+      "filter": "nearest",
+      "tint": "cream or ink",
+      "godot": "TextureRect; mouse_filter IGNORE unless control texture",
+      "base_cap_height": 7
+    }
+  },
+  "layers": {
+    "menu": [
+      {
+        "asset": "logo/get-canned-L1.png",
+        "position": [
+          300,
+          96
+        ],
+        "z": 40
+      },
+      {
+        "asset": "menu/chassis.png",
+        "position": [
+          0,
+          0
+        ],
+        "z": 0
+      },
+      {
+        "asset": "menu/common-lettering.png",
+        "position": [
+          0,
+          0
+        ],
+        "z": 10
+      },
+      {
+        "asset": "menu/static-lettering.png",
+        "position": [
+          0,
+          0
+        ],
+        "z": 10
+      },
+      {
+        "asset": "ventastic/ventastic.png",
+        "position": [
+          1006,
+          609
+        ],
+        "z": 60
+      },
+      {
+        "asset": "buttons/clock-in/focus.png",
+        "position": [
+          404,
+          460
+        ],
+        "z": 50,
+        "control": "clock-in"
+      },
+      {
+        "asset": "buttons/credits/idle.png",
+        "position": [
+          660,
+          557
+        ],
+        "z": 50,
+        "control": "credits"
+      },
+      {
+        "asset": "buttons/music-on/idle.png",
+        "position": [
+          808,
+          557
+        ],
+        "z": 50,
+        "control": "music-on"
+      },
+      {
+        "asset": "buttons/sfx-on/idle.png",
+        "position": [
+          962,
+          557
+        ],
+        "z": 50,
+        "control": "sfx-on"
+      },
+      {
+        "asset": "motion/sources/technician-run.png",
+        "position": [
+          504,
+          352
+        ],
+        "z": 30,
+        "animated": true,
+        "static_frame": 1,
+        "scale": 1
+      },
+      {
+        "asset": "motion/sources/coin.png",
+        "position": [
+          689,
+          376
+        ],
+        "z": 35,
+        "animated": true,
+        "static_frame": 0,
+        "scale": 2
+      },
+      {
+        "asset": "motion/sources/landed-red.png",
+        "position": [
+          582,
+          364
+        ],
+        "z": 30,
+        "animated": false,
+        "static_frame": 2,
+        "scale": 2
+      },
+      {
+        "asset": "motion/sources/conveyor.png",
+        "position": [
+          136,
+          412
+        ],
+        "z": 20,
+        "animated": true,
+        "static_frame": 3,
+        "scale": 2
+      }
+    ],
+    "results": [
+      {
+        "asset": "menu/chassis.png",
+        "position": [
+          0,
+          0
+        ],
+        "z": 0
+      },
+      {
+        "asset": "menu/common-lettering.png",
+        "position": [
+          0,
+          0
+        ],
+        "z": 10
+      },
+      {
+        "asset": "results/static-lettering.png",
+        "position": [
+          0,
+          0
+        ],
+        "z": 10
+      },
+      {
+        "asset": "buttons/retry/focus.png",
+        "position": [
+          324,
+          460
+        ],
+        "z": 50,
+        "control": "retry"
+      },
+      {
+        "asset": "buttons/menu/idle.png",
+        "position": [
+          644,
+          478
+        ],
+        "z": 50,
+        "control": "menu"
+      },
+      {
+        "asset": "buttons/music-on/idle.png",
+        "position": [
+          808,
+          557
+        ],
+        "z": 50,
+        "control": "music-on"
+      },
+      {
+        "asset": "buttons/sfx-on/idle.png",
+        "position": [
+          962,
+          557
+        ],
+        "z": 50,
+        "control": "sfx-on"
+      },
+      {
+        "asset": "motion/sources/technician-states.png",
+        "position": [
+          504,
+          352
+        ],
+        "z": 30,
+        "animated": false,
+        "static_frame": 0,
+        "scale": 1.25
+      },
+      {
+        "asset": "motion/sources/coin.png",
+        "position": [
+          689,
+          376
+        ],
+        "z": 35,
+        "animated": true,
+        "static_frame": 0,
+        "scale": 2
+      },
+      {
+        "asset": "motion/sources/landed-red.png",
+        "position": [
+          582,
+          364
+        ],
+        "z": 30,
+        "animated": false,
+        "static_frame": 2,
+        "scale": 2
+      },
+      {
+        "asset": "motion/sources/conveyor.png",
+        "position": [
+          136,
+          412
+        ],
+        "z": 20,
+        "animated": true,
+        "static_frame": 3,
+        "scale": 2
+      }
+    ]
+  },
+  "controls": {
+    "clock-in": {
+      "label": "CLOCK IN",
+      "hit_rectangle": [
+        416,
+        472,
+        320,
+        70
+      ],
+      "texture_position": [
+        404,
+        460
+      ],
+      "states": {
+        "idle": "buttons/clock-in/idle.png",
+        "focus": "buttons/clock-in/focus.png",
+        "pressed": "buttons/clock-in/pressed.png"
+      },
+      "default_state": "focus",
+      "screens": [
+        "menu"
+      ],
+      "hover": "focus",
+      "pressed_precedence": true
+    },
+    "retry": {
+      "label": "RETRY",
+      "hit_rectangle": [
+        336,
+        472,
+        280,
+        70
+      ],
+      "texture_position": [
+        324,
+        460
+      ],
+      "states": {
+        "idle": "buttons/retry/idle.png",
+        "focus": "buttons/retry/focus.png",
+        "pressed": "buttons/retry/pressed.png"
+      },
+      "default_state": "focus",
+      "screens": [
+        "results"
+      ],
+      "hover": "focus",
+      "pressed_precedence": true
+    },
+    "menu": {
+      "label": "MENU",
+      "hit_rectangle": [
+        644,
+        478,
+        144,
+        64
+      ],
+      "texture_position": [
+        644,
+        478
+      ],
+      "states": {
+        "idle": "buttons/menu/idle.png",
+        "focus": "buttons/menu/focus.png",
+        "pressed": "buttons/menu/pressed.png"
+      },
+      "default_state": "idle",
+      "screens": [
+        "results"
+      ],
+      "hover": "focus",
+      "pressed_precedence": true
+    },
+    "credits": {
+      "label": "CREDITS",
+      "hit_rectangle": [
+        660,
+        557,
+        112,
+        44
+      ],
+      "texture_position": [
+        660,
+        557
+      ],
+      "states": {
+        "idle": "buttons/credits/idle.png",
+        "focus": "buttons/credits/focus.png",
+        "pressed": "buttons/credits/pressed.png"
+      },
+      "default_state": "idle",
+      "screens": [
+        "menu"
+      ],
+      "hover": "focus",
+      "pressed_precedence": true
+    },
+    "music-on": {
+      "label": "MUSIC ON",
+      "hit_rectangle": [
+        808,
+        557,
+        136,
+        44
+      ],
+      "texture_position": [
+        808,
+        557
+      ],
+      "states": {
+        "idle": "buttons/music-on/idle.png",
+        "focus": "buttons/music-on/focus.png",
+        "pressed": "buttons/music-on/pressed.png"
+      },
+      "default_state": "idle",
+      "screens": [
+        "menu",
+        "results"
+      ],
+      "hover": "focus",
+      "pressed_precedence": true
+    },
+    "music-off": {
+      "label": "MUSIC OFF",
+      "hit_rectangle": [
+        808,
+        557,
+        136,
+        44
+      ],
+      "texture_position": [
+        808,
+        557
+      ],
+      "states": {
+        "idle": "buttons/music-off/idle.png",
+        "focus": "buttons/music-off/focus.png",
+        "pressed": "buttons/music-off/pressed.png"
+      },
+      "default_state": "idle",
+      "screens": [
+        "menu",
+        "results"
+      ],
+      "hover": "focus",
+      "pressed_precedence": true
+    },
+    "sfx-on": {
+      "label": "SFX ON",
+      "hit_rectangle": [
+        962,
+        557,
+        122,
+        44
+      ],
+      "texture_position": [
+        962,
+        557
+      ],
+      "states": {
+        "idle": "buttons/sfx-on/idle.png",
+        "focus": "buttons/sfx-on/focus.png",
+        "pressed": "buttons/sfx-on/pressed.png"
+      },
+      "default_state": "idle",
+      "screens": [
+        "menu",
+        "results"
+      ],
+      "hover": "focus",
+      "pressed_precedence": true
+    },
+    "sfx-off": {
+      "label": "SFX OFF",
+      "hit_rectangle": [
+        962,
+        557,
+        122,
+        44
+      ],
+      "texture_position": [
+        962,
+        557
+      ],
+      "states": {
+        "idle": "buttons/sfx-off/idle.png",
+        "focus": "buttons/sfx-off/focus.png",
+        "pressed": "buttons/sfx-off/pressed.png"
+      },
+      "default_state": "idle",
+      "screens": [
+        "menu",
+        "results"
+      ],
+      "hover": "focus",
+      "pressed_precedence": true
+    }
+  },
+  "headline_slot": {
+    "position": [
+      144,
+      112
+    ],
+    "size": [
+      864,
+      112
+    ],
+    "z": 40,
+    "map": {
+      "product": "canned",
+      "d3_product": "canned",
+      "carriage": "grabbed",
+      "out_chute": "vended",
+      "unknown": "game-over",
+      "completion": "clocked-out"
+    }
+  },
+  "score_slots": {
+    "menu": {
+      "right_top": [
+        1048,
+        376
+      ],
+      "width": 176,
+      "scales_descending": [
+        3,
+        2,
+        1
+      ]
+    },
+    "results": {
+      "centers_top": [
+        [
+          450,
+          291
+        ],
+        [
+          714,
+          291
+        ]
+      ],
+      "width_each": 232,
+      "scales_descending": [
+        5,
+        4,
+        3,
+        2,
+        1
+      ],
+      "same_scale_for_both": true
+    },
+    "rule": "nonnegative int64, decimal, minimum 2 digits; choose largest listed integer scale whose ink width fits; no truncation or abbreviation; glyphs/display.fnt or metrics atlas; tint cream; z=40",
+    "alignment": "glyph ink top, not Control baseline; cap height 9*scale; ink width = total advance minus final scale"
+  },
+  "source_provenance": [
+    {
+      "copy": "motion/sources/technician-run.png",
+      "source": "/Users/jeromenicholaz/Documents/GameProject/vending-machine-survival-starter/assets/vm050_vis04/VM050_VIS04_S1_50x60_run_sheet.png",
+      "sha256": "62ceeddcbfbe00d74c5481d13252ca7d835ed9934e62609a076d883bc2fb4ebc"
+    },
+    {
+      "copy": "motion/sources/technician-states.png",
+      "source": "/Users/jeromenicholaz/Documents/GameProject/vending-machine-survival-starter/assets/vm050_d3_vis03/VM050_VIS03_technician_rigid_block_limbs_sheet.png",
+      "sha256": "19c5b01405764c60ad7fe1a1418a7150405603a98055c2ad02ae476a97cc5b88"
+    },
+    {
+      "copy": "motion/sources/coin.png",
+      "source": "/Users/jeromenicholaz/Documents/GameProject/vending-machine-survival-starter/assets/vm050_vis04/VM050_VIS04_C1_16x16_coin_sheet.png",
+      "sha256": "5453420ab18a9fcef9ddce5832ba33f7ce8a9d244eb69955f016862de062c6d8"
+    },
+    {
+      "copy": "motion/sources/landed-red.png",
+      "source": "/Users/jeromenicholaz/Documents/GameProject/vending-machine-survival-starter/assets/vm050_d3_vis02/VM050_D3_VIS02_landed_red_soda_runtime_sheet.png",
+      "sha256": "1b9d08aa0d3621ac151f261b622281431dfd9629878fa15ebdbd21ad7475172c"
+    },
+    {
+      "copy": "motion/sources/conveyor.png",
+      "source": "/Users/jeromenicholaz/Documents/GameProject/vending-machine-survival-starter/assets/vm050_d3_v2/VM050_D3_V2_conveyor_tile_sheet.png",
+      "sha256": "f45663e1667d86040b3a7afe8701d5dd6e1dbc25f000045eb7fc1826a13f0035"
+    }
+  ],
+  "animation": {
+    "menu_loops": [
+      "technician-run 6x60ms",
+      "coin 6x90ms",
+      "conveyor reverse 4x100ms"
+    ],
+    "results": [
+      "static approved idle frame 0",
+      "coin 6x90ms",
+      "conveyor reverse 4x100ms"
+    ],
+    "preview_loop_ms": 10800,
+    "no_audio_dependency": true,
+    "no_entrance_delay": true
+  },
+  "input": {
+    "default_focus": {
+      "menu": "clock-in",
+      "results": "retry"
+    },
+    "focus_order": {
+      "menu": [
+        "clock-in",
+        "credits",
+        "music",
+        "sfx"
+      ],
+      "results": [
+        "retry",
+        "menu",
+        "music",
+        "sfx"
+      ]
+    },
+    "music_and_sfx": "one Button each; toggle label ON/OFF in place; retain focus; shared persistent SessionAudio state",
+    "activation": "preserve RC0 Enter/Space, mouse, R and Escape routing; key repeat must not double-activate",
+    "credits": "existing credits screen and BACK behavior unchanged; no global font replacement",
+    "decorative": "mouse_filter IGNORE; no focus on manufacturer or scene sprites"
+  },
+  "godot_verified": false,
+  "fonts": {
+    "display": {
+      "atlas": "glyphs/display.png",
+      "descriptor": "glyphs/display.fnt",
+      "metrics": "glyphs/display-metrics.json",
+      "base_cap_height": 9,
+      "base_line_height": 11,
+      "baseline": 9,
+      "integer_scale_only_at_logical_size": true,
+      "runtime_tint": [
+        "cream",
+        "ink"
+      ],
+      "placement": "See score_slots for dynamic text; static labels are baked",
+      "godot_import_verified": false
+    },
+    "small": {
+      "atlas": "glyphs/small.png",
+      "descriptor": "glyphs/small.fnt",
+      "metrics": "glyphs/small-metrics.json",
+      "base_cap_height": 7,
+      "base_line_height": 9,
+      "baseline": 7,
+      "integer_scale_only_at_logical_size": true,
+      "runtime_tint": [
+        "cream",
+        "ink"
+      ],
+      "placement": "See score_slots for dynamic text; static labels are baked",
+      "godot_import_verified": false
+    }
+  }
+}

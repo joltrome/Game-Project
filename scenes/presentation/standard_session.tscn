@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/presentation/standard_session.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/presentation/session_audio.gd" id="2"]
-[ext_resource type="AudioStream" path="res://assets/audio/miraie_main_theme_TEMPORARY_DEMO.mp3" id="3"]
+[ext_resource type="AudioStream" path="res://assets/audio/miraie_main_theme_ORIGINAL_MASTER.wav" id="3"]
 
 [node name="StandardSession" type="Control"]
 layout_mode = 3

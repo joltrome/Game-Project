@@ -1,5 +1,7 @@
 # VM-0.6.1 — Candidate C, 40-bar loop experiment
 
+> SUPERSEDED: Startup Lab rejected every A/B/C endpoint. The untouched full original WAV is accepted; the founder approved the corrected native capture and authorized RC1 to resume. See [original WAV investigation](vm061-original-wav-investigation.md). Historical observations below are not current runtime instructions.
+
 Date: 2026-09-09 JST. **Ready for human listening. Neither endpoint is selected for runtime.**
 
 Startup Lab rejected A/B perceptually and reports that the non-fade source spans 41 bars while the fade source spans 40 bars including its final fade-out bar. Its working diagnosis is an incorrect phrase restart at 41 bars given the music's reported four-bar phrasing. This is Startup Lab's musical analysis; numerical seam checks alone cannot confirm phrase correctness. The 41-bar candidates were not regenerated or retried.

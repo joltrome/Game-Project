@@ -63,6 +63,8 @@ Codex authentication mode, model identity, remaining subscription allowance, and
 
 | 2026-09-09 JST | Candidate C 40-bar loop experiment | Codex/ChatGPT context; exact auth unavailable | GPT-6 family; Astra/High requested, exact runtime details unavailable | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Read-only WAV inspection; exact 40-bar trim and bounded local endpoint comparison; three-join previews/four-copy loops; byte-level preservation and isolated native Godot mixer verification. A/B not retried; runtime unchanged; no paid services, conversion, upload or distribution. |
 
+| 2026-09-09 JST | Original WAV isolation and GET CANNED RC1 integration | Codex/ChatGPT context; precise auth unavailable | GPT-6 family; Astra/High requested, exact runtime setting unavailable | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Local native/Web audio harness and source inspection, original WAV byte-copy, approved C2 assets, death/input/touch integration, 30-script regression suite, browser emulation, local captures/GIF, export/ZIP and Git documentation. Founder accepted native original loop. No paid conversion, generation, hosting, API or itch upload. |
+
 ## Paid API session fields
 
 For any approved paid API session, append an entry containing all fields the provider exposes:

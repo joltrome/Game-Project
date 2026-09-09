@@ -1,0 +1,13 @@
+config_version=5
+
+[application]
+config/name="Original WAV Loop Harness"
+run/main_scene="res://harness.tscn"
+config/use_custom_user_dir=true
+config/custom_user_dir_name="vms-original-loop-harness"
+
+[audio]
+driver/mix_rate=48000
+
+[rendering]
+renderer/rendering_method="gl_compatibility"

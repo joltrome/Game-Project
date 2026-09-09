@@ -33,7 +33,7 @@ func _run() -> void:
 	session.audio.sfx_requested.connect(func(event: StringName) -> void: events.append(event))
 	check(AudioServer.get_bus_index("Music") > 0 and AudioServer.get_bus_index("SFX") > 0, "Music and SFX buses exist")
 	check(session.audio.music.bus == &"Music" and session.audio.sfx.bus == &"SFX", "Players route to their respective buses")
-	check(not (session.audio.music.stream as AudioStreamMP3).loop, "Temporary demo does not loop its faded tail")
+	check((session.audio.music.stream as AudioStreamWAV).loop_mode == AudioStreamWAV.LOOP_FORWARD, "Accepted original master loops natively")
 	session.audio.set_muted(&"Music", true)
 	session.audio.set_muted(&"SFX", true)
 	check(session.audio.is_muted(&"Music") and session.audio.is_muted(&"SFX"), "Independent mute controls reach both buses")
@@ -59,8 +59,8 @@ func _run() -> void:
 			coin._on_body_entered(conveyor.player)
 		check(coins.score == 1, "A real pickup scores once")
 		conveyor._kill_player()
-		await process_frame
-		check(session.state == StandardSession.State.RESULTS and session.result_title.text == "GAME OVER" and session.result_score.text == "01", "Death result shows actual run score")
+		await create_timer(StandardSession.DEATH_BEAT_SECONDS + 0.08).timeout
+		check(session.state == StandardSession.State.RESULTS and session.result_headline == "GAME OVER." and session.result_score.text == "01", "Death result shows actual run score")
 		var frozen_time := round_controller.round_time_remaining
 		for i in 5:
 			await process_frame
@@ -88,7 +88,7 @@ func _run() -> void:
 	Engine.time_scale = previous_time_scale
 	check(completion_game.background_drop_director.released_event_count() == 6, "Presentation wrapper preserves six natural D3 releases over the complete round")
 	check(events.has(&"rack_warning") and events.has(&"rack_release") and events.has(&"product_impact") and events.has(&"carriage_warning") and events.has(&"carriage_sweep") and events.has(&"final_seconds"), "Natural round delivers hazard, carriage and final-second SFX events")
-	check(session.state == StandardSession.State.RESULTS and session.last_survived and session.result_title.text == "SURVIVED" and completion_round.completion_count == 1, "Original controller reaches distinct success at 60 seconds exactly once")
+	check(session.state == StandardSession.State.RESULTS and session.last_survived and session.result_headline == "CLOCKED OUT." and completion_round.completion_count == 1, "Original controller reaches distinct success at 60 seconds exactly once")
 	check(session.scores.best_score == 1 and session.best_label.text == "01", "Lower completion score preserves earlier best")
 	check(events.has(&"coin_pickup") and events.has(&"player_death") and events.has(&"round_complete") and events.has(&"ui_confirm") and events.has(&"ui_back"), "Pickup, outcomes and UI signals reach silent SFX hooks")
 	session.show_menu()

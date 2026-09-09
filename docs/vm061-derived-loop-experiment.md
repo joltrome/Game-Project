@@ -1,5 +1,7 @@
 # VM-0.6.1 — authorized derived-loop A/B experiment
 
+> SUPERSEDED: Startup Lab rejected every A/B/C endpoint. The untouched full original WAV is accepted; the founder approved the corrected native capture and authorized RC1 to resume. See [original WAV investigation](vm061-original-wav-investigation.md). Historical observations below are not current runtime instructions.
+
 Date: 2026-09-09 JST. Status: **two candidates ready for listening; no runtime selection**.
 
 Subsequent decision: **Startup Lab rejected both A and B perceptually** because their musical restart is wrong. Do not reuse the 41-bar solution. The separately authorized [Candidate C experiment](vm061-candidate-c-loop.md) tests a 40-bar endpoint. This A/B report is historical.

@@ -1,7 +1,9 @@
 class_name StandardSession
 extends Control
 
-enum State { MENU, GAME, RESULTS, CREDITS }
+enum State { MENU, GAME, RESULTS, CREDITS, DEATH_BEAT }
+
+const DEATH_BEAT_SECONDS := 0.75
 
 const STANDARD_SCENE := preload("res://scenes/experiments/motion_vis04_pa_ca.tscn")
 const DESIGN_SIZE := Vector2(1152, 648)
@@ -21,14 +23,22 @@ var last_survived: bool = false
 var _ui: Control
 var _music_button: Button
 var _sfx_button: Button
-var result_title: Label
-var result_score: Label
-var best_label: Label
+var result_headline: String = ""
+var last_death_cause: ConveyorPrototype.DeathCause = ConveyorPrototype.DeathCause.UNKNOWN
+var result_transition_count: int = 0
+var _run_serial: int = 0
+var _death_ready_at_msec: int = 0
+var _death_timer: Timer
+var _c2: C2Screen
+var touch: StandardTouchControls
+var result_score: C2PixelText
+var best_label: C2PixelText
 
 @onready var audio: SessionAudio = $Audio
 
 
 func _ready() -> void:
+	get_window().title = "GET CANNED!"
 	scores.storage_path = score_storage_path
 	scores.load_best()
 	_ui = Control.new()
@@ -36,13 +46,22 @@ func _ready() -> void:
 	_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui.size = DESIGN_SIZE
 	add_child(_ui)
+	_death_timer = Timer.new()
+	_death_timer.one_shot = true
+	_death_timer.ignore_time_scale = true
+	_death_timer.wait_time = DEATH_BEAT_SECONDS
+	_death_timer.timeout.connect(_finish_death_beat)
+	add_child(_death_timer)
+	touch = StandardTouchControls.new()
+	add_child(touch)
 	resized.connect(_layout)
+	get_window().size_changed.connect(_layout)
 	show_menu()
 	_layout()
 
 
 func _input(event: InputEvent) -> void:
-	if (event is InputEventMouseButton and event.pressed) or (
+	if (event is InputEventScreenTouch and event.pressed) or (event is InputEventMouseButton and event.pressed) or (
 		event is InputEventKey and event.pressed and not event.echo
 	):
 		audio.start_music_once()
@@ -63,6 +82,8 @@ func start_game() -> void:
 	audio.request_sfx(&"ui_confirm")
 	_dispose_game()
 	state = State.GAME
+	_run_serial += 1
+	last_death_cause = ConveyorPrototype.DeathCause.UNKNOWN
 	game = STANDARD_SCENE.instantiate() as MotionExperimentShell
 	game.name = "StandardRun"
 	game.clean_tester_presentation = true
@@ -78,8 +99,8 @@ func start_game() -> void:
 	var round_controller := game.conveyor.get_node("RoundController") as FixedRoundController
 	# Death can originate inside a physics collision callback. Finish that callback
 	# before disabling the complete run and its collision objects.
-	round_controller.round_ended_by_death.connect(_on_death, CONNECT_DEFERRED)
-	round_controller.round_completed.connect(_on_completion, CONNECT_DEFERRED)
+	round_controller.round_ended_by_death.connect(_on_death.bind(_run_serial), CONNECT_DEFERRED)
+	round_controller.round_completed.connect(_on_completion.bind(_run_serial), CONNECT_DEFERRED)
 	var hooks := StandardSFXHooks.new()
 	hooks.name = "SFXHooks"
 	game.add_child(hooks)
@@ -87,6 +108,7 @@ func start_game() -> void:
 	_apply_hud_style()
 	_clear_ui()
 	_add_sound_controls(Vector2(24, 18), true)
+	touch.set_game_active(true)
 	var focused := get_viewport().gui_get_focus_owner()
 	if focused != null:
 		focused.release_focus()
@@ -98,16 +120,18 @@ func show_menu() -> void:
 	_dispose_game()
 	state = State.MENU
 	_clear_ui()
-	_frame("VENDING MACHINE SURVIVAL")
-	_label("VENDING\nMACHINE\nSURVIVAL", Rect2(90, 118, 640, 240), 60, CREAM)
-	_label("DODGE THE PRODUCTS.\nCOLLECT REFUND COINS.\nMAKE IT TO 60 SECONDS.", Rect2(94, 373, 600, 100), 22, GOLD)
-	_rect(Rect2(760, 112, 306, 373), Color("233e50"))
-	_label("READY TO CLOCK IN?", Rect2(784, 136, 258, 30), 18, CREAM, true)
-	var play := _button("PLAY", Rect2(784, 188, 258, 76), start_game, GOLD)
-	best_label = _label("BEST SCORE  %02d" % scores.best_score, Rect2(784, 290, 258, 44), 23, CREAM, true)
-	_button("CREDITS", Rect2(784, 378, 258, 52), show_credits, TEAL)
-	_controls()
-	_add_sound_controls(Vector2(760, 530))
+	_c2 = C2Screen.new()
+	_ui.add_child(_c2)
+	var play := _c2.add_button("clock-in", "CLOCK IN", Rect2(416,472,320,70), start_game, true)
+	best_label = _score_text(scores.best_score)
+	var scale_value := 3
+	while best_label.ink_width(best_label.text, scale_value) > 176 and scale_value > 1:
+		scale_value -= 1
+	best_label.glyph_scale = scale_value
+	best_label.position = Vector2(1048-best_label.ink_width(best_label.text,scale_value),376)
+	_c2.add_button("credits", "CREDITS", Rect2(660,557,112,44), show_credits)
+	_add_c2_sound_controls()
+	_c2.wire_focus()
 	play.grab_focus()
 
 
@@ -119,47 +143,110 @@ func show_credits() -> void:
 	_label("MADE FOR ONE MORE TRY.", Rect2(90, 137, 960, 60), 36, CREAM)
 	_label("ORIGINAL MUSIC", Rect2(94, 237, 800, 35), 18, GOLD)
 	_label("MIRAIE", Rect2(94, 282, 800, 60), 44, CREAM)
-	_label("Composed for Vending Machine Survival.\nCurrent music is a temporary composer demo.", Rect2(94, 369, 900, 76), 22, CREAM)
+	_label("Original music composed for GET CANNED!", Rect2(94, 369, 900, 76), 22, CREAM)
 	var back := _button("BACK", Rect2(94, 504, 260, 64), show_menu, TEAL)
 	_add_sound_controls(Vector2(760, 530))
 	back.grab_focus()
 
 
-func _on_death(score: int, _remaining: float) -> void:
-	_show_results(score, false)
+func _on_death(score: int, _remaining: float, serial: int) -> void:
+	if serial != _run_serial or state != State.GAME:
+		return
+	state = State.DEATH_BEAT
+	last_score = score
+	last_survived = false
+	last_death_cause = game.conveyor.death_cause
+	touch.set_game_active(false)
+	game.conveyor.get_node("HUD/DeathMessage").hide()
+	game.process_mode = Node.PROCESS_MODE_DISABLED
+	audio.request_sfx(&"player_death")
+	_death_ready_at_msec = Time.get_ticks_msec() + roundi(DEATH_BEAT_SECONDS * 1000)
+	_death_timer.start(DEATH_BEAT_SECONDS)
 
 
-func _on_completion(score: int) -> void:
-	_show_results(score, true)
+func _finish_death_beat() -> void:
+	if state == State.DEATH_BEAT and is_instance_valid(game):
+		# A Timer can consume the current frame delta immediately after start.
+		# Keep the visible hold at least 0.75 real seconds, including a slow frame.
+		var remaining := _death_ready_at_msec - Time.get_ticks_msec()
+		if remaining > 0:
+			_death_timer.start(remaining / 1000.0)
+			return
+		_show_results(last_score, false)
+
+
+func _on_completion(score: int, serial: int) -> void:
+	if serial == _run_serial and state == State.GAME:
+		_show_results(score, true)
+
+
+static func headline_for(cause: ConveyorPrototype.DeathCause, survived: bool) -> String:
+	if survived:
+		return "CLOCKED OUT."
+	match cause:
+		ConveyorPrototype.DeathCause.FALLING_PRODUCT, ConveyorPrototype.DeathCause.BACKGROUND_PRODUCT:
+			return "CANNED."
+		ConveyorPrototype.DeathCause.RETRIEVAL_CARRIAGE:
+			return "GRABBED."
+		ConveyorPrototype.DeathCause.LEFT_OUT:
+			return "VENDED."
+		_:
+			return "GAME OVER."
 
 
 func _show_results(score: int, survived: bool) -> void:
-	if state != State.GAME:
+	if state not in [State.GAME, State.DEATH_BEAT]:
 		return
 	state = State.RESULTS
+	result_transition_count += 1
 	last_score = score
 	last_survived = survived
 	scores.record_score(score)
-	# Freeze the complete scene including D3, delayed coins and visual warnings.
+	touch.set_game_active(false)
 	game.process_mode = Node.PROCESS_MODE_DISABLED
 	game.hide()
-	audio.request_sfx(&"round_complete" if survived else &"player_death")
+	if survived:
+		audio.request_sfx(&"round_complete")
 	_clear_ui()
-	_frame("SHIFT COMPLETE" if survived else "SHIFT ENDED")
-	result_title = _label("SURVIVED" if survived else "GAME OVER", Rect2(90, 132, 970, 88), 68, GOLD if survived else CREAM)
-	_label("THE MACHINE STOPPED. YOU DIDN'T." if survived else "THE MACHINE WINS THIS ROUND.", Rect2(94, 232, 940, 40), 22, CREAM)
-	_label("REFUND COINS", Rect2(94, 317, 390, 36), 21, GOLD)
-	result_score = _label("%02d" % score, Rect2(94, 355, 390, 88), 68, CREAM)
-	_label("BEST SCORE", Rect2(584, 317, 390, 36), 21, GOLD)
-	best_label = _label("%02d" % scores.best_score, Rect2(584, 355, 390, 88), 68, CREAM)
-	var retry := _button("RETRY", Rect2(94, 500, 270, 68), start_game, GOLD)
-	_button("MENU", Rect2(386, 500, 270, 68), show_menu, TEAL)
-	_add_sound_controls(Vector2(760, 530))
-	_label("R: RETRY     ESC: MENU", Rect2(94, 588, 620, 25), 15, CREAM)
+	result_headline = headline_for(last_death_cause, survived)
+	_c2 = C2Screen.new()
+	_c2.is_result = true
+	_c2.headline = result_headline.trim_suffix(".").to_lower().replace(" ", "-")
+	_ui.add_child(_c2)
+	result_score = _score_text(score)
+	best_label = _score_text(scores.best_score)
+	var scale_value := 5
+	while maxf(result_score.ink_width(result_score.text,scale_value), best_label.ink_width(best_label.text,scale_value)) > 232 and scale_value > 1:
+		scale_value -= 1
+	for item: Array in [[result_score,450],[best_label,714]]:
+		var label := item[0] as C2PixelText
+		label.glyph_scale = scale_value
+		label.position = Vector2(item[1]-floorf(label.ink_width(label.text,scale_value)/2),291)
+	var retry := _c2.add_button("retry", "RETRY", Rect2(336,472,280,70), start_game, true)
+	_c2.add_button("menu", "MENU", Rect2(644,478,144,64), show_menu)
+	_add_c2_sound_controls()
+	_c2.wire_focus()
 	retry.grab_focus()
 
 
+func _score_text(value: int) -> C2PixelText:
+	var label := C2PixelText.new()
+	label.text = "%02d" % value
+	_c2.add_child(label)
+	return label
+
+
+func _add_c2_sound_controls() -> void:
+	_music_button = _c2.add_button("music-on", "MUSIC ON", Rect2(808,557,136,44), _toggle_music)
+	_sfx_button = _c2.add_button("sfx-on", "SFX ON", Rect2(962,557,122,44), _toggle_sfx)
+	_refresh_sound_labels()
+
+
 func _dispose_game() -> void:
+	if _death_timer != null:
+		_death_timer.stop()
+	if touch != null:
+		touch.set_game_active(false)
 	if is_instance_valid(game):
 		game.process_mode = Node.PROCESS_MODE_DISABLED
 		remove_child(game)
@@ -184,13 +271,23 @@ func _layout() -> void:
 	var fitted := MotionExperimentShell.contained_rect(size, DESIGN_SIZE)
 	_ui.position = fitted.position
 	_ui.scale = fitted.size / DESIGN_SIZE
+	if touch != null:
+		# The game canvas keeps its logical size under window stretch. Counter-scale
+		# only the touch overlay so its targets remain large on a phone.
+		touch.scale = Vector2.ONE
+		var window_size := Vector2(get_window().size)
+		var pixel_ratio := float(JavaScriptBridge.eval("window.devicePixelRatio || 1", true)) if OS.has_feature("web") else 1.0
+		var display_scale := Vector2.ONE * minf(window_size.x / size.x, window_size.y / size.y) / pixel_ratio
+		touch.scale = Vector2.ONE / display_scale
+		touch.size = size * display_scale
 
 
 func _clear_ui() -> void:
+	_c2 = null
 	for child in _ui.get_children():
 		_ui.remove_child(child)
 		child.queue_free()
-	result_title = null
+	result_headline = ""
 	result_score = null
 	best_label = null
 
@@ -204,11 +301,6 @@ func _frame(heading: String) -> void:
 	for x in [52, 1090]:
 		for y in [46, 590]:
 			_rect(Rect2(x, y, 10, 10), GOLD)
-
-
-func _controls() -> void:
-	_rect(Rect2(94, 501, 620, 2), TEAL)
-	_label("MOVE: A / D OR LEFT / RIGHT\nJUMP: SPACE", Rect2(94, 525, 620, 66), 20, CREAM)
 
 
 func _add_sound_controls(at: Vector2, in_game: bool = false) -> void:
@@ -232,6 +324,14 @@ func _toggle_sfx() -> void:
 
 
 func _refresh_sound_labels() -> void:
+	if _c2 != null:
+		for entry: Array in [[_music_button,"Music","music"],[_sfx_button,"SFX","sfx"]]:
+			var button := entry[0] as Button
+			var on := not audio.is_muted(entry[1])
+			button.text = str(entry[2]).to_upper() + (" ON" if on else " OFF")
+			button.set_meta(&"art_key", str(entry[2]) + ("-on" if on else "-off"))
+			_c2.refresh_button(button)
+		return
 	_music_button.text = "MUSIC: OFF" if audio.is_muted(&"Music") else "MUSIC: ON"
 	_sfx_button.text = "SFX: OFF" if audio.is_muted(&"SFX") else "SFX: ON"
 

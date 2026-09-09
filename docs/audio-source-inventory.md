@@ -1,8 +1,10 @@
 # Audio source inventory
 
+**Current RC1:** untouched non-fade master accepted and integrated; temporary MP3 excluded from RC1 export. All A/B/C candidates rejected. See [native investigation and exact settings](vm061-original-wav-investigation.md). Earlier entries below remain historical records.
+
 Recorded: 2026-09-08. No stock, generated, purchased, or placeholder SFX used.
 
-## Miraie — temporary main theme
+## Miraie — historical RC0 temporary main theme
 
 - Working filename: `2026 09 03 miraie joltrome VENDING MACHINE BGM demo v2.mp3`.
 - Composer: **Miraie**; supplied directly by the composer to the founder, composed specifically while watching **Vending Machine Survival**.
@@ -45,3 +47,7 @@ Startup Lab authorized a separate 41-bar trim and minimal seam experiment. [A/B 
 ## 2026-09-09 — A/B rejected; Candidate C for listening
 
 Startup Lab rejected the 41-bar A/B restart perceptually and authorized the [40-bar Candidate C experiment](vm061-candidate-c-loop.md). Exact C retains frames [0,4430769); a bounded ±2 ms waveform comparison supplies an optional endpoint at 4430863 (+1.958 ms). Both preserve the original non-fade PCM prefix without sample editing or fades, and both passed three native Godot mixer wraps. Repeated previews contain three joins with four-bar context. Human musical approval is pending; if C remains wrong, stop for manual/composer loop markers. Originals and runtime demo remain unchanged.
+
+## 2026-09-09 — original master accepted, RC1 integration
+
+Founder validated original → original in Audacity, then accepted the corrected native Godot capture by ear and authorized RC1. Runtime source: `res://assets/audio/miraie_main_theme_ORIGINAL_MASTER.wav`, byte-identical SHA-256 `1e12cc678e944c2ea1aa560653c1c07e3b26a1dbdd9dfead40d3deced3b391d4`. Full 4,542,981-frame /94.6454375-second loop, original export tail retained; no trim/fade/crossfade/A/B/C. Godot PCM16 import at48kHz; in-memory four-byte first-frame decoder guard, unchanged loop endpoint; explicit STREAM. One persistent music player, no end callback restart. No OGG; no paid service. This technical/music acceptance adds no new commercial-rights claim beyond existing founder-provided permission evidence. See the linked investigation and RC1 report.

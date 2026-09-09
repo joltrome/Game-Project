@@ -3,7 +3,7 @@ extends Node
 
 signal sfx_requested(event: StringName)
 
-# Replace this resource in standard_session.tscn when the seamless master arrives.
+# Original master stays byte-identical; loop settings live on its import resource.
 @export var music_stream: AudioStream
 @export var sfx_streams: Dictionary[StringName, AudioStream] = {}
 
@@ -23,7 +23,8 @@ func _ready() -> void:
 	music = AudioStreamPlayer.new()
 	music.name = "MusicPlayer"
 	music.bus = &"Music"
-	music.stream = music_stream
+	music.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
+	music.stream = prepare_music_stream(music_stream)
 	add_child(music)
 	sfx = AudioStreamPlayer.new()
 	sfx.name = "SFXPlayer"
@@ -40,7 +41,7 @@ func start_music_once() -> void:
 	music_started = true
 	music_start_count += 1
 	music.play()
-	# No finished callback: the temporary demo plays through once, quiet tail included.
+	# The resource loops inside the continuous mixer; never restart on finished.
 
 
 func _exit_tree() -> void:
@@ -69,3 +70,21 @@ func set_muted(bus_name: StringName, muted: bool) -> void:
 func is_muted(bus_name: StringName) -> bool:
 	var index := AudioServer.get_bus_index(bus_name)
 	return index >= 0 and AudioServer.is_bus_mute(index)
+
+
+static func prepare_music_stream(source: AudioStream) -> AudioStream:
+	if not source is AudioStreamWAV:
+		return source
+	var wav := source as AudioStreamWAV
+	# Godot 4.7.1 reads the exclusive WAV endpoint, then resumes at frame 1.
+	# Supply sample 0 as a decoder guard so audible output is exactly the full
+	# original repeated. This does not add a played frame or change the loop period.
+	# Scoped to the verified PCM16, full-file, forward-loop case; recheck on upgrade.
+	if wav.format != AudioStreamWAV.FORMAT_16_BITS or wav.loop_mode != AudioStreamWAV.LOOP_FORWARD:
+		return source
+	var bytes_per_frame := 4 if wav.stereo else 2
+	if wav.loop_begin != 0 or wav.loop_end * bytes_per_frame != wav.data.size():
+		return source
+	var prepared := wav.duplicate() as AudioStreamWAV
+	prepared.data = wav.data + wav.data.slice(0, bytes_per_frame)
+	return prepared

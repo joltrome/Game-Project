@@ -1749,6 +1749,9 @@ func _resolve_coin(coin: ConveyorCollectible, offer_id: int, collected: bool) ->
 
 
 func _on_collectible_collected(collectible: ConveyorCollectible, offer_id: int) -> void:
+	# A queued collision after death/completion cannot change the final score.
+	if _stopped:
+		return
 	_resolve_coin(collectible, offer_id, true)
 
 
