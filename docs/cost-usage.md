@@ -59,6 +59,8 @@ Codex authentication mode, model identity, remaining subscription allowance, and
 
 | 2026-09-09 JST | VM-0.6.1 RC1 preflight and audio-seam stop | Codex/ChatGPT context; exact auth unavailable | GPT-6 family; Astra/High requested, exact runtime variant/reasoning unavailable | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Verified remote RC0, passed all 27 baseline scripts, inspected Work package/source hashes and supplied WAV, created a local boundary audition. Founder confirmed audible gap/click; stopped under explicit gate, removed task-owned unfinished runtime edits, and documented findings. FFmpeg libvorbis conversion failed without output. No paid service, audio repair, RC1 export, upload or distribution. |
 
+| 2026-09-09 JST | Authorized VM061 derived-loop A/B experiment | Codex/ChatGPT context; exact auth unavailable | GPT-6 family; Astra/High requested, exact runtime details unavailable | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Local sample-exact trim, 2 ms seam comparator, three-loop previews, byte-level source/edit checks, isolated native Godot mixer verification and official API documentation lookup. Runtime remains unchanged; no OGG conversion, paid service, upload or distribution. |
+
 ## Paid API session fields
 
 For any approved paid API session, append an entry containing all fields the provider exposes:

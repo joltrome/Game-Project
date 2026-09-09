@@ -2,6 +2,8 @@
 
 Date: 2026-09-09 JST. **RC1 is not implemented or ready for review/export. Return to Startup Lab now.**
 
+Subsequent authorization: Startup Lab lifted this stop only for the [derived-loop A/B experiment](vm061-derived-loop-experiment.md). The original findings below remain historical; runtime selection and RC1 integration are still pending.
+
 ## Stop decision and evidence
 
 Startup Lab's RC1 integration brief, sections 20 and 43, requires reporting an unresolved audible music seam and returning rather than rewriting/crossfading the composition. The founder listened to the boundary audition in this session and selected: **“Audible gap/click — return audio issue to Startup Lab.”** This is human listening evidence; Codex did not independently hear playback.

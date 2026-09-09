@@ -1557,6 +1557,12 @@
     text: 'DECISION: select GET CANNED!, C2 Minimal, L1 Compact Stack, CLOCK IN, subtle VENTASTIC, product CANNED., carriage GRABBED., OUT VENDED., unknown GAME OVER., success CLOCKED OUT., Space/W/Up jump aliases, a short death readability beat and scoped landscape Web touch controls. Standard gameplay remains frozen. EVIDENCE: clean local/live-remote RC0 at 437f76f and all 27 baseline tests passed; five Work sprite hashes matched. Supplied non-fade 48 kHz float32 WAV has approximately 30.167 ms trailing silence; founder confirmed an audible gap/click in repeated boundary excerpts. RESULT: stop RC1 under the explicit unresolved-loop-seam gate and return to Startup Lab for composer-confirmed loop material. Local FFmpeg lacks libvorbis and no OGG was produced. Incomplete task-owned runtime edits were removed; this checkpoint changes documentation only. No RC1 export or mobile validation exists. See docs/vm061-rc1-audio-stop.md. These choices are selected direction, not implemented behavior.'
   };
 
+  const vm061LoopExperiment = {
+    id: 'result-vm-0.6.1-authorized-loop-experiment',
+    type: 'Result', date: '2026-09-09', source: 'Startup Lab narrow audio-edit authorization and local sample/native-engine checks',
+    text: 'The previous audio stop is lifted only for a derived-loop experiment. A preserves source frames [0,4541538), removing 1443 padding frames; B adds a 96-frame/2 ms raised-cosine initial offset correction, preserving length and all later samples. Both last 94.615375 seconds and passed three continuous native Godot mixer wraps. Original master and all RC0 runtime files remain unchanged. A retains a 0.04047 sample-amplitude boundary step; B removes that step numerically. A/B listening selection is pending: this is not a claim of audible seamlessness or an accepted runtime swap. Previews, exact edits and limitations: docs/vm061-derived-loop-experiment.md. No OGG, Web export, paid service or distribution occurred.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1680,7 +1686,8 @@
     vm060AcceptedFreeze,
     vm060PresentationResult,
     vm060FunctionalAcceptance,
-    vm061AudioStop
+    vm061AudioStop,
+    vm061LoopExperiment
   ];
 
   const defaultFindings = [
@@ -1692,7 +1699,7 @@
   ];
 
   const defaultState = {
-    version: 35,
+    version: 36,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []
