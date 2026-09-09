@@ -1551,6 +1551,12 @@
     text: 'Functionally accept VM-0.6.0-STANDARD-RC0 at 1dcaae7 as the presentation/audio engineering baseline, preserving menu/results/credits, input, fresh-run Retry, local best score, persistent music, buses, silent SFX hooks, debug gating and frozen Standard regressions. Reject the present menu/results visual presentation as the final UI direction: it is too static, rectangular, dashboard-like, generic, restrained and typographically bland. A dedicated Work session will explore a playful, animated, game-specific arcade direction. No visual or behavior change is authorized in this preservation pass. The exact RC0 commit was pushed and its remote HEAD verified before a separate documentation pass. See docs/vm060-ui-functional-contract.md for the behavior contract, replaceable visual layer, death-cause data gap and future proposal. Founder-reported non-fade/fade WAV masters are context only; final audio conversion/loop validation/swap remains a later authorized task.'
   };
 
+  const vm061AudioStop = {
+    id: 'decision-vm-0.6.1-c2-integration-audio-stop',
+    type: 'Decision', date: '2026-09-09', source: 'Startup Lab RC1 brief and founder boundary-audition feedback',
+    text: 'DECISION: select GET CANNED!, C2 Minimal, L1 Compact Stack, CLOCK IN, subtle VENTASTIC, product CANNED., carriage GRABBED., OUT VENDED., unknown GAME OVER., success CLOCKED OUT., Space/W/Up jump aliases, a short death readability beat and scoped landscape Web touch controls. Standard gameplay remains frozen. EVIDENCE: clean local/live-remote RC0 at 437f76f and all 27 baseline tests passed; five Work sprite hashes matched. Supplied non-fade 48 kHz float32 WAV has approximately 30.167 ms trailing silence; founder confirmed an audible gap/click in repeated boundary excerpts. RESULT: stop RC1 under the explicit unresolved-loop-seam gate and return to Startup Lab for composer-confirmed loop material. Local FFmpeg lacks libvorbis and no OGG was produced. Incomplete task-owned runtime edits were removed; this checkpoint changes documentation only. No RC1 export or mobile validation exists. See docs/vm061-rc1-audio-stop.md. These choices are selected direction, not implemented behavior.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1673,7 +1679,8 @@
     vm060ConveyorVisualDirectionResult,
     vm060AcceptedFreeze,
     vm060PresentationResult,
-    vm060FunctionalAcceptance
+    vm060FunctionalAcceptance,
+    vm061AudioStop
   ];
 
   const defaultFindings = [
@@ -1685,7 +1692,7 @@
   ];
 
   const defaultState = {
-    version: 34,
+    version: 35,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

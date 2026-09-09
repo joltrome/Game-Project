@@ -57,6 +57,8 @@ Codex authentication mode, model identity, remaining subscription allowance, and
 
 | 2026-09-08 JST | Preserve accepted VM-0.6.0 RC0 and document Work UI contract | ChatGPT/Codex context; exact auth details not exposed | GPT-6 family; exact runtime variant/reasoning not independently exposed | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Verified and pushed existing RC0, inspected runtime input/death/audio/persistence code read-only, checked named WAV availability in task-relevant locations, created the functional UI contract and updated decision/history documentation. Documentation kept in a separate commit. No gameplay/UI/audio/asset/copy/message changes, paid services, conversion, export or itch distribution. |
 
+| 2026-09-09 JST | VM-0.6.1 RC1 preflight and audio-seam stop | Codex/ChatGPT context; exact auth unavailable | GPT-6 family; Astra/High requested, exact runtime variant/reasoning unavailable | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Verified remote RC0, passed all 27 baseline scripts, inspected Work package/source hashes and supplied WAV, created a local boundary audition. Founder confirmed audible gap/click; stopped under explicit gate, removed task-owned unfinished runtime edits, and documented findings. FFmpeg libvorbis conversion failed without output. No paid service, audio repair, RC1 export, upload or distribution. |
+
 ## Paid API session fields
 
 For any approved paid API session, append an entry containing all fields the provider exposes:

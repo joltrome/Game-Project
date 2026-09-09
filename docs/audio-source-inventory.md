@@ -31,3 +31,9 @@ Recorded: 2026-09-08. No stock, generated, purchased, or placeholder SFX used.
 `SessionAudio.sfx_streams` is an empty event-to-AudioStream dictionary. `request_sfx()` emits `sfx_requested` for local testing and plays only a supplied resource through SFX. No files are fetched or synthesized. Events: `coin_pickup`, `jump`, `landing`, `product_impact`, `rack_warning`, `rack_release`, `carriage_warning`, `carriage_sweep`, `player_death`, `final_seconds`, `round_complete`, `ui_confirm`, `ui_back`.
 
 All future third-party SFX need source, author, license, permission, modifications and runtime-path records before integration. Sourcing and mix approval belong to a later authorized milestone.
+
+## 2026-09-09 — non-fade master received; loop not accepted
+
+The supplied non-fade master is now locally verified at `/Users/jeromenicholaz/Downloads/2026 09 08 miraie joltrome VENDING MACHINE BGM fade-wav/2026 09 08 miraie joltrome VENDING MACHINE BGM.wav`. Miraie / 104 BPM / C Major / 8B is composer metadata reported by Startup Lab. Stereo 48 kHz float32 PCM, 94.6454375 seconds, 36,343,964 bytes. SHA-256: `1e12cc678e944c2ea1aa560653c1c07e3b26a1dbdd9dfead40d3deced3b391d4`. Original preserved unchanged.
+
+Technical inspection found approximately 30.167 ms of trailing silence. The founder heard a gap/click in repeated source boundary excerpts and requested return to Startup Lab. RC1 was stopped under its explicit audio-seam gate. Local FFmpeg lacks libvorbis; the attempted high-quality direct WAV conversion produced no OGG. The temporary MP3 and playback behavior remain unchanged. No musical trim, crossfade or runtime master swap was made. See [RC1 stop report](vm061-rc1-audio-stop.md) for exact measurements, the distinction between audition and runtime validation, and the request for composer-confirmed loop material. This receipt does not establish new commercial permission or a preferred final credit name.
