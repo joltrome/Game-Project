@@ -1575,6 +1575,12 @@
     text: 'SUPERSEDES the earlier audio stops and all rejected A/B/C endpoints. Founder validated the untouched original end-to-start in Audacity and accepted the corrected native Godot capture. RC1 integrates GET CANNED!, C2 Minimal/L1, CLOCK IN without exclamation, menu-only VENTASTIC, one shared cause-specific result screen, CLOCKED OUT. success, Space/W/Up, 0.75-second frozen death beat and scoped landscape touch buttons. A typed first-death cause and a post-stop pickup guard freeze the outcome without retuning gameplay. Original WAV stays byte-identical; explicit STREAM plus a verified decoded first-frame guard matches direct concatenation across three wraps. No OGG. All 30 scripts pass, 12 retries preserve one music instance, copied Work art is exact, Web emulation supports simultaneous direction/jump and gesture audio. Physical mobile and itch iframe QA remain unverified; a live DPR/orientation resize produced Chromium WebGL warnings without visible failure. Export/ZIP is local for Startup Lab review only. See docs/vm061-get-canned-rc1.md and docs/vm061-original-wav-investigation.md. No upload, SFX sourcing, Overload or frozen gameplay tuning.'
   };
 
+  const vm062RC2 = {
+    id: 'result-vm-0.6.2-presentation-cohesion',
+    type: 'Result', date: '2026-09-10', source: 'Startup Lab RC2 scope, Work production assets, runtime measurements and local QA',
+    text: 'DECISION: C2 now extends to live HUD, Credits and a real Pause state. Esc/P and a 48 CSS-pixel mobile target freeze simulation while Pause/audio remain active. Exact Work KO uses 70 ms hit-stop, 420 ms animation and 260 ms hold; OUT uses a clipped 160 ms downward disappearance. EVIDENCE: ordinary/D3 landed art began 4 px below the support top while conveyor boots were already aligned. RC2 shifts only landed collision position +4 px; 72x48 size, player physics and frozen Standard tuning remain unchanged. All 34 scripts pass, including 30 Pause/Resume and 20 fresh paused-Retry cycles, three-finger cleanup, source-independent contact and death timing. Native screenshots/GIFs and desktop/mobile-emulated/local 800x450 iframe checks are recorded. Original WAV/native loop and menu/results remain accepted and unchanged. RC1 was preserved on origin at 9a447fc before RC2. Remaining risks: physical devices, Safari/focus interruptions, airborne KO feel, existing live-resize WebGL warnings. No SFX, paid API or itch upload. See docs/vm062-presentation-cohesion.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1701,7 +1707,8 @@
     vm061AudioStop,
     vm061LoopExperiment,
     vm061CandidateC,
-    vm061RC1
+    vm061RC1,
+    vm062RC2
   ];
 
   const defaultFindings = [
@@ -1713,7 +1720,7 @@
   ];
 
   const defaultState = {
-    version: 38,
+    version: 39,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []
