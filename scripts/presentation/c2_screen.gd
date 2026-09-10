@@ -60,7 +60,7 @@ func _draw() -> void:
 		draw_texture(_textures["ventastic/ventastic.png"], Vector2(1006, 609))
 
 
-func add_button(key: String, label: String, rect: Rect2, callback: Callable, padded: bool = false) -> Button:
+func add_button(key: String, label: String, rect: Rect2, callback: Callable, padded: bool = false, art_root: String = ART, artwork_offset: Vector2 = Vector2.INF) -> Button:
 	var button := Button.new()
 	button.text = label
 	button.name = key.replace("-", "_")
@@ -74,9 +74,10 @@ func add_button(key: String, label: String, rect: Rect2, callback: Callable, pad
 	var art := TextureRect.new()
 	art.name = "Artwork"
 	art.mouse_filter = MOUSE_FILTER_IGNORE
-	art.position = Vector2(-12, -12) if padded else Vector2.ZERO
+	art.position = artwork_offset if artwork_offset != Vector2.INF else Vector2(-12, -12) if padded else Vector2.ZERO
 	button.add_child(art)
 	button.set_meta(&"art_key", key)
+	button.set_meta(&"art_root", art_root)
 	var refresh := func() -> void: refresh_button(button)
 	for event in [button.mouse_entered, button.mouse_exited, button.focus_entered, button.focus_exited, button.button_down, button.button_up]:
 		event.connect(refresh)
@@ -89,7 +90,7 @@ func add_button(key: String, label: String, rect: Rect2, callback: Callable, pad
 
 func refresh_button(button: Button) -> void:
 	var state := "pressed" if button.is_pressed() else "focus" if button.has_focus() or button.is_hovered() else "idle"
-	(button.get_node("Artwork") as TextureRect).texture = load(ART + "buttons/%s/%s.png" % [button.get_meta(&"art_key"), state])
+	(button.get_node("Artwork") as TextureRect).texture = load(str(button.get_meta(&"art_root", ART)) + "buttons/%s/%s.png" % [button.get_meta(&"art_key"), state])
 
 
 func wire_focus() -> void:

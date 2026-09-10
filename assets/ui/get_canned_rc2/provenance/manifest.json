@@ -1,0 +1,2188 @@
+{
+  "version": "VM062-C2-cohesion-production-1",
+  "logical_size": [
+    1152,
+    648
+  ],
+  "date": "2026-09-10 JST",
+  "assets": {
+    "hud/refund-coin.png": {
+      "dimensions": [
+        32,
+        32
+      ],
+      "role": "exact C1 face frame 0 at 2x; static HUD icon",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 20,
+      "input": "ignore",
+      "position_rule": "44px left of score ink left; Y10",
+      "source": "shared/coin.png region 0,0,16,16; 2x"
+    },
+    "hud/timer-normal-sample.png": {
+      "dimensions": [
+        168,
+        44
+      ],
+      "role": "reference sample only; use dynamic atlas numerals",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 20,
+      "input": "ignore",
+      "position": [
+        492,
+        6
+      ],
+      "runtime": false
+    },
+    "hud/timer-mild-sample.png": {
+      "dimensions": [
+        168,
+        44
+      ],
+      "role": "reference sample only; use dynamic atlas numerals",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 20,
+      "input": "ignore",
+      "position": [
+        492,
+        6
+      ],
+      "runtime": false
+    },
+    "hud/timer-urgent-sample.png": {
+      "dimensions": [
+        168,
+        44
+      ],
+      "role": "reference sample only; use dynamic atlas numerals",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 20,
+      "input": "ignore",
+      "position": [
+        492,
+        6
+      ],
+      "runtime": false
+    },
+    "hud/timer-final-sample.png": {
+      "dimensions": [
+        168,
+        44
+      ],
+      "role": "reference sample only; use dynamic atlas numerals",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 20,
+      "input": "ignore",
+      "position": [
+        492,
+        6
+      ],
+      "runtime": false
+    },
+    "hud/mobile-pause-idle.png": {
+      "dimensions": [
+        48,
+        48
+      ],
+      "role": "48 CSS px mobile pause target",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": "fixed 48 CSS px independent of fitted game scale and devicePixelRatio",
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 30,
+      "input": "touch/mouse one-shot pause request; hide when paused/dead/non-game",
+      "state": "idle",
+      "position": [
+        8,
+        8
+      ],
+      "position_rule": "fitted game top-left + 8 CSS px; inset farther only for safe-area cutout",
+      "hit": [
+        8,
+        8,
+        48,
+        48
+      ]
+    },
+    "hud/mobile-pause-focus.png": {
+      "dimensions": [
+        48,
+        48
+      ],
+      "role": "48 CSS px mobile pause target",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": "fixed 48 CSS px independent of fitted game scale and devicePixelRatio",
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 30,
+      "input": "touch/mouse one-shot pause request; hide when paused/dead/non-game",
+      "state": "focus",
+      "position": [
+        8,
+        8
+      ],
+      "position_rule": "fitted game top-left + 8 CSS px; inset farther only for safe-area cutout",
+      "hit": [
+        8,
+        8,
+        48,
+        48
+      ]
+    },
+    "hud/mobile-pause-pressed.png": {
+      "dimensions": [
+        48,
+        48
+      ],
+      "role": "48 CSS px mobile pause target",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": "fixed 48 CSS px independent of fitted game scale and devicePixelRatio",
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 30,
+      "input": "touch/mouse one-shot pause request; hide when paused/dead/non-game",
+      "state": "pressed",
+      "position": [
+        8,
+        8
+      ],
+      "position_rule": "fitted game top-left + 8 CSS px; inset farther only for safe-area cutout",
+      "hit": [
+        8,
+        8,
+        48,
+        48
+      ]
+    },
+    "credits/chassis.png": {
+      "dimensions": [
+        1152,
+        648
+      ],
+      "role": "C2 chassis geometry; no extra tableau or decorative signage",
+      "alpha": false,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 0,
+      "input": "ignore"
+    },
+    "credits/heading.png": {
+      "dimensions": [
+        864,
+        112
+      ],
+      "role": "C2 result-family heading",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 20,
+      "input": "ignore",
+      "position": [
+        144,
+        86
+      ]
+    },
+    "credits/game-block.png": {
+      "dimensions": [
+        600,
+        72
+      ],
+      "role": "legitimate credit block",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 20,
+      "input": "ignore",
+      "position": [
+        276,
+        248
+      ],
+      "text": [
+        "GAME / DESIGN",
+        "JOLTROME"
+      ]
+    },
+    "credits/music-block.png": {
+      "dimensions": [
+        600,
+        72
+      ],
+      "role": "legitimate credit block",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 20,
+      "input": "ignore",
+      "position": [
+        276,
+        349
+      ],
+      "text": [
+        "ORIGINAL MUSIC",
+        "MIRAIE"
+      ]
+    },
+    "credits/buttons/back/idle.png": {
+      "dimensions": [
+        344,
+        94
+      ],
+      "role": "C2 primary control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 40,
+      "input": "Button; fixed hit region",
+      "position": [
+        404,
+        460
+      ],
+      "state": "idle",
+      "hit": [
+        416,
+        463,
+        320,
+        88
+      ]
+    },
+    "credits/buttons/back/focus.png": {
+      "dimensions": [
+        344,
+        94
+      ],
+      "role": "C2 primary control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 40,
+      "input": "Button; fixed hit region",
+      "position": [
+        404,
+        460
+      ],
+      "state": "focus",
+      "hit": [
+        416,
+        463,
+        320,
+        88
+      ]
+    },
+    "credits/buttons/back/pressed.png": {
+      "dimensions": [
+        344,
+        94
+      ],
+      "role": "C2 primary control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 40,
+      "input": "Button; fixed hit region",
+      "position": [
+        404,
+        460
+      ],
+      "state": "pressed",
+      "hit": [
+        416,
+        463,
+        320,
+        88
+      ]
+    },
+    "credits/buttons/music-on/idle.png": {
+      "dimensions": [
+        136,
+        44
+      ],
+      "role": "byte-identical C2 secondary control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 40,
+      "input": "Button; one audio toggle, retain focus across ON/OFF",
+      "position": [
+        808,
+        557
+      ],
+      "state": "idle",
+      "hit": [
+        808,
+        548,
+        136,
+        88
+      ],
+      "source": "shared/buttons/music-on/idle.png"
+    },
+    "credits/buttons/music-on/focus.png": {
+      "dimensions": [
+        136,
+        44
+      ],
+      "role": "byte-identical C2 secondary control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 40,
+      "input": "Button; one audio toggle, retain focus across ON/OFF",
+      "position": [
+        808,
+        557
+      ],
+      "state": "focus",
+      "hit": [
+        808,
+        548,
+        136,
+        88
+      ],
+      "source": "shared/buttons/music-on/focus.png"
+    },
+    "credits/buttons/music-on/pressed.png": {
+      "dimensions": [
+        136,
+        44
+      ],
+      "role": "byte-identical C2 secondary control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 40,
+      "input": "Button; one audio toggle, retain focus across ON/OFF",
+      "position": [
+        808,
+        557
+      ],
+      "state": "pressed",
+      "hit": [
+        808,
+        548,
+        136,
+        88
+      ],
+      "source": "shared/buttons/music-on/pressed.png"
+    },
+    "credits/buttons/music-off/idle.png": {
+      "dimensions": [
+        136,
+        44
+      ],
+      "role": "byte-identical C2 secondary control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 40,
+      "input": "Button; one audio toggle, retain focus across ON/OFF",
+      "position": [
+        808,
+        557
+      ],
+      "state": "idle",
+      "hit": [
+        808,
+        548,
+        136,
+        88
+      ],
+      "source": "shared/buttons/music-off/idle.png"
+    },
+    "credits/buttons/music-off/focus.png": {
+      "dimensions": [
+        136,
+        44
+      ],
+      "role": "byte-identical C2 secondary control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 40,
+      "input": "Button; one audio toggle, retain focus across ON/OFF",
+      "position": [
+        808,
+        557
+      ],
+      "state": "focus",
+      "hit": [
+        808,
+        548,
+        136,
+        88
+      ],
+      "source": "shared/buttons/music-off/focus.png"
+    },
+    "credits/buttons/music-off/pressed.png": {
+      "dimensions": [
+        136,
+        44
+      ],
+      "role": "byte-identical C2 secondary control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 40,
+      "input": "Button; one audio toggle, retain focus across ON/OFF",
+      "position": [
+        808,
+        557
+      ],
+      "state": "pressed",
+      "hit": [
+        808,
+        548,
+        136,
+        88
+      ],
+      "source": "shared/buttons/music-off/pressed.png"
+    },
+    "credits/buttons/sfx-on/idle.png": {
+      "dimensions": [
+        122,
+        44
+      ],
+      "role": "byte-identical C2 secondary control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 40,
+      "input": "Button; one audio toggle, retain focus across ON/OFF",
+      "position": [
+        962,
+        557
+      ],
+      "state": "idle",
+      "hit": [
+        962,
+        548,
+        122,
+        88
+      ],
+      "source": "shared/buttons/sfx-on/idle.png"
+    },
+    "credits/buttons/sfx-on/focus.png": {
+      "dimensions": [
+        122,
+        44
+      ],
+      "role": "byte-identical C2 secondary control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 40,
+      "input": "Button; one audio toggle, retain focus across ON/OFF",
+      "position": [
+        962,
+        557
+      ],
+      "state": "focus",
+      "hit": [
+        962,
+        548,
+        122,
+        88
+      ],
+      "source": "shared/buttons/sfx-on/focus.png"
+    },
+    "credits/buttons/sfx-on/pressed.png": {
+      "dimensions": [
+        122,
+        44
+      ],
+      "role": "byte-identical C2 secondary control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 40,
+      "input": "Button; one audio toggle, retain focus across ON/OFF",
+      "position": [
+        962,
+        557
+      ],
+      "state": "pressed",
+      "hit": [
+        962,
+        548,
+        122,
+        88
+      ],
+      "source": "shared/buttons/sfx-on/pressed.png"
+    },
+    "credits/buttons/sfx-off/idle.png": {
+      "dimensions": [
+        122,
+        44
+      ],
+      "role": "byte-identical C2 secondary control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 40,
+      "input": "Button; one audio toggle, retain focus across ON/OFF",
+      "position": [
+        962,
+        557
+      ],
+      "state": "idle",
+      "hit": [
+        962,
+        548,
+        122,
+        88
+      ],
+      "source": "shared/buttons/sfx-off/idle.png"
+    },
+    "credits/buttons/sfx-off/focus.png": {
+      "dimensions": [
+        122,
+        44
+      ],
+      "role": "byte-identical C2 secondary control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 40,
+      "input": "Button; one audio toggle, retain focus across ON/OFF",
+      "position": [
+        962,
+        557
+      ],
+      "state": "focus",
+      "hit": [
+        962,
+        548,
+        122,
+        88
+      ],
+      "source": "shared/buttons/sfx-off/focus.png"
+    },
+    "credits/buttons/sfx-off/pressed.png": {
+      "dimensions": [
+        122,
+        44
+      ],
+      "role": "byte-identical C2 secondary control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 40,
+      "input": "Button; one audio toggle, retain focus across ON/OFF",
+      "position": [
+        962,
+        557
+      ],
+      "state": "pressed",
+      "hit": [
+        962,
+        548,
+        122,
+        88
+      ],
+      "source": "shared/buttons/sfx-off/pressed.png"
+    },
+    "pause/dimmer.png": {
+      "dimensions": [
+        1152,
+        648
+      ],
+      "role": "55% navy darkening overlay",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 100,
+      "input": "blocks pointer events to gameplay; gameplay frozen separately",
+      "position": [
+        0,
+        0
+      ],
+      "opacity": 0.5490196078431373
+    },
+    "pause/indicator.png": {
+      "dimensions": [
+        48,
+        40
+      ],
+      "role": "two-bar pixel pause symbol",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 110,
+      "input": "ignore",
+      "position": [
+        552,
+        112
+      ]
+    },
+    "pause/heading.png": {
+      "dimensions": [
+        600,
+        72
+      ],
+      "role": "C2 display heading",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 110,
+      "input": "ignore",
+      "position": [
+        276,
+        184
+      ]
+    },
+    "pause/buttons/resume/idle.png": {
+      "dimensions": [
+        344,
+        94
+      ],
+      "role": "C2 primary control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; fixed hit region",
+      "position": [
+        404,
+        284
+      ],
+      "state": "idle",
+      "hit": [
+        416,
+        287,
+        320,
+        88
+      ]
+    },
+    "pause/buttons/resume/focus.png": {
+      "dimensions": [
+        344,
+        94
+      ],
+      "role": "C2 primary control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; fixed hit region",
+      "position": [
+        404,
+        284
+      ],
+      "state": "focus",
+      "hit": [
+        416,
+        287,
+        320,
+        88
+      ]
+    },
+    "pause/buttons/resume/pressed.png": {
+      "dimensions": [
+        344,
+        94
+      ],
+      "role": "C2 primary control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; fixed hit region",
+      "position": [
+        404,
+        284
+      ],
+      "state": "pressed",
+      "hit": [
+        416,
+        287,
+        320,
+        88
+      ]
+    },
+    "pause/buttons/pause-retry/idle.png": {
+      "dimensions": [
+        160,
+        88
+      ],
+      "role": "quiet pause control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; cream text on dimmed gameplay",
+      "position": [
+        406,
+        394
+      ],
+      "state": "idle",
+      "hit": [
+        406,
+        394,
+        160,
+        88
+      ]
+    },
+    "pause/buttons/pause-retry/focus.png": {
+      "dimensions": [
+        160,
+        88
+      ],
+      "role": "quiet pause control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; cream text on dimmed gameplay",
+      "position": [
+        406,
+        394
+      ],
+      "state": "focus",
+      "hit": [
+        406,
+        394,
+        160,
+        88
+      ]
+    },
+    "pause/buttons/pause-retry/pressed.png": {
+      "dimensions": [
+        160,
+        88
+      ],
+      "role": "quiet pause control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; cream text on dimmed gameplay",
+      "position": [
+        406,
+        394
+      ],
+      "state": "pressed",
+      "hit": [
+        406,
+        394,
+        160,
+        88
+      ]
+    },
+    "pause/buttons/pause-menu/idle.png": {
+      "dimensions": [
+        160,
+        88
+      ],
+      "role": "quiet pause control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; cream text on dimmed gameplay",
+      "position": [
+        586,
+        394
+      ],
+      "state": "idle",
+      "hit": [
+        586,
+        394,
+        160,
+        88
+      ]
+    },
+    "pause/buttons/pause-menu/focus.png": {
+      "dimensions": [
+        160,
+        88
+      ],
+      "role": "quiet pause control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; cream text on dimmed gameplay",
+      "position": [
+        586,
+        394
+      ],
+      "state": "focus",
+      "hit": [
+        586,
+        394,
+        160,
+        88
+      ]
+    },
+    "pause/buttons/pause-menu/pressed.png": {
+      "dimensions": [
+        160,
+        88
+      ],
+      "role": "quiet pause control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; cream text on dimmed gameplay",
+      "position": [
+        586,
+        394
+      ],
+      "state": "pressed",
+      "hit": [
+        586,
+        394,
+        160,
+        88
+      ]
+    },
+    "pause/buttons/pause-music-on/idle.png": {
+      "dimensions": [
+        164,
+        88
+      ],
+      "role": "quiet pause control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; cream text on dimmed gameplay",
+      "position": [
+        682,
+        510
+      ],
+      "state": "idle",
+      "hit": [
+        682,
+        510,
+        164,
+        88
+      ]
+    },
+    "pause/buttons/pause-music-on/focus.png": {
+      "dimensions": [
+        164,
+        88
+      ],
+      "role": "quiet pause control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; cream text on dimmed gameplay",
+      "position": [
+        682,
+        510
+      ],
+      "state": "focus",
+      "hit": [
+        682,
+        510,
+        164,
+        88
+      ]
+    },
+    "pause/buttons/pause-music-on/pressed.png": {
+      "dimensions": [
+        164,
+        88
+      ],
+      "role": "quiet pause control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; cream text on dimmed gameplay",
+      "position": [
+        682,
+        510
+      ],
+      "state": "pressed",
+      "hit": [
+        682,
+        510,
+        164,
+        88
+      ]
+    },
+    "pause/buttons/pause-music-off/idle.png": {
+      "dimensions": [
+        164,
+        88
+      ],
+      "role": "quiet pause control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; cream text on dimmed gameplay",
+      "position": [
+        682,
+        510
+      ],
+      "state": "idle",
+      "hit": [
+        682,
+        510,
+        164,
+        88
+      ]
+    },
+    "pause/buttons/pause-music-off/focus.png": {
+      "dimensions": [
+        164,
+        88
+      ],
+      "role": "quiet pause control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; cream text on dimmed gameplay",
+      "position": [
+        682,
+        510
+      ],
+      "state": "focus",
+      "hit": [
+        682,
+        510,
+        164,
+        88
+      ]
+    },
+    "pause/buttons/pause-music-off/pressed.png": {
+      "dimensions": [
+        164,
+        88
+      ],
+      "role": "quiet pause control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; cream text on dimmed gameplay",
+      "position": [
+        682,
+        510
+      ],
+      "state": "pressed",
+      "hit": [
+        682,
+        510,
+        164,
+        88
+      ]
+    },
+    "pause/buttons/pause-sfx-on/idle.png": {
+      "dimensions": [
+        164,
+        88
+      ],
+      "role": "quiet pause control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; cream text on dimmed gameplay",
+      "position": [
+        862,
+        510
+      ],
+      "state": "idle",
+      "hit": [
+        862,
+        510,
+        164,
+        88
+      ]
+    },
+    "pause/buttons/pause-sfx-on/focus.png": {
+      "dimensions": [
+        164,
+        88
+      ],
+      "role": "quiet pause control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; cream text on dimmed gameplay",
+      "position": [
+        862,
+        510
+      ],
+      "state": "focus",
+      "hit": [
+        862,
+        510,
+        164,
+        88
+      ]
+    },
+    "pause/buttons/pause-sfx-on/pressed.png": {
+      "dimensions": [
+        164,
+        88
+      ],
+      "role": "quiet pause control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; cream text on dimmed gameplay",
+      "position": [
+        862,
+        510
+      ],
+      "state": "pressed",
+      "hit": [
+        862,
+        510,
+        164,
+        88
+      ]
+    },
+    "pause/buttons/pause-sfx-off/idle.png": {
+      "dimensions": [
+        164,
+        88
+      ],
+      "role": "quiet pause control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; cream text on dimmed gameplay",
+      "position": [
+        862,
+        510
+      ],
+      "state": "idle",
+      "hit": [
+        862,
+        510,
+        164,
+        88
+      ]
+    },
+    "pause/buttons/pause-sfx-off/focus.png": {
+      "dimensions": [
+        164,
+        88
+      ],
+      "role": "quiet pause control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; cream text on dimmed gameplay",
+      "position": [
+        862,
+        510
+      ],
+      "state": "focus",
+      "hit": [
+        862,
+        510,
+        164,
+        88
+      ]
+    },
+    "pause/buttons/pause-sfx-off/pressed.png": {
+      "dimensions": [
+        164,
+        88
+      ],
+      "role": "quiet pause control",
+      "alpha": true,
+      "anchor": "top-left",
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": null,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": 120,
+      "input": "Button; cream text on dimmed gameplay",
+      "position": [
+        862,
+        510
+      ],
+      "state": "pressed",
+      "hit": [
+        862,
+        510,
+        164,
+        88
+      ]
+    },
+    "death/frames/ko-00.png": {
+      "dimensions": [
+        112,
+        96
+      ],
+      "role": "universal impact KO frame",
+      "alpha": true,
+      "anchor": [
+        40,
+        88
+      ],
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": 60,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": "above frozen actor; below UI",
+      "input": "ignore",
+      "position": "current technician visual bottom-center minus (40,88)",
+      "frame_index": 0,
+      "source": "approved S1 run cell 1; rigid transform; frame 0 block compression"
+    },
+    "death/frames/ko-01.png": {
+      "dimensions": [
+        112,
+        96
+      ],
+      "role": "universal impact KO frame",
+      "alpha": true,
+      "anchor": [
+        40,
+        88
+      ],
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": 70,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": "above frozen actor; below UI",
+      "input": "ignore",
+      "position": "current technician visual bottom-center minus (40,88)",
+      "frame_index": 1,
+      "source": "approved S1 run cell 1; rigid transform; frame 0 block compression"
+    },
+    "death/frames/ko-02.png": {
+      "dimensions": [
+        112,
+        96
+      ],
+      "role": "universal impact KO frame",
+      "alpha": true,
+      "anchor": [
+        40,
+        88
+      ],
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": 80,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": "above frozen actor; below UI",
+      "input": "ignore",
+      "position": "current technician visual bottom-center minus (40,88)",
+      "frame_index": 2,
+      "source": "approved S1 run cell 1; rigid transform; frame 0 block compression"
+    },
+    "death/frames/ko-03.png": {
+      "dimensions": [
+        112,
+        96
+      ],
+      "role": "universal impact KO frame",
+      "alpha": true,
+      "anchor": [
+        40,
+        88
+      ],
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": 80,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": "above frozen actor; below UI",
+      "input": "ignore",
+      "position": "current technician visual bottom-center minus (40,88)",
+      "frame_index": 3,
+      "source": "approved S1 run cell 1; rigid transform; frame 0 block compression"
+    },
+    "death/frames/ko-04.png": {
+      "dimensions": [
+        112,
+        96
+      ],
+      "role": "universal impact KO frame",
+      "alpha": true,
+      "anchor": [
+        40,
+        88
+      ],
+      "scale": 1,
+      "frame_count": 1,
+      "duration_ms": 130,
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": "above frozen actor; below UI",
+      "input": "ignore",
+      "position": "current technician visual bottom-center minus (40,88)",
+      "frame_index": 4,
+      "source": "approved S1 run cell 1; rigid transform; frame 0 block compression"
+    },
+    "death/technician-impact-ko.png": {
+      "dimensions": [
+        560,
+        96
+      ],
+      "role": "five-frame universal impact KO spritesheet",
+      "alpha": true,
+      "anchor": [
+        40,
+        88
+      ],
+      "scale": 1,
+      "frame_count": 5,
+      "duration_ms": [
+        60,
+        70,
+        80,
+        80,
+        130
+      ],
+      "filter": "nearest",
+      "mipmaps": false,
+      "z": "presentation layer above frozen world actor, below HUD",
+      "input": "ignore",
+      "frame_dimensions": [
+        112,
+        96
+      ],
+      "total_duration_ms": 420,
+      "position": "current technician visual bottom-center",
+      "loop": false,
+      "final_frame": 4,
+      "source": "exact S1 run cell 1 transformed, no reinterpreted sprite"
+    }
+  },
+  "layers": {
+    "hud": [],
+    "credits": [
+      {
+        "asset": "credits/chassis.png",
+        "position": [
+          0,
+          0
+        ],
+        "z": 0
+      },
+      {
+        "asset": "credits/heading.png",
+        "position": [
+          144,
+          86
+        ],
+        "z": 20
+      },
+      {
+        "asset": "credits/game-block.png",
+        "position": [
+          276,
+          248
+        ],
+        "z": 20
+      },
+      {
+        "asset": "credits/music-block.png",
+        "position": [
+          276,
+          349
+        ],
+        "z": 20
+      },
+      {
+        "asset": "credits/buttons/back/focus.png",
+        "position": [
+          404,
+          460
+        ],
+        "z": 40
+      },
+      {
+        "asset": "credits/buttons/music-on/idle.png",
+        "position": [
+          808,
+          557
+        ],
+        "z": 40
+      },
+      {
+        "asset": "credits/buttons/sfx-on/idle.png",
+        "position": [
+          962,
+          557
+        ],
+        "z": 40
+      }
+    ],
+    "pause": [
+      {
+        "asset": "pause/dimmer.png",
+        "position": [
+          0,
+          0
+        ],
+        "z": 100
+      },
+      {
+        "asset": "pause/indicator.png",
+        "position": [
+          552,
+          112
+        ],
+        "z": 110
+      },
+      {
+        "asset": "pause/heading.png",
+        "position": [
+          276,
+          184
+        ],
+        "z": 110
+      },
+      {
+        "asset": "pause/buttons/resume/focus.png",
+        "position": [
+          404,
+          284
+        ],
+        "z": 120
+      },
+      {
+        "asset": "pause/buttons/pause-retry/idle.png",
+        "position": [
+          406,
+          394
+        ],
+        "z": 120
+      },
+      {
+        "asset": "pause/buttons/pause-menu/idle.png",
+        "position": [
+          586,
+          394
+        ],
+        "z": 120
+      },
+      {
+        "asset": "pause/buttons/pause-music-on/idle.png",
+        "position": [
+          682,
+          510
+        ],
+        "z": 120
+      },
+      {
+        "asset": "pause/buttons/pause-sfx-on/idle.png",
+        "position": [
+          862,
+          510
+        ],
+        "z": 120
+      }
+    ]
+  },
+  "buttons": {
+    "back": {
+      "label": "BACK",
+      "screen": "credits",
+      "states": {
+        "idle": "credits/buttons/back/idle.png",
+        "focus": "credits/buttons/back/focus.png",
+        "pressed": "credits/buttons/back/pressed.png"
+      },
+      "texture_position": [
+        404,
+        460
+      ],
+      "hit": [
+        416,
+        463,
+        320,
+        88
+      ],
+      "default": "focus",
+      "hover": "focus",
+      "pressed_precedence": true
+    },
+    "credits-music-on": {
+      "screen": "credits",
+      "label": "MUSIC ON",
+      "states": {
+        "idle": "credits/buttons/music-on/idle.png",
+        "focus": "credits/buttons/music-on/focus.png",
+        "pressed": "credits/buttons/music-on/pressed.png"
+      },
+      "texture_position": [
+        808,
+        557
+      ],
+      "hit": [
+        808,
+        548,
+        136,
+        88
+      ],
+      "default": "idle"
+    },
+    "credits-music-off": {
+      "screen": "credits",
+      "label": "MUSIC OFF",
+      "states": {
+        "idle": "credits/buttons/music-off/idle.png",
+        "focus": "credits/buttons/music-off/focus.png",
+        "pressed": "credits/buttons/music-off/pressed.png"
+      },
+      "texture_position": [
+        808,
+        557
+      ],
+      "hit": [
+        808,
+        548,
+        136,
+        88
+      ],
+      "default": "idle"
+    },
+    "credits-sfx-on": {
+      "screen": "credits",
+      "label": "SFX ON",
+      "states": {
+        "idle": "credits/buttons/sfx-on/idle.png",
+        "focus": "credits/buttons/sfx-on/focus.png",
+        "pressed": "credits/buttons/sfx-on/pressed.png"
+      },
+      "texture_position": [
+        962,
+        557
+      ],
+      "hit": [
+        962,
+        548,
+        122,
+        88
+      ],
+      "default": "idle"
+    },
+    "credits-sfx-off": {
+      "screen": "credits",
+      "label": "SFX OFF",
+      "states": {
+        "idle": "credits/buttons/sfx-off/idle.png",
+        "focus": "credits/buttons/sfx-off/focus.png",
+        "pressed": "credits/buttons/sfx-off/pressed.png"
+      },
+      "texture_position": [
+        962,
+        557
+      ],
+      "hit": [
+        962,
+        548,
+        122,
+        88
+      ],
+      "default": "idle"
+    },
+    "resume": {
+      "label": "RESUME",
+      "screen": "pause",
+      "states": {
+        "idle": "pause/buttons/resume/idle.png",
+        "focus": "pause/buttons/resume/focus.png",
+        "pressed": "pause/buttons/resume/pressed.png"
+      },
+      "texture_position": [
+        404,
+        284
+      ],
+      "hit": [
+        416,
+        287,
+        320,
+        88
+      ],
+      "default": "focus",
+      "hover": "focus",
+      "pressed_precedence": true
+    },
+    "pause-retry": {
+      "label": "RETRY",
+      "screen": "pause",
+      "states": {
+        "idle": "pause/buttons/pause-retry/idle.png",
+        "focus": "pause/buttons/pause-retry/focus.png",
+        "pressed": "pause/buttons/pause-retry/pressed.png"
+      },
+      "texture_position": [
+        406,
+        394
+      ],
+      "hit": [
+        406,
+        394,
+        160,
+        88
+      ],
+      "default": "idle",
+      "hover": "focus",
+      "pressed_precedence": true
+    },
+    "pause-menu": {
+      "label": "MENU",
+      "screen": "pause",
+      "states": {
+        "idle": "pause/buttons/pause-menu/idle.png",
+        "focus": "pause/buttons/pause-menu/focus.png",
+        "pressed": "pause/buttons/pause-menu/pressed.png"
+      },
+      "texture_position": [
+        586,
+        394
+      ],
+      "hit": [
+        586,
+        394,
+        160,
+        88
+      ],
+      "default": "idle",
+      "hover": "focus",
+      "pressed_precedence": true
+    },
+    "pause-music-on": {
+      "label": "MUSIC ON",
+      "screen": "pause",
+      "states": {
+        "idle": "pause/buttons/pause-music-on/idle.png",
+        "focus": "pause/buttons/pause-music-on/focus.png",
+        "pressed": "pause/buttons/pause-music-on/pressed.png"
+      },
+      "texture_position": [
+        682,
+        510
+      ],
+      "hit": [
+        682,
+        510,
+        164,
+        88
+      ],
+      "default": "idle",
+      "hover": "focus",
+      "pressed_precedence": true
+    },
+    "pause-music-off": {
+      "label": "MUSIC OFF",
+      "screen": "pause",
+      "states": {
+        "idle": "pause/buttons/pause-music-off/idle.png",
+        "focus": "pause/buttons/pause-music-off/focus.png",
+        "pressed": "pause/buttons/pause-music-off/pressed.png"
+      },
+      "texture_position": [
+        682,
+        510
+      ],
+      "hit": [
+        682,
+        510,
+        164,
+        88
+      ],
+      "default": "idle",
+      "hover": "focus",
+      "pressed_precedence": true
+    },
+    "pause-sfx-on": {
+      "label": "SFX ON",
+      "screen": "pause",
+      "states": {
+        "idle": "pause/buttons/pause-sfx-on/idle.png",
+        "focus": "pause/buttons/pause-sfx-on/focus.png",
+        "pressed": "pause/buttons/pause-sfx-on/pressed.png"
+      },
+      "texture_position": [
+        862,
+        510
+      ],
+      "hit": [
+        862,
+        510,
+        164,
+        88
+      ],
+      "default": "idle",
+      "hover": "focus",
+      "pressed_precedence": true
+    },
+    "pause-sfx-off": {
+      "label": "SFX OFF",
+      "screen": "pause",
+      "states": {
+        "idle": "pause/buttons/pause-sfx-off/idle.png",
+        "focus": "pause/buttons/pause-sfx-off/focus.png",
+        "pressed": "pause/buttons/pause-sfx-off/pressed.png"
+      },
+      "texture_position": [
+        862,
+        510
+      ],
+      "hit": [
+        862,
+        510,
+        164,
+        88
+      ],
+      "default": "idle",
+      "hover": "focus",
+      "pressed_precedence": true
+    }
+  },
+  "palette": {
+    "ink": "#0d1424",
+    "interior": "#1b2a40",
+    "red": "#c93c45",
+    "red_dark": "#7f2634",
+    "cream": "#f2e7c9",
+    "metal": "#74878b",
+    "rail": "#37505a",
+    "teal": "#2ca6a4",
+    "gold": "#f2ba45",
+    "muted": "#f2e7c9"
+  },
+  "glyphs": "byte-identical RC1 atlases + metrics; no new text glyphs; pause bars are a two-rectangle icon",
+  "hud": {
+    "timer": {
+      "center_x": 576,
+      "ink_top_y": 12,
+      "glyph_scale": 3,
+      "cap_height": 27,
+      "format": "00:%02d using ceil remaining seconds; preserve RC1 semantics including 00:60",
+      "safe_rect": [
+        492,
+        6,
+        168,
+        42
+      ],
+      "urgency_thresholds_seconds": [
+        30,
+        15,
+        5
+      ],
+      "pulse_thresholds_and_duration": "retain RC1: 30,15 and last 10 seconds; 240ms; 1.10/1.16 scale around center",
+      "colors": [
+        "#f2e7c9",
+        "#f2ba45",
+        "#ff8529",
+        "#ff4033"
+      ]
+    },
+    "score": {
+      "right_x": 1120,
+      "ink_top_y": 12,
+      "integer_scales": [
+        3,
+        2,
+        1
+      ],
+      "maximum_ink_width": 168,
+      "minimum_digits": 2,
+      "coin": {
+        "y": 10,
+        "left": "score ink left - 44",
+        "size": [
+          32,
+          32
+        ],
+        "spin": false
+      }
+    },
+    "mobile_pause": {
+      "fitted_css_inset": [
+        8,
+        8
+      ],
+      "css_target_size": [
+        48,
+        48
+      ],
+      "actual_844x390_css_position": [
+        83,
+        8
+      ],
+      "target_at_50_percent_logical": [
+        16,
+        16,
+        96,
+        96
+      ],
+      "visible_on": "touch/coarse pointer live gameplay only"
+    },
+    "removed": [
+      "old timer card",
+      "old score card and COINS label",
+      "live Music/SFX buttons"
+    ],
+    "not_removed": "existing timer urgency semantics, score value, world assets, transient coin pickup feedback, warning system"
+  },
+  "pause": {
+    "dimmer_rgba": [
+      13,
+      20,
+      36,
+      140
+    ],
+    "alpha": 0.5490196078431373,
+    "simulation": "must freeze; overlay and audio controls remain processing",
+    "focus_order": [
+      "resume",
+      "pause-retry",
+      "pause-menu",
+      "pause-music-on",
+      "pause-sfx-on"
+    ],
+    "default_focus": "resume",
+    "live_touch_controls": "release held actions and hide; restore after resume",
+    "input": "Esc pause/resume is new required integration; P optional not advertised",
+    "audio_cap_height": 21
+  },
+  "credits": {
+    "current_content": [
+      [
+        "GAME / DESIGN",
+        "JOLTROME"
+      ],
+      [
+        "ORIGINAL MUSIC",
+        "MIRAIE"
+      ]
+    ],
+    "audio_access": "retained from RC1",
+    "future_four_blocks": {
+      "column_centers": [
+        340,
+        812
+      ],
+      "role_y": [
+        248,
+        349
+      ],
+      "name_y": [
+        279,
+        380
+      ],
+      "slot_width": 424,
+      "max_blocks_before_scroll_needed": 4
+    },
+    "more_than_four": "future scroll within content region; never scroll headline or controls; no placeholder credits now",
+    "role_cap_height": 21,
+    "name_cap_height": 36
+  },
+  "death": {
+    "frame_count": 5,
+    "cell": [
+      112,
+      96
+    ],
+    "sheet": [
+      560,
+      96
+    ],
+    "anchor": [
+      40,
+      88
+    ],
+    "frame_ms": [
+      60,
+      70,
+      80,
+      80,
+      130
+    ],
+    "reaction_total_ms": 420,
+    "final_hold_frame": 4,
+    "full_beat": {
+      "captured_pose_hit_stop_ms": 70,
+      "reaction_ms": 420,
+      "additional_final_hold_ms": 260,
+      "total_ms": 750
+    },
+    "mirror": "mirror node around visual anchor; if UV flipping instead, mirrored canvas anchor is (72,88)",
+    "poses": [
+      {
+        "frame": 0,
+        "duration_ms": 60,
+        "clockwise_rotation_degrees": 0,
+        "center_drift_x": 0,
+        "source": "S1 run cell 1",
+        "assembly_position": [
+          15,
+          28
+        ],
+        "ink_bounds": [
+          15,
+          30,
+          65,
+          88
+        ]
+      },
+      {
+        "frame": 1,
+        "duration_ms": 70,
+        "clockwise_rotation_degrees": 12,
+        "center_drift_x": 3,
+        "source": "S1 run cell 1",
+        "assembly_position": [
+          12,
+          18
+        ],
+        "ink_bounds": [
+          15,
+          21,
+          68,
+          86
+        ]
+      },
+      {
+        "frame": 2,
+        "duration_ms": 80,
+        "clockwise_rotation_degrees": 32,
+        "center_drift_x": 8,
+        "source": "S1 run cell 1",
+        "assembly_position": [
+          10,
+          10
+        ],
+        "ink_bounds": [
+          16,
+          15,
+          79,
+          83
+        ]
+      },
+      {
+        "frame": 3,
+        "duration_ms": 80,
+        "clockwise_rotation_degrees": 62,
+        "center_drift_x": 16,
+        "source": "S1 run cell 1",
+        "assembly_position": [
+          17,
+          14
+        ],
+        "ink_bounds": [
+          22,
+          21,
+          90,
+          81
+        ]
+      },
+      {
+        "frame": 4,
+        "duration_ms": 130,
+        "clockwise_rotation_degrees": 90,
+        "center_drift_x": 24,
+        "source": "S1 run cell 1",
+        "assembly_position": [
+          34,
+          38
+        ],
+        "ink_bounds": [
+          34,
+          38,
+          94,
+          88
+        ]
+      }
+    ]
+  },
+  "reuse": "menu/results/logo/VENTASTIC remain untouched; no gameplay collision or world changes",
+  "runtime_verified": false,
+  "out": {
+    "optional": true,
+    "new_sprite_required": false,
+    "source": "captured current approved technician pose; example uses S1 run cell 1",
+    "motion": "translate visual down 64 logical px linearly over 160 ms; no physics movement",
+    "d3_aperture_reference": [
+      108,
+      446,
+      48,
+      116
+    ],
+    "clip": "use the existing OUT opening/occluder, technician visual only; never modify collision geometry",
+    "captured_anchor_fixture": [
+      132,
+      576
+    ],
+    "existing_death_deadline_ms": 750,
+    "additional_delay_ms": 0,
+    "recording_limit": "supplied recording shows GRABBED, not an OUT death; OUT recommendation is based on current source and D3 aperture evidence"
+  },
+  "touch_targets": "Pause/Credits action hit targets are at least 88 logical px tall, giving 44 CSS px at 50%; art remains C2 size. Mobile pause control stays 48 CSS px.",
+  "editable_assets": [
+    {
+      "file": "death/technician-impact-ko.aseprite",
+      "dimensions": [
+        112,
+        96
+      ],
+      "frames": 5,
+      "durations_ms": [
+        60,
+        70,
+        80,
+        80,
+        130
+      ],
+      "anchor": [
+        40,
+        88
+      ],
+      "scale": 1,
+      "position": "current visual bottom-center minus (40,88)",
+      "z": 10,
+      "alpha": true,
+      "loop": false,
+      "behavior": "editable source matching runtime PNG, not a second animation"
+    }
+  ],
+  "reused_glyph_resources": [
+    {
+      "atlas": "glyphs/display.png",
+      "metrics": "glyphs/display-metrics.json",
+      "dimensions": [
+        128,
+        78
+      ],
+      "source": "existing RC1 assets/ui/get_canned_c2/glyphs/",
+      "rendering": "existing C2PixelText atlas + JSON metrics, no new font import",
+      "alpha": true,
+      "filter": "nearest"
+    },
+    {
+      "atlas": "glyphs/small.png",
+      "metrics": "glyphs/small-metrics.json",
+      "dimensions": [
+        128,
+        66
+      ],
+      "source": "existing RC1 assets/ui/get_canned_c2/glyphs/",
+      "rendering": "existing C2PixelText atlas + JSON metrics, no new font import",
+      "alpha": true,
+      "filter": "nearest"
+    }
+  ]
+}

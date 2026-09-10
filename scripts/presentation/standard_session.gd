@@ -1,7 +1,7 @@
 class_name StandardSession
 extends Control
 
-enum State { MENU, GAME, RESULTS, CREDITS, DEATH_BEAT }
+enum State { MENU, GAME, RESULTS, CREDITS, DEATH_BEAT, PAUSED }
 
 const DEATH_BEAT_SECONDS := 0.75
 
@@ -29,6 +29,10 @@ var result_transition_count: int = 0
 var _run_serial: int = 0
 var _death_ready_at_msec: int = 0
 var _death_timer: Timer
+var auto_focus_pause_enabled: bool = true
+var hud: CohesionHUD
+var pause_count: int = 0
+var death_reaction: StandardDeathReaction
 var _c2: C2Screen
 var touch: StandardTouchControls
 var result_score: C2PixelText
@@ -38,6 +42,7 @@ var best_label: C2PixelText
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	get_window().title = "GET CANNED!"
 	scores.storage_path = score_storage_path
 	scores.load_best()
@@ -54,6 +59,7 @@ func _ready() -> void:
 	add_child(_death_timer)
 	touch = StandardTouchControls.new()
 	add_child(touch)
+	touch.pause_requested.connect(pause_game)
 	resized.connect(_layout)
 	get_window().size_changed.connect(_layout)
 	show_menu()
@@ -68,13 +74,63 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("restart") and state in [State.GAME, State.RESULTS]:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_ESCAPE,KEY_P]:
+		if state == State.GAME:
+			pause_game()
+		elif state == State.PAUSED:
+			resume_game()
+		elif event.keycode == KEY_ESCAPE and state in [State.RESULTS,State.CREDITS]:
+			show_menu()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("restart") and state in [State.GAME, State.RESULTS, State.PAUSED]:
 		start_game()
 		get_viewport().set_input_as_handled()
-	elif event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_ESCAPE and state in [State.RESULTS, State.CREDITS]:
-			show_menu()
-			get_viewport().set_input_as_handled()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT and auto_focus_pause_enabled and state == State.GAME:
+		call_deferred("pause_game")
+
+
+func pause_game() -> void:
+	if state != State.GAME or not is_instance_valid(game) or game.conveyor.gameplay_is_stopped():
+		return
+	state=State.PAUSED
+	pause_count+=1
+	touch.set_game_active(false)
+	_release_gameplay_actions()
+	get_tree().paused=true
+	_c2=CohesionScreen.new()
+	(_c2 as CohesionScreen).kind="pause"
+	_ui.add_child(_c2)
+	var panel := _c2 as CohesionScreen
+	var resume := panel.add_action("resume",resume_game)
+	panel.add_action("pause-retry",start_game)
+	panel.add_action("pause-menu",show_menu)
+	_add_cohesion_sound_controls(panel)
+	panel.wire_focus()
+	resume.grab_focus()
+
+
+func resume_game() -> void:
+	if state != State.PAUSED:
+		return
+	var focused := get_viewport().gui_get_focus_owner()
+	if focused != null: focused.release_focus()
+	_ui.remove_child(_c2)
+	_c2.queue_free()
+	_c2=null
+	_music_button=null
+	_sfx_button=null
+	_release_gameplay_actions()
+	state=State.GAME
+	get_tree().paused=false
+	touch.set_game_active(true)
+
+
+func _release_gameplay_actions() -> void:
+	for action in [&"move_left",&"move_right",&"jump"]:
+		Input.action_release(action)
 
 
 func start_game() -> void:
@@ -86,6 +142,7 @@ func start_game() -> void:
 	last_death_cause = ConveyorPrototype.DeathCause.UNKNOWN
 	game = STANDARD_SCENE.instantiate() as MotionExperimentShell
 	game.name = "StandardRun"
+	game.process_mode = Node.PROCESS_MODE_PAUSABLE
 	game.clean_tester_presentation = true
 	game.clean_control_hint_duration = 0.0
 	game.local_instrumentation_enabled = false
@@ -96,6 +153,11 @@ func start_game() -> void:
 	move_child(game, 0)
 	game.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	game.conveyor.set_process_unhandled_input(false)
+	game.v2_visual_integration.external_death_presentation_enabled=true
+	game.v2_visual_integration.live_death_pose.connect(_capture_death_pose)
+	# Settled art has a two-source-pixel transparent top (4 logical pixels).
+	# Shift only the support position; retain its frozen 72x48 shape.
+	game.v2_visual_integration.landed_contact_offset_y=4.0
 	var round_controller := game.conveyor.get_node("RoundController") as FixedRoundController
 	# Death can originate inside a physics collision callback. Finish that callback
 	# before disabling the complete run and its collision objects.
@@ -107,7 +169,10 @@ func start_game() -> void:
 	hooks.bind(game, audio)
 	_apply_hud_style()
 	_clear_ui()
-	_add_sound_controls(Vector2(24, 18), true)
+	hud=CohesionHUD.new()
+	hud.round_controller=round_controller
+	hud.coins=game.conveyor.get_node("CollectibleDirector")
+	_ui.add_child(hud)
 	touch.set_game_active(true)
 	var focused := get_viewport().gui_get_focus_owner()
 	if focused != null:
@@ -139,14 +204,31 @@ func show_credits() -> void:
 	state = State.CREDITS
 	audio.request_sfx(&"ui_confirm")
 	_clear_ui()
-	_frame("CREDITS")
-	_label("MADE FOR ONE MORE TRY.", Rect2(90, 137, 960, 60), 36, CREAM)
-	_label("ORIGINAL MUSIC", Rect2(94, 237, 800, 35), 18, GOLD)
-	_label("MIRAIE", Rect2(94, 282, 800, 60), 44, CREAM)
-	_label("Original music composed for GET CANNED!", Rect2(94, 369, 900, 76), 22, CREAM)
-	var back := _button("BACK", Rect2(94, 504, 260, 64), show_menu, TEAL)
-	_add_sound_controls(Vector2(760, 530))
+	var panel := CohesionScreen.new()
+	panel.kind="credits"
+	_c2=panel
+	_ui.add_child(panel)
+	var back := panel.add_action("back",show_menu)
+	_add_cohesion_sound_controls(panel)
+	panel.wire_focus()
 	back.grab_focus()
+
+
+func _add_cohesion_sound_controls(panel: CohesionScreen) -> void:
+	var prefix := "pause-" if panel.kind == "pause" else "credits-"
+	_music_button=panel.add_action(prefix+"music-on",_toggle_music)
+	_sfx_button=panel.add_action(prefix+"sfx-on",_toggle_sfx)
+	_music_button.set_meta(&"audio_art_prefix","pause-music" if panel.kind == "pause" else "music")
+	_sfx_button.set_meta(&"audio_art_prefix","pause-sfx" if panel.kind == "pause" else "sfx")
+	_refresh_sound_labels()
+
+
+func _capture_death_pose(snapshot: Dictionary) -> void:
+	if state != State.GAME or is_instance_valid(death_reaction):
+		return
+	death_reaction=StandardDeathReaction.new()
+	game.conveyor.add_child(death_reaction)
+	death_reaction.setup(snapshot,game.conveyor.death_cause)
 
 
 func _on_death(score: int, _remaining: float, serial: int) -> void:
@@ -160,7 +242,7 @@ func _on_death(score: int, _remaining: float, serial: int) -> void:
 	game.conveyor.get_node("HUD/DeathMessage").hide()
 	game.process_mode = Node.PROCESS_MODE_DISABLED
 	audio.request_sfx(&"player_death")
-	_death_ready_at_msec = Time.get_ticks_msec() + roundi(DEATH_BEAT_SECONDS * 1000)
+	_death_ready_at_msec = (death_reaction.started_at_msec if is_instance_valid(death_reaction) else Time.get_ticks_msec()) + roundi(DEATH_BEAT_SECONDS * 1000)
 	_death_timer.start(DEATH_BEAT_SECONDS)
 
 
@@ -243,6 +325,7 @@ func _add_c2_sound_controls() -> void:
 
 
 func _dispose_game() -> void:
+	get_tree().paused=false
 	if _death_timer != null:
 		_death_timer.stop()
 	if touch != null:
@@ -252,6 +335,7 @@ func _dispose_game() -> void:
 		remove_child(game)
 		game.queue_free()
 	game = null
+	death_reaction=null
 
 
 func _apply_hud_style() -> void:
@@ -261,10 +345,10 @@ func _apply_hud_style() -> void:
 		if item != null:
 			item.hide()
 	var timer := hud.get_node("Timer") as Label
-	timer.add_theme_color_override("font_outline_color", INK)
+	timer.hide()
 	# Retain the existing central timer, score hierarchy and urgency timings.
 	var score := hud.get_node("ScoreGroup/CollectibleScore") as Label
-	score.add_theme_color_override("font_outline_color", INK)
+	score.get_parent().hide()
 
 
 func _layout() -> void:
@@ -283,6 +367,7 @@ func _layout() -> void:
 
 
 func _clear_ui() -> void:
+	hud=null
 	_c2 = null
 	for child in _ui.get_children():
 		_ui.remove_child(child)
@@ -329,7 +414,7 @@ func _refresh_sound_labels() -> void:
 			var button := entry[0] as Button
 			var on := not audio.is_muted(entry[1])
 			button.text = str(entry[2]).to_upper() + (" ON" if on else " OFF")
-			button.set_meta(&"art_key", str(entry[2]) + ("-on" if on else "-off"))
+			button.set_meta(&"art_key", str(button.get_meta(&"audio_art_prefix",entry[2])) + ("-on" if on else "-off"))
 			_c2.refresh_button(button)
 		return
 	_music_button.text = "MUSIC: OFF" if audio.is_muted(&"Music") else "MUSIC: ON"

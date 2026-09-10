@@ -1,0 +1,2094 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "check": "source bytes glyphs/display.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes glyphs/small.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes glyphs/display-metrics.json",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes glyphs/small-metrics.json",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes glyphs/glyph-definitions.json",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/technician-run.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/technician-states.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/coin.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes source/approved-technician.aseprite",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes reference/rc1-death-beat.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes reference/rc1-touch-game.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes reference/rc1-credits.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes reference/rc1-menu.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes reference/rc1-grabbed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes reference/rc1-touch-844x390.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/buttons/retry/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/buttons/retry/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/buttons/retry/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/buttons/menu/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/buttons/menu/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/buttons/menu/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/buttons/music-on/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/buttons/music-on/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/buttons/music-on/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/buttons/music-off/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/buttons/music-off/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/buttons/music-off/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/buttons/sfx-on/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/buttons/sfx-on/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/buttons/sfx-on/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/buttons/sfx-off/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/buttons/sfx-off/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "source bytes shared/buttons/sfx-off/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions hud/refund-coin.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode hud/refund-coin.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions hud/timer-normal-sample.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode hud/timer-normal-sample.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions hud/timer-mild-sample.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode hud/timer-mild-sample.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions hud/timer-urgent-sample.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode hud/timer-urgent-sample.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions hud/timer-final-sample.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode hud/timer-final-sample.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions hud/mobile-pause-idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode hud/mobile-pause-idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions hud/mobile-pause-focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode hud/mobile-pause-focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions hud/mobile-pause-pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode hud/mobile-pause-pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions credits/chassis.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode credits/chassis.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions credits/heading.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode credits/heading.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions credits/game-block.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode credits/game-block.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions credits/music-block.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode credits/music-block.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions credits/buttons/back/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode credits/buttons/back/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins credits/buttons/back/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions credits/buttons/back/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode credits/buttons/back/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins credits/buttons/back/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions credits/buttons/back/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode credits/buttons/back/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins credits/buttons/back/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions credits/buttons/music-on/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode credits/buttons/music-on/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions credits/buttons/music-on/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode credits/buttons/music-on/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions credits/buttons/music-on/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode credits/buttons/music-on/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions credits/buttons/music-off/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode credits/buttons/music-off/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions credits/buttons/music-off/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode credits/buttons/music-off/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions credits/buttons/music-off/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode credits/buttons/music-off/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions credits/buttons/sfx-on/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode credits/buttons/sfx-on/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions credits/buttons/sfx-on/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode credits/buttons/sfx-on/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions credits/buttons/sfx-on/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode credits/buttons/sfx-on/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions credits/buttons/sfx-off/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode credits/buttons/sfx-off/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions credits/buttons/sfx-off/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode credits/buttons/sfx-off/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions credits/buttons/sfx-off/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode credits/buttons/sfx-off/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/dimmer.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/dimmer.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/indicator.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/indicator.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/heading.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/heading.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/resume/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/resume/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/resume/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/resume/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/resume/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/resume/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/resume/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/resume/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/resume/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/pause-retry/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/pause-retry/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/pause-retry/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/pause-retry/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/pause-retry/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/pause-retry/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/pause-retry/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/pause-retry/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/pause-retry/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/pause-menu/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/pause-menu/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/pause-menu/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/pause-menu/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/pause-menu/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/pause-menu/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/pause-menu/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/pause-menu/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/pause-menu/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/pause-music-on/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/pause-music-on/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/pause-music-on/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/pause-music-on/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/pause-music-on/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/pause-music-on/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/pause-music-on/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/pause-music-on/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/pause-music-on/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/pause-music-off/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/pause-music-off/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/pause-music-off/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/pause-music-off/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/pause-music-off/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/pause-music-off/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/pause-music-off/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/pause-music-off/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/pause-music-off/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/pause-sfx-on/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/pause-sfx-on/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/pause-sfx-on/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/pause-sfx-on/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/pause-sfx-on/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/pause-sfx-on/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/pause-sfx-on/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/pause-sfx-on/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/pause-sfx-on/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/pause-sfx-off/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/pause-sfx-off/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/pause-sfx-off/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/pause-sfx-off/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/pause-sfx-off/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/pause-sfx-off/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions pause/buttons/pause-sfx-off/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode pause/buttons/pause-sfx-off/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "transparent control margins pause/buttons/pause-sfx-off/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions death/frames/ko-00.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode death/frames/ko-00.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions death/frames/ko-01.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode death/frames/ko-01.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions death/frames/ko-02.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode death/frames/ko-02.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions death/frames/ko-03.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode death/frames/ko-03.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions death/frames/ko-04.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode death/frames/ko-04.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "dimensions death/technician-impact-ko.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "alpha mode death/technician-impact-ko.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "fixed state size back",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "distinct state feedback back",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "hit fits logical frame back",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "44px minimum target at half scale back",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "fixed state size credits-music-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "distinct state feedback credits-music-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "hit fits logical frame credits-music-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "44px minimum target at half scale credits-music-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "fixed state size credits-music-off",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "distinct state feedback credits-music-off",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "hit fits logical frame credits-music-off",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "44px minimum target at half scale credits-music-off",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "fixed state size credits-sfx-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "distinct state feedback credits-sfx-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "hit fits logical frame credits-sfx-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "44px minimum target at half scale credits-sfx-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "fixed state size credits-sfx-off",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "distinct state feedback credits-sfx-off",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "hit fits logical frame credits-sfx-off",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "44px minimum target at half scale credits-sfx-off",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "fixed state size resume",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "distinct state feedback resume",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "hit fits logical frame resume",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "44px minimum target at half scale resume",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "fixed state size pause-retry",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "distinct state feedback pause-retry",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "hit fits logical frame pause-retry",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "44px minimum target at half scale pause-retry",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "fixed state size pause-menu",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "distinct state feedback pause-menu",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "hit fits logical frame pause-menu",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "44px minimum target at half scale pause-menu",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "fixed state size pause-music-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "distinct state feedback pause-music-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "hit fits logical frame pause-music-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "44px minimum target at half scale pause-music-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "fixed state size pause-music-off",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "distinct state feedback pause-music-off",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "hit fits logical frame pause-music-off",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "44px minimum target at half scale pause-music-off",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "fixed state size pause-sfx-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "distinct state feedback pause-sfx-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "hit fits logical frame pause-sfx-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "44px minimum target at half scale pause-sfx-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "fixed state size pause-sfx-off",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "distinct state feedback pause-sfx-off",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "hit fits logical frame pause-sfx-off",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "44px minimum target at half scale pause-sfx-off",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "disjoint hit regions resume / pause-retry",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "disjoint hit regions resume / pause-menu",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "disjoint hit regions resume / pause-music-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "disjoint hit regions resume / pause-sfx-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "disjoint hit regions pause-retry / pause-menu",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "disjoint hit regions pause-retry / pause-music-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "disjoint hit regions pause-retry / pause-sfx-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "disjoint hit regions pause-menu / pause-music-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "disjoint hit regions pause-menu / pause-sfx-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "disjoint hit regions pause-music-on / pause-sfx-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "disjoint hit regions back / credits-music-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "disjoint hit regions back / credits-sfx-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "disjoint hit regions credits-music-on / credits-sfx-on",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "all required glyphs display_7x9_variable_width",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "all required glyphs small_5x7_variable_width",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "HUD reconstructs from existing atlas metrics",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "credits reconstructs from manifest",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "pause reconstructs from manifest",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "HUD comparison preserves all world pixels below top band",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "reference restoration limited to old HUD and old actor",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "KO timings total 420ms",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "complete impact death beat 750ms",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "sheet matches separate frame 0",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "no new opaque sprite colors 0",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "no antialiasing 0",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "KO fits padded canvas 0",
+      "passed": true,
+      "detail": [
+        15,
+        30,
+        65,
+        88
+      ]
+    },
+    {
+      "check": "sheet matches separate frame 1",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "no new opaque sprite colors 1",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "no antialiasing 1",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "KO fits padded canvas 1",
+      "passed": true,
+      "detail": [
+        15,
+        21,
+        68,
+        86
+      ]
+    },
+    {
+      "check": "sheet matches separate frame 2",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "no new opaque sprite colors 2",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "no antialiasing 2",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "KO fits padded canvas 2",
+      "passed": true,
+      "detail": [
+        16,
+        15,
+        79,
+        83
+      ]
+    },
+    {
+      "check": "sheet matches separate frame 3",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "no new opaque sprite colors 3",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "no antialiasing 3",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "KO fits padded canvas 3",
+      "passed": true,
+      "detail": [
+        22,
+        21,
+        90,
+        81
+      ]
+    },
+    {
+      "check": "sheet matches separate frame 4",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "no new opaque sprite colors 4",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "no antialiasing 4",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "KO fits padded canvas 4",
+      "passed": true,
+      "detail": [
+        34,
+        38,
+        94,
+        88
+      ]
+    },
+    {
+      "check": "Aseprite header",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "Aseprite frame timing 0",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "Aseprite RGBA cel 0",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "Aseprite chunk boundaries 0",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "Aseprite frame timing 1",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "Aseprite RGBA cel 1",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "Aseprite chunk boundaries 1",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "Aseprite frame timing 2",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "Aseprite RGBA cel 2",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "Aseprite chunk boundaries 2",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "Aseprite frame timing 3",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "Aseprite RGBA cel 3",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "Aseprite chunk boundaries 3",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "Aseprite frame timing 4",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "Aseprite RGBA cel 4",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "Aseprite chunk boundaries 4",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "Aseprite file boundary",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "GIF timing ko-reaction-native.gif",
+      "passed": true,
+      "detail": {
+        "duration_ms": 420,
+        "frames": 5
+      }
+    },
+    {
+      "check": "GIF timing ko-reaction-4x.gif",
+      "passed": true,
+      "detail": {
+        "duration_ms": 420,
+        "frames": 5
+      }
+    },
+    {
+      "check": "GIF timing ko-in-game-beat.gif",
+      "passed": true,
+      "detail": {
+        "duration_ms": 2750,
+        "frames": 7
+      }
+    },
+    {
+      "check": "GIF timing out-finish-reference.gif",
+      "passed": true,
+      "detail": {
+        "duration_ms": 750,
+        "frames": 4
+      }
+    },
+    {
+      "check": "native GIF exact pixels 0",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "native GIF exact pixels 1",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "native GIF exact pixels 2",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "native GIF exact pixels 3",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "native GIF exact pixels 4",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "readability canvas hud 100",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "readability canvas credits 100",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "readability canvas pause 100",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "readability canvas mobile-hud 100",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "mobile pause avoids rack at 100",
+      "passed": true,
+      "detail": {
+        "logical_target_right": 56.0,
+        "rack_left": 126
+      }
+    },
+    {
+      "check": "readability canvas hud 75",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "readability canvas credits 75",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "readability canvas pause 75",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "readability canvas mobile-hud 75",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "mobile pause avoids rack at 75",
+      "passed": true,
+      "detail": {
+        "logical_target_right": 74.66666666666667,
+        "rack_left": 126
+      }
+    },
+    {
+      "check": "readability canvas hud 50",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "readability canvas credits 50",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "readability canvas pause 50",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "readability canvas mobile-hud 50",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "mobile pause avoids rack at 50",
+      "passed": true,
+      "detail": {
+        "logical_target_right": 112.0,
+        "rack_left": 126
+      }
+    },
+    {
+      "check": "HUD pulse stays above world",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "repository tracked bytes unchanged",
+      "passed": true,
+      "detail": {
+        "tracked_files": 403
+      }
+    },
+    {
+      "check": "repository status unchanged",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "repository HEAD unchanged",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged README.md",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/clock-in/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/clock-in/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/clock-in/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/credits/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/credits/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/credits/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/menu/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/menu/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/menu/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/music-off/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/music-off/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/music-off/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/music-on/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/music-on/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/music-on/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/retry/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/retry/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/retry/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/sfx-off/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/sfx-off/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/sfx-off/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/sfx-on/focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/sfx-on/idle.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged buttons/sfx-on/pressed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged glyphs/display-metrics.json",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged glyphs/display.fnt",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged glyphs/display.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged glyphs/glyph-definitions.json",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged glyphs/small-metrics.json",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged glyphs/small.fnt",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged glyphs/small.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged implementation/FONTS-AND-SOURCES.md",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged implementation/HANDOFF.md",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged implementation/RC0-functional-contract-reference.md",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged implementation/asset-inventory.csv",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged implementation/delivery-checks.json",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged implementation/manifest.json",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged implementation/production-brief.txt",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged implementation/qa-results.json",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged implementation/repo-after.json",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged implementation/repo-before.json",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged implementation/source-provenance.json",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged index.html",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged logo/get-canned-L1-small.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged logo/get-canned-L1.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged menu/chassis.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged menu/common-lettering.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged menu/static-lettering.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged motion/menu-preview.gif",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged motion/results-preview.gif",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged motion/sources/coin.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged motion/sources/conveyor.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged motion/sources/landed-red.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged motion/sources/technician-run.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged motion/sources/technician-states.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/audio-off-focus.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/before-after.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/clock-in-states-native.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/final-canned.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/final-clocked-out.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/final-game-over.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/final-grabbed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/final-menu.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/final-vended.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/logo-neutral.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/readability/canned-100.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/readability/canned-50.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/readability/canned-75.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/readability/canned-footer-100.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/readability/canned-footer-50.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/readability/canned-footer-75.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/readability/clocked-out-100.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/readability/clocked-out-50.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/readability/clocked-out-75.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/readability/clocked-out-footer-100.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/readability/clocked-out-footer-50.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/readability/clocked-out-footer-75.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/readability/menu-100.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/readability/menu-50.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/readability/menu-75.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/readability/menu-footer-100.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/readability/menu-footer-50.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/readability/menu-footer-75.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/results-overview.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/score-stress-int64.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/secondary-and-retry-states-native.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/selected-C2-menu.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/selected-C2-success.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged reference/typography.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged results/headlines/canned.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged results/headlines/clocked-out.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged results/headlines/game-over.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged results/headlines/grabbed.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged results/headlines/vended.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged results/static-lettering.png",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged source/build_package.py",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged source/package_delivery.py",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged source/verify_package.py",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen C2 production file unchanged ventastic/ventastic.png",
+      "passed": true,
+      "detail": null
+    }
+  ],
+  "not_runtime_tested": [
+    "Godot integration",
+    "actual pause freeze/resume and input behavior",
+    "real phone touch/focus/iframe",
+    "Aseprite desktop opening"
+  ],
+  "visual_limits": [
+    "50% Credits audio remains seven pixels high",
+    "KO needs subjective in-engine review for airborne and edge impacts",
+    "pause necessarily covers part of the frozen world; live HUD does not obstruct active play"
+  ]
+}

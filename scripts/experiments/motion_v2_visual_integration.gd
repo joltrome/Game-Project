@@ -1,6 +1,10 @@
 class_name MotionV2VisualIntegration
 extends Node
 
+signal live_death_pose(snapshot: Dictionary)
+var external_death_presentation_enabled := false
+var landed_contact_offset_y := 0.0
+
 enum ProductVariant {
 	RED_SODA,
 	BLUE_COFFEE,
@@ -863,7 +867,7 @@ func _normalize_landed_alignment(
 		product.get_node("LandedBody/CollisionShape2D") as CollisionShape2D
 	)
 	product.position.y = conveyor.floor_y - product.landed_size.y * 0.5
-	landed_collision.position.y = 0.0
+	landed_collision.position.y = landed_contact_offset_y
 	landed_sprite.position.y = 0.0
 
 
@@ -911,7 +915,7 @@ func _ensure_coin_visual(coin: ConveyorCollectible) -> void:
 
 
 func _update_technician(delta: float) -> void:
-	if _technician_sprite == null:
+	if _technician_sprite == null or (external_death_presentation_enabled and conveyor.is_dead):
 		return
 	var player := conveyor.player
 	var grounded := player.is_on_floor()
@@ -1060,6 +1064,17 @@ func _on_collectible_spawned(coin: ConveyorCollectible) -> void:
 func _on_player_died_visual() -> void:
 	# ConveyorPrototype disables player physics and gameplay interaction before
 	# emitting player_died, so this collapsed pose is presentation-only.
+	if external_death_presentation_enabled:
+		live_death_pose.emit({
+			"texture":_technician_sprite.sprite_frames.get_frame_texture(_technician_sprite.animation,_technician_sprite.frame),
+			"transform":_technician_sprite.global_transform,
+			"anchor":_technician_anchor.global_transform,
+			"centered":_technician_sprite.centered,
+			"offset":_technician_sprite.offset,
+			"visible":_technician_sprite.is_visible_in_tree(),
+		})
+		_technician_sprite.hide()
+		return
 	_technician_sprite.play(&"death")
 
 
