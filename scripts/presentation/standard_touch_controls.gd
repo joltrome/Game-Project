@@ -13,7 +13,7 @@ var game_active: bool = false
 var buttons: Array[TouchScreenButton] = []
 var rectangles: Array[Rect2] = []
 var _labels: Array[C2PixelText] = []
-var _rotate: Label
+var _rotate: C2PixelText
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
@@ -52,13 +52,12 @@ func _ready() -> void:
 	pause_button.pressed.connect(func(): pause_requested.emit())
 	add_child(pause_button)
 	_refresh_pause_art()
-	_rotate = Label.new()
+	_rotate = C2PixelText.new()
+	_rotate.name = "RotateGuidance"
+	_rotate.family = "small"
 	_rotate.text = "ROTATE DEVICE"
-	_rotate.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_rotate.add_theme_font_size_override("font_size",22)
-	_rotate.add_theme_color_override("font_outline_color",Color.BLACK)
-	_rotate.add_theme_constant_override("outline_size",8)
-	_rotate.mouse_filter = MOUSE_FILTER_IGNORE
+	_rotate.glyph_scale = 3
+	_rotate.color = Color("f2e7c9")
 	add_child(_rotate)
 	resized.connect(_layout)
 	_layout()
@@ -103,8 +102,10 @@ func _layout() -> void:
 		_labels[i].visible = touch_available and game_active
 		_labels[i].position = rect.get_center()-Vector2(floorf(_labels[i].ink_width(LABELS[i],2)/2),7)
 	pause_button.visible=touch_available and game_active
-	_rotate.position = Vector2(0,12)
-	_rotate.size = Vector2(size.x,34)
+	_rotate.position = Vector2(
+		floorf((size.x - _rotate.ink_width(_rotate.text, _rotate.glyph_scale)) * 0.5),
+		12.0
+	)
 	_rotate.visible = touch_available and (size.y > size.x or get_window().size.y > get_window().size.x)
 	queue_redraw()
 

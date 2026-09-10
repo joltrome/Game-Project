@@ -115,6 +115,7 @@ var vis03_enabled: bool = false
 var vis04_enabled: bool = false
 var vis04_coin_collision_size := Vector2(24.0, 24.0)
 var vis04_configuration_id: String = ""
+var c2_live_typography_enabled: bool = false
 
 var _technician_anchor: Node2D
 var _technician_sprite: AnimatedSprite2D
@@ -218,6 +219,17 @@ func set_debug_overlay_enabled(enabled: bool) -> void:
 
 func debug_overlay_is_enabled() -> bool:
 	return _debug_overlay != null and _debug_overlay.visible
+
+
+func enable_c2_live_typography() -> void:
+	c2_live_typography_enabled = true
+	var foreground := conveyor.get_node_or_null("MotionArcadeForeground") as MotionArcadeVisual
+	if foreground != null:
+		foreground.enable_c2_typography()
+	var collectibles := conveyor.get_node_or_null("CollectibleDirector") as CollectibleDirector
+	if collectibles != null:
+		for coin in collectibles.active_collectibles():
+			coin.enable_c2_typography()
 
 
 func technician_sprite() -> AnimatedSprite2D:
@@ -892,6 +904,8 @@ func _ensure_carriage_visual(sweeper: AirSweeper) -> void:
 
 
 func _ensure_coin_visual(coin: ConveyorCollectible) -> void:
+	if c2_live_typography_enabled:
+		coin.enable_c2_typography()
 	if coin.has_meta("v2_visual_installed"):
 		return
 	coin.set_meta("v2_visual_installed", true)

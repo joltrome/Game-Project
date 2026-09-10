@@ -40,6 +40,7 @@ var _glint_remaining: float = 0.0
 var _teaching_cue_remaining: float = 0.0
 var _collection_feedback_remaining: float = 0.0
 var _normal_visual_scale := Vector2.ONE
+var _c2_typography_enabled: bool = false
 
 @onready var _collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var _visual_root: Node2D = $VisualRoot
@@ -178,6 +179,43 @@ func floating_plus_one_is_visible() -> bool:
 	return _collection_feedback.visible and _plus_one_label.visible
 
 
+func enable_c2_typography() -> void:
+	if _c2_typography_enabled:
+		return
+	_c2_typography_enabled = true
+	var teaching_label := $TeachingCue/Label as Label
+	teaching_label.offset_left = -78.0
+	teaching_label.offset_right = 78.0
+	_make_font_ink_transparent(teaching_label)
+	var teaching_text := C2PixelText.new()
+	teaching_text.name = "C2Text"
+	teaching_text.family = "small"
+	teaching_text.text = "REFUND COIN +1"
+	teaching_text.glyph_scale = 2
+	teaching_text.color = Color(1.0, 0.91, 0.31, 1.0)
+	teaching_label.add_child(teaching_text)
+	teaching_text.position = Vector2(
+		floorf((teaching_label.size.x - teaching_text.ink_width(teaching_text.text, 2)) * 0.5),
+		2.0
+	)
+	_make_font_ink_transparent(_plus_one_label)
+	var feedback_text := C2PixelText.new()
+	feedback_text.name = "C2Text"
+	feedback_text.family = "display"
+	feedback_text.text = "+1"
+	feedback_text.glyph_scale = 2
+	feedback_text.color = Color(1.0, 0.92, 0.36, 1.0)
+	_plus_one_label.add_child(feedback_text)
+	feedback_text.position = Vector2(
+		floorf((_plus_one_label.size.x - feedback_text.ink_width(feedback_text.text, 2)) * 0.5),
+		4.0
+	)
+
+
+func c2_typography_is_enabled() -> bool:
+	return _c2_typography_enabled
+
+
 func palette() -> Dictionary:
 	return {
 		"outline": outline_color,
@@ -185,6 +223,11 @@ func palette() -> Dictionary:
 		"rim": rim_color,
 		"mark": mark_color,
 	}
+
+
+func _make_font_ink_transparent(label: Label) -> void:
+	label.add_theme_color_override("font_color", Color.TRANSPARENT)
+	label.add_theme_color_override("font_outline_color", Color.TRANSPARENT)
 
 
 func _apply_dimensions() -> void:

@@ -155,6 +155,7 @@ func start_game() -> void:
 	game.conveyor.set_process_unhandled_input(false)
 	game.v2_visual_integration.external_death_presentation_enabled=true
 	game.v2_visual_integration.live_death_pose.connect(_capture_death_pose)
+	game.v2_visual_integration.enable_c2_live_typography()
 	# Settled art has a two-source-pixel transparent top (4 logical pixels).
 	# Shift only the support position; retain its frozen 72x48 shape.
 	game.v2_visual_integration.landed_contact_offset_y=4.0

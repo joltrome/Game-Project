@@ -6,6 +6,8 @@ extends Node2D
 @export var vis02_consistent_rack: bool = false
 @export var vis03_full_rack: bool = false
 
+var _c2_typography_enabled: bool = false
+
 const NAVY := Color("17243a")
 const DEEP_NAVY := Color("0d1424")
 const CREAM := Color("f2e7c9")
@@ -115,6 +117,8 @@ func _draw_product(center: Vector2, color: Color, muted: bool) -> void:
 
 func _draw_block_label(origin: Vector2, label_size: Vector2, text: String) -> void:
 	draw_rect(Rect2(origin, label_size), DARK_RED)
+	if _c2_typography_enabled:
+		return
 	draw_string(
 		ThemeDB.fallback_font,
 		origin + Vector2(8.0, 16.0),
@@ -124,3 +128,27 @@ func _draw_block_label(origin: Vector2, label_size: Vector2, text: String) -> vo
 		12,
 		CREAM
 	)
+
+
+func enable_c2_typography() -> void:
+	if not foreground or _c2_typography_enabled:
+		return
+	_c2_typography_enabled = true
+	for entry: Array in [
+		["ProductBay", "PRODUCT BAY", Vector2(118.0, 130.0)],
+		["VendElevator", "VEND ELEVATOR", Vector2(834.0, 130.0)],
+		["Out", "OUT", Vector2(112.0, 422.0)],
+	]:
+		var label := C2PixelText.new()
+		label.name = "C2%s" % entry[0]
+		label.family = "small"
+		label.text = entry[1]
+		label.glyph_scale = 2
+		label.color = CREAM
+		label.position = entry[2]
+		add_child(label)
+	queue_redraw()
+
+
+func c2_typography_is_enabled() -> bool:
+	return _c2_typography_enabled

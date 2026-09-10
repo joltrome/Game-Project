@@ -198,7 +198,7 @@
       <div class="eyebrow">Game 1 · Core-loop validation</div>
       <h1>Vending Machine Survival</h1>
       <p class="pitch">A tiny person is trapped inside a malfunctioning vending machine. Dodge falling products and increasingly absurd machine failures for as long as possible.</p>
-      <p class="tiny">Roadmap schema version 28 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
+      <p class="tiny">Roadmap schema version 40 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
     </div>
     <div class="actions">
       <button class="btn primary" id="copyHandoff">Copy Codex handoff</button>
@@ -1581,6 +1581,12 @@
     text: 'DECISION: C2 now extends to live HUD, Credits and a real Pause state. Esc/P and a 48 CSS-pixel mobile target freeze simulation while Pause/audio remain active. Exact Work KO uses 70 ms hit-stop, 420 ms animation and 260 ms hold; OUT uses a clipped 160 ms downward disappearance. EVIDENCE: ordinary/D3 landed art began 4 px below the support top while conveyor boots were already aligned. RC2 shifts only landed collision position +4 px; 72x48 size, player physics and frozen Standard tuning remain unchanged. All 34 scripts pass, including 30 Pause/Resume and 20 fresh paused-Retry cycles, three-finger cleanup, source-independent contact and death timing. Native screenshots/GIFs and desktop/mobile-emulated/local 800x450 iframe checks are recorded. Original WAV/native loop and menu/results remain accepted and unchanged. RC1 was preserved on origin at 9a447fc before RC2. Remaining risks: physical devices, Safari/focus interruptions, airborne KO feel, existing live-resize WebGL warnings. No SFX, paid API or itch upload. See docs/vm062-presentation-cohesion.md.'
   };
 
+  const vm062TypographyCleanup = {
+    id: 'result-vm-0.6.2-typography-cohesion-cleanup',
+    type: 'Result', date: '2026-09-10', source: 'Startup Lab typography brief, runtime inventory and local QA',
+    text: 'DECISION: complete Standard-mode typography cohesion with the existing C2 system only; preserve the accepted RC2 layout and frozen gameplay. EVIDENCE: six live fallback-font items remained: PRODUCT BAY, VEND ELEVATOR, OUT, the REFUND COIN +1 teaching cue, transient +1 feedback and portrait-only ROTATE DEVICE guidance. RESULT: environmental and teaching labels use C2 small at integer 2x, feedback uses C2 display at 2x, and portrait guidance uses C2 small at 3x. Because the approved atlases omit a plus operator, C2PixelText draws it on the same integer grid; no new font or asset was added. Only the invisible teaching layout width changed, 144 to 156 px, to prevent clipping. The change is Standard-only; frozen experiment defaults remain unchanged. Targeted checks and the final 35-script real-time suite pass. Native runtime evidence and a local 800x450 Web load show the revised labels without clipping; browser warning/error console is clean. Player, collision, conveyor, hazard, D3, coin economy/topology, timing, death, Pause, audio and all other gameplay values are unchanged. Hosted itch and physical-device review remain unverified. See docs/vm062-typography-cleanup.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1708,7 +1714,8 @@
     vm061LoopExperiment,
     vm061CandidateC,
     vm061RC1,
-    vm062RC2
+    vm062RC2,
+    vm062TypographyCleanup
   ];
 
   const defaultFindings = [
@@ -1720,7 +1727,7 @@
   ];
 
   const defaultState = {
-    version: 39,
+    version: 40,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []
