@@ -10,7 +10,7 @@ This file tracks separately billed API and service usage for Vending Machine Sur
 - Extra Codex credits purchased or activated by this project: **None**
 - Paid hosting or infrastructure activated by this project: **None**
 
-Codex authentication mode, model identity, remaining subscription allowance, and per-task token counts have not been exposed to the project workspace. Check **Codex Settings → Usage** for account-level subscription usage.
+Per-task token counts and exact runtime model identity are not exposed to the project workspace. A task-end account check may expose current shared subscription windows; those snapshots are recorded in the relevant row and can change after any Codex task. Check **Codex Settings → Usage** for the current account-level view.
 
 ## Task ledger
 
@@ -67,6 +67,7 @@ Codex authentication mode, model identity, remaining subscription allowance, and
 
 | 2026-09-10 JST | VM-0.6.2 presentation cohesion RC2 | Codex/ChatGPT context; exact auth unavailable | GPT-6 family; Astra/High requested, exact runtime setting unavailable | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Local Work asset integration, HUD/Credits/Pause/KO, measured 4 px support-position correction, 34 tests, native captures, browser emulation/local iframe, export/ZIP and Git preservation. Usage-limit/app interruptions occurred; no token estimate invented. No API, paid services, SFX sourcing, audio processing or itch upload. |
 | 2026-09-10 JST | VM-0.6.2 C2 typography cohesion cleanup | ChatGPT account through Codex; exact authentication detail unavailable | GPT-5.6 Sol was recommended in the brief; exact runtime model/reasoning not exposed | Not exposed | 0 | 0 | Not exposed | $0.00 | $0.00 | Local C2 typography migration, targeted and 35-script regression validation, native screenshot, single-threaded Web export, localhost 800x450 browser check, ZIP packaging and requested GitHub branch push only. No OpenAI API, third-party paid service, extra Codex credit purchase, hosting, itch upload, new font purchase, audio work or gameplay change. |
+| 2026-09-12 JST | VM-0.6.3 founder SFX and reactive-music pass | ChatGPT Plus account through Codex | GPT-5.6 Sol was recommended in the brief; exact runtime model/reasoning not exposed | Task-end snapshot: 52% of the 5-hour window and 73% of the weekly window used; this is shared account usage, not task-only consumption. Resets shown as 2026-09-12 06:55 JST and 2026-09-16 21:24 JST. | 0 | 0 | Not exposed | $0.00 | $0.00 | Local founder-supplied WAV inspection/copy, sample-exact Refund Coin derivative, Godot audio integration, tests, documentation, Web build/localhost QA, ZIP packaging, and requested Git/GitHub baseline synchronization only. Account showed no paid credit balance and one unused free full-reset credit; no credit was consumed. No OpenAI API, third-party paid service, extra Codex credit purchase, hosting, itch upload, download, synthesis, or public deployment. |
 
 ## Paid API session fields
 

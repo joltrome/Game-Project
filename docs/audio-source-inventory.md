@@ -4,6 +4,27 @@
 
 Recorded: 2026-09-08. No stock, generated, purchased, or placeholder SFX used.
 
+## Founder-selected V1 SFX — VM-0.6.3
+
+Recorded: 2026-09-12. The eight local files supplied by the founder were copied byte-for-byte into `assets/audio/sfx/masters/`. They are 48 kHz, stereo, signed 16-bit PCM WAVs. Godot imports the masters and derivative losslessly; the Web release includes only project-local files and performs no network audio fetch.
+
+| Master | Runtime event | Duration | SHA-256 |
+|---|---|---:|---|
+| `CoinRefund1.wav` | Refund Coin pickup (via derivative below) | 0.891688 s | `cd2f783815ac8ae304d380fc9520b86029bab725be08ded030769e30bf852e81` |
+| `Jump1.wav` | Accepted jump | 2.307688 s | `8b4a78b15ee297be30cb6a3346f75ff57d17e551c51cd6c5187dfa38256fc0c8` |
+| `Drop1.wav` | Airborne-to-grounded landing | 2.307688 s | `223d8eebedf35c6bcef8315aec90995fa40c8f391519b5936fe643c8253cd6dd` |
+| `CanDrop1.wav` | Product's landed transition | 0.527604 s | `007ae1e6255eee4277267b195f1e7d5a911b17cd9bc0f45f9415d5c1fc484402` |
+| `WarningSound1.wav` | Existing carriage warning cue | 1.683396 s | `1def6901eb79f40b8a86bfe370ff1a70df4e39a8345c2e77ad914c94bad09a65` |
+| `DeathSound1.wav` | First impact death only | 0.500042 s | `6bedd8a26ee32dbfef5f6436e4118dcf17e9b242636937183ee4f263c466e647` |
+| `ClockInUiConfirm1.wav` | CLOCK IN / run start | 0.278333 s | `d37a14c4bcca6bf825d36090f3f158104f6371db73722873a0b9b45e67ec3769` |
+| `ClockedOut1.wav` | Genuine 60-second completion | 1.880625 s | `31905b2b6b86c96802ce68dfe225d65f9ce8bb0a30a8eebc76ce718f376c36e9` |
+
+The source location at integration time was `/Users/jeromenicholaz/Downloads/`; it is not a runtime dependency and was not committed. Startup Lab describes these sounds as founder-created/selected masters. No replacement, download, synthesis, normalization, resampling, or creative processing was performed.
+
+### Refund Coin runtime derivative
+
+`assets/audio/sfx/runtime/CoinRefund1_trimmed.wav` is the sole derived SFX. The reproducible tool `tools/audio/create_vm063_coin_refund_trim.py` verifies the master hash/format, discards exactly the first 8,126 stereo frames (169.291667 ms), and copies every remaining PCM frame unchanged. It begins at source stereo sample values `[-2, 1]`, a reviewed near-zero crossing, leaving approximately 3.60 ms before the measured -40 dBFS onset. It contains 34,675 frames, lasts 0.722396 seconds, and has SHA-256 `92e8ca71cfb2fedf1d70a7d9abce1255656d43f49b7d58ec66327c2182c77378`. There is no fade, gain change, filtering, resampling, compression, or overwrite of the master.
+
 ## Miraie — historical RC0 temporary main theme
 
 - Working filename: `2026 09 03 miraie joltrome VENDING MACHINE BGM demo v2.mp3`.
