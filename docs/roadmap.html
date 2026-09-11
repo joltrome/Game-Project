@@ -198,7 +198,7 @@
       <div class="eyebrow">Game 1 · Core-loop validation</div>
       <h1>Vending Machine Survival</h1>
       <p class="pitch">A tiny person is trapped inside a malfunctioning vending machine. Dodge falling products and increasingly absurd machine failures for as long as possible.</p>
-      <p class="tiny">Roadmap schema version 40 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
+      <p class="tiny">Roadmap schema version 41 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
     </div>
     <div class="actions">
       <button class="btn primary" id="copyHandoff">Copy Codex handoff</button>
@@ -1587,6 +1587,24 @@
     text: 'DECISION: complete Standard-mode typography cohesion with the existing C2 system only; preserve the accepted RC2 layout and frozen gameplay. EVIDENCE: six live fallback-font items remained: PRODUCT BAY, VEND ELEVATOR, OUT, the REFUND COIN +1 teaching cue, transient +1 feedback and portrait-only ROTATE DEVICE guidance. RESULT: environmental and teaching labels use C2 small at integer 2x, feedback uses C2 display at 2x, and portrait guidance uses C2 small at 3x. Because the approved atlases omit a plus operator, C2PixelText draws it on the same integer grid; no new font or asset was added. Only the invisible teaching layout width changed, 144 to 156 px, to prevent clipping. The change is Standard-only; frozen experiment defaults remain unchanged. Targeted checks and the final 35-script real-time suite pass. Native runtime evidence and a local 800x450 Web load show the revised labels without clipping; browser warning/error console is clean. Player, collision, conveyor, hazard, D3, coin economy/topology, timing, death, Pause, audio and all other gameplay values are unchanged. Hosted itch and physical-device review remain unverified. See docs/vm062-typography-cleanup.md.'
   };
 
+  const vm063AudioSourceEvidence = {
+    id: 'evidence-vm-0.6.3-founder-sfx-source-audit',
+    type: 'Evidence', date: '2026-09-12', source: 'Founder-supplied local WAVs and sample-level inspection',
+    text: 'Eight founder-created/selected 48 kHz stereo PCM16 source WAVs were available locally. CoinRefund1 had approximately 0.17–0.19 seconds of leading pre-roll before its meaningful transient. A reviewed near-zero stereo frame at 169.291667 ms permits a click-safe non-destructive runtime trim while preserving every retained source sample. Source hashes, durations and provenance are recorded in docs/audio-source-inventory.md.'
+  };
+
+  const vm063AudioDecision = {
+    id: 'decision-vm-0.6.3-audio-integration',
+    type: 'Decision', date: '2026-09-12', source: 'Startup Lab audio-integration brief',
+    text: 'Integrate only the eight approved SFX mappings and a configurable screen-state gain system around the already accepted continuous Miraie playhead. Preserve all source masters, use a sample-exact Refund Coin derivative, keep OUT/VENDED free of the impact-death sound, route through independent Music/SFX buses, and freeze Standard gameplay, UI, music source and loop point. Initial gains and transition times are review values, not final artistic approval.'
+  };
+
+  const vm063AudioResult = {
+    id: 'result-vm-0.6.3-audio-integration',
+    type: 'Result', date: '2026-09-12', source: 'VM-0.6.3 local implementation and technical QA',
+    text: 'All eight masters remain byte-identical. The Refund Coin derivative removes exactly 8126 frames / 169.291667 ms without processing. One Music player retains its playhead while configurable gain states transition among Menu, Gameplay, Credits, Pause, outcome duck and Results; 12 fixed reusable SFX voices support overlap without Retry node accumulation. Existing accepted-jump, airborne-to-grounded, coin, landed-product, carriage-warning, first-death and completion transitions each map to the approved sound, with post-outcome gameplay SFX suppressed and OUT intentionally silent. The targeted test passed 33 checks; the single full regression run passed all 36 scripts; the configured scene launched headlessly; the single-threaded Web build exported and loaded through localhost with an empty browser warning/error console. Gameplay, collisions, timing, score, director, UI layout, Miraie source and loop point were unchanged. Subjective mix quality remains unverified pending founder listening. See docs/vm063-audio-pass.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1715,7 +1733,10 @@
     vm061CandidateC,
     vm061RC1,
     vm062RC2,
-    vm062TypographyCleanup
+    vm062TypographyCleanup,
+    vm063AudioSourceEvidence,
+    vm063AudioDecision,
+    vm063AudioResult
   ];
 
   const defaultFindings = [
@@ -1727,7 +1748,7 @@
   ];
 
   const defaultState = {
-    version: 40,
+    version: 41,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

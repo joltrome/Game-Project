@@ -1,6 +1,9 @@
 class_name SharedPlayerController
 extends CharacterBody2D
 
+signal jump_accepted
+signal landed
+
 @export_category("Horizontal Movement")
 @export var maximum_speed: float = 300.0
 @export var air_acceleration: float = 1400.0
@@ -13,14 +16,23 @@ extends CharacterBody2D
 
 var _coyote_time_remaining: float = 0.0
 var _jump_buffer_remaining: float = 0.0
+var _ground_state_initialized: bool = false
+var _previous_grounded: bool = false
 
 
 func _physics_process(delta: float) -> void:
 	_update_jump_windows(delta)
 	_apply_horizontal_movement(delta)
 	_apply_gravity(delta)
-	_try_to_jump()
+	var accepted_jump := _try_to_jump()
 	move_and_slide()
+	var grounded := is_on_floor()
+	if accepted_jump:
+		jump_accepted.emit()
+	if _ground_state_initialized and grounded and not _previous_grounded:
+		landed.emit()
+	_previous_grounded = grounded
+	_ground_state_initialized = true
 
 
 func _update_jump_windows(delta: float) -> void:
@@ -50,11 +62,12 @@ func _apply_gravity(delta: float) -> void:
 		velocity.y += gravity * delta
 
 
-func _try_to_jump() -> void:
+func _try_to_jump() -> bool:
 	var jump_is_available := is_on_floor() or _coyote_time_remaining > 0.0
 	if _jump_buffer_remaining <= 0.0 or not jump_is_available:
-		return
+		return false
 
 	velocity.y = jump_velocity
 	_coyote_time_remaining = 0.0
 	_jump_buffer_remaining = 0.0
+	return true

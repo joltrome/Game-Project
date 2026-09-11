@@ -65,7 +65,13 @@ func _run() -> void:
 		for i in 5:
 			await process_frame
 		check(round_controller.round_time_remaining == frozen_time and game.process_mode == Node.PROCESS_MODE_DISABLED, "Results freeze the entire run")
-		check(session.audio.music.get_instance_id() == audio_id and session.audio.music_start_count == 1 and session.audio.get_child_count() == 2, "Retry lifecycle preserves exactly one music instance and start")
+		check(
+			session.audio.music.get_instance_id() == audio_id
+			and session.audio.music_start_count == 1
+			and session.audio.sfx_player_count() == 12
+			and session.audio.get_child_count() == 13,
+			"Retry lifecycle preserves one music instance and the fixed SFX voice pool"
+		)
 		check(session.audio.is_muted(&"Music") and session.audio.is_muted(&"SFX"), "Mute survives run/results transitions")
 		if cycle % 4 == 3:
 			session.show_menu()
@@ -90,7 +96,13 @@ func _run() -> void:
 	check(events.has(&"rack_warning") and events.has(&"rack_release") and events.has(&"product_impact") and events.has(&"carriage_warning") and events.has(&"carriage_sweep") and events.has(&"final_seconds"), "Natural round delivers hazard, carriage and final-second SFX events")
 	check(session.state == StandardSession.State.RESULTS and session.last_survived and session.result_headline == "CLOCKED OUT." and completion_round.completion_count == 1, "Original controller reaches distinct success at 60 seconds exactly once")
 	check(session.scores.best_score == 1 and session.best_label.text == "01", "Lower completion score preserves earlier best")
-	check(events.has(&"coin_pickup") and events.has(&"player_death") and events.has(&"round_complete") and events.has(&"ui_confirm") and events.has(&"ui_back"), "Pickup, outcomes and UI signals reach silent SFX hooks")
+	check(
+		events.has(&"coin_pickup")
+		and events.has(&"round_complete")
+		and events.has(&"clock_in_confirm")
+		and events.has(&"ui_back"),
+		"Pickup, completion, CLOCK IN and navigation reach the SFX event seam"
+	)
 	session.show_menu()
 	session.audio.set_muted(&"Music", false)
 	session.audio.set_muted(&"SFX", false)
