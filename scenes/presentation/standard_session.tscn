@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/presentation/standard_session.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/presentation/session_audio.gd" id="2"]
@@ -7,7 +7,6 @@
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/masters/Jump1.wav" id="5"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/masters/Drop1.wav" id="6"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/masters/CanDrop1.wav" id="7"]
-[ext_resource type="AudioStream" path="res://assets/audio/sfx/masters/WarningSound1.wav" id="8"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/masters/ClockInUiConfirm1.wav" id="9"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/masters/DeathSound1.wav" id="10"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/masters/ClockedOut1.wav" id="11"]
@@ -24,4 +23,4 @@ script = ExtResource("1")
 [node name="Audio" type="Node" parent="."]
 script = ExtResource("2")
 music_stream = ExtResource("3")
-sfx_streams = {&"carriage_warning": ExtResource("8"), &"clock_in_confirm": ExtResource("9"), &"coin_pickup": ExtResource("4"), &"jump": ExtResource("5"), &"landing": ExtResource("6"), &"player_death": ExtResource("10"), &"product_impact": ExtResource("7"), &"round_complete": ExtResource("11")}
+sfx_streams = {&"clock_in_confirm": ExtResource("9"), &"coin_pickup": ExtResource("4"), &"jump": ExtResource("5"), &"landing": ExtResource("6"), &"player_death": ExtResource("10"), &"product_impact": ExtResource("7"), &"round_complete": ExtResource("11")}

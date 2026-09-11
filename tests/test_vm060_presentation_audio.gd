@@ -67,10 +67,10 @@ func _run() -> void:
 		check(round_controller.round_time_remaining == frozen_time and game.process_mode == Node.PROCESS_MODE_DISABLED, "Results freeze the entire run")
 		check(
 			session.audio.music.get_instance_id() == audio_id
-			and session.audio.music_start_count == 1
+			and not session.audio.music.playing
 			and session.audio.sfx_player_count() == 12
-			and session.audio.get_child_count() == 13,
-			"Retry lifecycle preserves one music instance and the fixed SFX voice pool"
+			and session.audio.get_child_count() == 14,
+			"Retry lifecycle preserves one stopped music instance, one delay timer, and the fixed SFX pool"
 		)
 		check(session.audio.is_muted(&"Music") and session.audio.is_muted(&"SFX"), "Mute survives run/results transitions")
 		if cycle % 4 == 3:
@@ -93,7 +93,7 @@ func _run() -> void:
 		await physics_frame
 	Engine.time_scale = previous_time_scale
 	check(completion_game.background_drop_director.released_event_count() == 6, "Presentation wrapper preserves six natural D3 releases over the complete round")
-	check(events.has(&"rack_warning") and events.has(&"rack_release") and events.has(&"product_impact") and events.has(&"carriage_warning") and events.has(&"carriage_sweep") and events.has(&"final_seconds"), "Natural round delivers hazard, carriage and final-second SFX events")
+	check(events.has(&"rack_warning") and events.has(&"rack_release") and events.has(&"product_impact") and not events.has(&"carriage_warning") and events.has(&"carriage_sweep") and events.has(&"final_seconds"), "Natural round retains passive hazard events while carriage warning audio stays removed")
 	check(session.state == StandardSession.State.RESULTS and session.last_survived and session.result_headline == "CLOCKED OUT." and completion_round.completion_count == 1, "Original controller reaches distinct success at 60 seconds exactly once")
 	check(session.scores.best_score == 1 and session.best_label.text == "01", "Lower completion score preserves earlier best")
 	check(

@@ -19,8 +19,6 @@ func bind(shell: MotionExperimentShell, session_audio: SessionAudio) -> void:
 		func(_lane: int, _duration: float) -> void: audio.request_sfx(&"rack_warning"))
 	conveyor.product_dropped.connect(
 		func(_lane: int, _speed: float) -> void: audio.request_sfx(&"rack_release"))
-	conveyor.sweeper_entry_cue_started.connect(
-		func(_altitude: float, _duration: float) -> void: audio.request_sfx(&"carriage_warning"))
 	conveyor.sweeper_spawned.connect(
 		func(_sweeper: AirSweeper) -> void: audio.request_sfx(&"carriage_sweep"))
 	shell.background_drop_director.warning_started.connect(

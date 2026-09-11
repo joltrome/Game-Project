@@ -4,8 +4,9 @@ extends Node
 signal sfx_requested(event: StringName)
 signal sfx_played(event: StringName, voice_index: int)
 signal music_state_changed(state: int, target_db: float)
+signal run_music_started(run_index: int)
 
-enum MusicState { MENU, GAMEPLAY, CREDITS, PAUSE, RESULTS, OUTCOME_DUCK }
+enum MusicState { SILENT, START_PENDING, GAMEPLAY, PAUSE, FADING_OUT }
 
 # Original master stays byte-identical; loop settings live on its import resource.
 @export var music_stream: AudioStream
@@ -18,34 +19,31 @@ enum MusicState { MENU, GAMEPLAY, CREDITS, PAUSE, RESULTS, OUTCOME_DUCK }
 	&"jump": 6.0,
 	&"landing": 2.0,
 	&"product_impact": -3.0,
-	&"carriage_warning": 12.0,
 	&"clock_in_confirm": 0.0,
 	&"player_death": -6.0,
 	&"round_complete": 2.0,
 }
 
-@export_category("Reactive Music")
-@export var menu_music_db: float = -6.0
+@export_category("Run-Owned Music")
 @export var gameplay_music_db: float = 0.0
-@export var credits_music_db: float = -8.0
 @export var pause_music_db: float = -12.0
-@export var results_music_db: float = -7.0
-@export var outcome_duck_db: float = -15.0
-@export var normal_transition_seconds: float = 0.25
+@export var clock_in_to_music_delay_seconds: float = 0.20
 @export var pause_transition_seconds: float = 0.18
-@export var outcome_duck_seconds: float = 0.10
-@export var outcome_duck_hold_seconds: float = 0.35
-@export var outcome_settle_seconds: float = 0.25
+@export var run_end_fade_seconds: float = 0.10
+@export var silent_music_db: float = -80.0
 
 var music: AudioStreamPlayer
 var sfx: AudioStreamPlayer
 var sfx_voices: Array[AudioStreamPlayer] = []
-var music_started: bool = false
 var music_start_count: int = 0
-var current_music_state: MusicState = MusicState.MENU
+var current_music_state: MusicState = MusicState.SILENT
 var gameplay_sfx_enabled: bool = false
 var _voice_cursor: int = 0
 var _music_tween: Tween
+var _music_start_timer: Timer
+var _music_ready_at_msec: int = 0
+var _run_music_active: bool = false
+var _run_music_paused: bool = false
 var _played_counts: Dictionary[StringName, int] = {}
 
 const GAMEPLAY_SFX_EVENTS: Array[StringName] = [
@@ -53,7 +51,6 @@ const GAMEPLAY_SFX_EVENTS: Array[StringName] = [
 	&"jump",
 	&"landing",
 	&"product_impact",
-	&"carriage_warning",
 ]
 
 
@@ -69,7 +66,14 @@ func _ready() -> void:
 	music.bus = &"Music"
 	music.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 	music.stream = prepare_music_stream(music_stream)
+	music.volume_db = gameplay_music_db
 	add_child(music)
+	_music_start_timer = Timer.new()
+	_music_start_timer.name = "RunMusicStartDelay"
+	_music_start_timer.one_shot = true
+	_music_start_timer.ignore_time_scale = true
+	_music_start_timer.timeout.connect(_start_pending_run_music)
+	add_child(_music_start_timer)
 	for index in maxi(sfx_voice_count, 1):
 		var voice := AudioStreamPlayer.new()
 		voice.name = "SFXVoice%02d" % index
@@ -77,18 +81,114 @@ func _ready() -> void:
 		add_child(voice)
 		sfx_voices.append(voice)
 	sfx = sfx_voices[0]
-	set_music_state(MusicState.MENU, false, 0.0)
-	if not OS.has_feature("web"):
-		start_music_once()
+	_set_music_state(MusicState.SILENT, silent_music_db)
 
 
-func start_music_once() -> void:
-	if music_started or music.stream == null:
+func begin_run_music() -> void:
+	_kill_music_tween()
+	_music_start_timer.stop()
+	music.stop()
+	music.volume_db = gameplay_music_db
+	_run_music_active = music.stream != null
+	_run_music_paused = false
+	if not _run_music_active:
+		_set_music_state(MusicState.SILENT, silent_music_db)
 		return
-	music_started = true
+	_set_music_state(MusicState.START_PENDING, gameplay_music_db)
+	if clock_in_to_music_delay_seconds <= 0.0:
+		_music_ready_at_msec = 0
+		_start_pending_run_music()
+	else:
+		_music_ready_at_msec = Time.get_ticks_msec() + roundi(clock_in_to_music_delay_seconds * 1000.0)
+		_music_start_timer.start(clock_in_to_music_delay_seconds)
+
+
+func pause_run_music() -> void:
+	if not _run_music_active:
+		return
+	_run_music_paused = true
+	_set_music_state(MusicState.PAUSE, pause_music_db)
+	if music.playing:
+		_tween_music_to(pause_music_db, pause_transition_seconds)
+
+
+func resume_run_music() -> void:
+	if not _run_music_active:
+		return
+	_run_music_paused = false
+	if not _music_start_timer.is_stopped():
+		_set_music_state(MusicState.START_PENDING, gameplay_music_db)
+		return
+	_set_music_state(MusicState.GAMEPLAY, gameplay_music_db)
+	if music.playing:
+		_tween_music_to(gameplay_music_db, pause_transition_seconds)
+
+
+func end_run_music() -> void:
+	_run_music_active = false
+	_run_music_paused = false
+	_music_ready_at_msec = 0
+	_music_start_timer.stop()
+	_kill_music_tween()
+	if not music.playing:
+		_finish_run_music_stop()
+		return
+	_set_music_state(MusicState.FADING_OUT, silent_music_db)
+	if run_end_fade_seconds <= 0.0:
+		_finish_run_music_stop()
+		return
+	_music_tween = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	_music_tween.tween_property(
+		music,
+		"volume_db",
+		silent_music_db,
+		run_end_fade_seconds
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_music_tween.tween_callback(_finish_run_music_stop)
+
+
+func stop_run_music_immediately() -> void:
+	_run_music_active = false
+	_run_music_paused = false
+	_music_ready_at_msec = 0
+	_music_start_timer.stop()
+	_kill_music_tween()
+	_finish_run_music_stop()
+
+
+func run_music_active() -> bool:
+	return _run_music_active
+
+
+func run_music_start_pending() -> bool:
+	return _run_music_active and not _music_start_timer.is_stopped()
+
+
+func _start_pending_run_music() -> void:
+	if not _run_music_active or music.stream == null:
+		return
+	var remaining_msec := _music_ready_at_msec - Time.get_ticks_msec()
+	if remaining_msec > 0:
+		_music_start_timer.start(remaining_msec / 1000.0)
+		return
+	_music_ready_at_msec = 0
+	music.stop()
+	music.volume_db = pause_music_db if _run_music_paused else gameplay_music_db
+	music.play(0.0)
 	music_start_count += 1
-	music.play()
-	# The resource loops inside the continuous mixer; never restart on finished.
+	_set_music_state(
+		MusicState.PAUSE if _run_music_paused else MusicState.GAMEPLAY,
+		music.volume_db
+	)
+	run_music_started.emit(music_start_count)
+
+
+func _finish_run_music_stop() -> void:
+	if is_instance_valid(music):
+		music.stop()
+		music.volume_db = gameplay_music_db
+	_set_music_state(MusicState.SILENT, silent_music_db)
+	_music_tween = null
 
 
 func _exit_tree() -> void:
@@ -136,73 +236,6 @@ func sfx_player_count() -> int:
 	return sfx_voices.size()
 
 
-func set_music_state(
-	state: MusicState,
-	with_outcome_duck: bool = false,
-	duration_override: float = -1.0
-) -> void:
-	var previous_state := current_music_state
-	current_music_state = state
-	var target_db := music_target_db(state)
-	music_state_changed.emit(state, target_db)
-	_kill_music_tween()
-	if with_outcome_duck:
-		_music_tween = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-		_music_tween.tween_property(
-			music,
-			"volume_db",
-			outcome_duck_db,
-			outcome_duck_seconds
-		).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		_music_tween.tween_interval(outcome_duck_hold_seconds)
-		_music_tween.tween_property(
-			music,
-			"volume_db",
-			target_db,
-			outcome_settle_seconds
-		).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		return
-	var transition_seconds := (
-		duration_override
-		if duration_override >= 0.0
-		else pause_transition_seconds
-		if state == MusicState.PAUSE or previous_state == MusicState.PAUSE
-		else normal_transition_seconds
-	)
-	if transition_seconds <= 0.0:
-		music.volume_db = target_db
-		return
-	_music_tween = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-	_music_tween.tween_property(
-		music,
-		"volume_db",
-		target_db,
-		transition_seconds
-	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-
-
-func duck_music_for_death() -> void:
-	current_music_state = MusicState.OUTCOME_DUCK
-	music_state_changed.emit(current_music_state, outcome_duck_db)
-	_tween_music_to(outcome_duck_db, outcome_duck_seconds)
-
-
-func music_target_db(state: MusicState = current_music_state) -> float:
-	match state:
-		MusicState.GAMEPLAY:
-			return gameplay_music_db
-		MusicState.CREDITS:
-			return credits_music_db
-		MusicState.PAUSE:
-			return pause_music_db
-		MusicState.RESULTS:
-			return results_music_db
-		MusicState.OUTCOME_DUCK:
-			return outcome_duck_db
-		_:
-			return menu_music_db
-
-
 func _next_voice_index() -> int:
 	for offset in sfx_voices.size():
 		var candidate := (_voice_cursor + offset) % sfx_voices.size()
@@ -226,6 +259,11 @@ func _tween_music_to(target_db: float, duration: float) -> void:
 		target_db,
 		duration
 	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+func _set_music_state(state: MusicState, target_db: float) -> void:
+	current_music_state = state
+	music_state_changed.emit(state, target_db)
 
 
 func _kill_music_tween() -> void:

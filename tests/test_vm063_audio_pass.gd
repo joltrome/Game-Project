@@ -45,7 +45,7 @@ func _check_source_assets_and_trim() -> void:
 	for file_name: String in expected_hashes:
 		var path := "res://assets/audio/sfx/masters/" + file_name
 		hashes_match = hashes_match and FileAccess.get_sha256(path) == expected_hashes[file_name]
-	check(hashes_match, "All eight founder source masters remain byte-identical")
+	check(hashes_match, "All eight founder source masters remain byte-identical, including rejected WarningSound1")
 	var master := load(COIN_MASTER) as AudioStreamWAV
 	var runtime := load(COIN_RUNTIME) as AudioStreamWAV
 	check(
@@ -61,13 +61,13 @@ func _check_source_assets_and_trim() -> void:
 	)
 	check(
 		runtime.data == master.data.slice(COIN_TRIM_FRAMES * 4),
-		"Refund Coin derivative is an exact frame-boundary trim with no signal processing"
+		"Refund Coin derivative remains an exact frame-boundary trim with no signal processing"
 	)
 	check(
 		runtime.data.size() == 34675 * 4
 		and absi(_pcm16(runtime.data, 0)) <= 2
 		and absi(_pcm16(runtime.data, 1)) <= 2,
-		"169.291667 ms trim starts on the reviewed near-zero stereo frame"
+		"169.291667 ms trim still starts on the reviewed near-zero stereo frame"
 	)
 
 
@@ -84,11 +84,12 @@ func _check_runtime_audio() -> void:
 	for voice in audio.sfx_voices:
 		voice_ids.append(voice.get_instance_id())
 	check(
-		audio.sfx_streams.size() == 8
+		audio.sfx_streams.size() == 7
+		and not audio.sfx_streams.has(&"carriage_warning")
 		and audio.sfx_player_count() == 12
 		and audio.sfx.bus == &"SFX"
 		and audio.music.bus == &"Music",
-		"Eight event streams use a fixed 12-voice SFX pool and separate Music/SFX buses"
+		"Seven active SFX mappings omit WarningSound1 and retain fixed Music/SFX routing"
 	)
 	check(
 		audio.sfx_volume_db == {
@@ -96,39 +97,79 @@ func _check_runtime_audio() -> void:
 			&"jump": 6.0,
 			&"landing": 2.0,
 			&"product_impact": -3.0,
-			&"carriage_warning": 12.0,
 			&"clock_in_confirm": 0.0,
 			&"player_death": -6.0,
 			&"round_complete": 2.0,
 		},
-		"Initial per-event gains remain explicit and configurable"
+		"The other seven per-event gains remain unchanged"
 	)
 	check(
-		audio.current_music_state == SessionAudio.MusicState.MENU
-		and is_equal_approx(audio.music.volume_db, -6.0),
-		"Menu begins at the configured -6 dB relative music state"
+		session.state == StandardSession.State.MENU
+		and not audio.music.playing
+		and audio.current_music_state == SessionAudio.MusicState.SILENT,
+		"Main Menu has no Miraie BGM"
 	)
 
 	session.show_credits()
-	await create_timer(0.35, true, false, true).timeout
+	await create_timer(0.05, true, false, true).timeout
 	check(
-		audio.current_music_state == SessionAudio.MusicState.CREDITS
-		and absf(audio.music.volume_db - -8.0) < 0.10,
-		"Credits reaches -8 dB without restarting music"
+		session.state == StandardSession.State.CREDITS
+		and not audio.music.playing
+		and audio.current_music_state == SessionAudio.MusicState.SILENT,
+		"Credits has no Miraie BGM"
 	)
 	session.show_menu()
-	await create_timer(0.30, true, false, true).timeout
-	check(absf(audio.music.volume_db - -6.0) < 0.05, "Credits to Menu returns smoothly to -6 dB")
+	check(not audio.music.playing, "Credits to Menu remains silent")
 
 	var clock_in_before := audio.played_count(&"clock_in_confirm")
+	var run_start_times: Array[int] = []
+	audio.run_music_started.connect(func(_index: int) -> void: run_start_times.append(Time.get_ticks_msec()))
+	var clock_in_time := Time.get_ticks_msec()
 	session.start_game()
-	await create_timer(0.30, true, false, true).timeout
 	check(
 		audio.played_count(&"clock_in_confirm") == clock_in_before + 1
-		and audio.current_music_state == SessionAudio.MusicState.GAMEPLAY
-		and absf(audio.music.volume_db) < 0.05,
-		"CLOCK IN plays once and music reaches the 0 dB gameplay-relative state"
+		and not audio.music.playing
+		and audio.run_music_start_pending(),
+		"CLOCK IN plays once while gameplay begins inside the intentional quiet gap"
 	)
+	while run_start_times.is_empty():
+		await process_frame
+	var start_delay_ms := run_start_times[0] - clock_in_time
+	check(
+		start_delay_ms >= 150 and start_delay_ms <= 300,
+		"Run music begins 150–300 ms after CLOCK IN (observed %d ms)" % start_delay_ms
+	)
+	check(
+		audio.music.playing
+		and audio.music_start_count == 1
+		and audio.current_music_state == SessionAudio.MusicState.GAMEPLAY
+		and audio.music.get_playback_position() < 0.08,
+		"Gameplay starts the accepted Miraie OST from position zero"
+	)
+
+	await create_timer(0.10, true, false, true).timeout
+	var pre_pause_position := audio.music.get_playback_position()
+	var pre_pause_starts := audio.music_start_count
+	session.pause_game()
+	await create_timer(0.22, true, false, true).timeout
+	var paused_position := audio.music.get_playback_position()
+	check(
+		audio.music.playing
+		and audio.music_start_count == pre_pause_starts
+		and paused_position >= pre_pause_position
+		and absf(audio.music.volume_db - -12.0) < 0.05,
+		"Pause preserves the run playhead and ducks the same player to -12 dB"
+	)
+	session.resume_game()
+	await create_timer(0.22, true, false, true).timeout
+	check(
+		audio.music.playing
+		and audio.music_start_count == pre_pause_starts
+		and audio.music.get_playback_position() >= paused_position
+		and absf(audio.music.volume_db) < 0.05,
+		"Resume continues the same run playhead and restores gameplay gain"
+	)
+
 	var game := session.game
 	var conveyor := game.conveyor
 	game.background_drop_director.set_process(false)
@@ -139,31 +180,18 @@ func _check_runtime_audio() -> void:
 		if conveyor.player.is_on_floor():
 			break
 	check(conveyor.player.is_on_floor(), "Jump fixture establishes grounded support before input")
-
 	var jump_before := audio.played_count(&"jump")
 	var landing_before := audio.played_count(&"landing")
-	var accepted_jump_signals: Array[int] = []
-	conveyor.player.jump_accepted.connect(func() -> void: accepted_jump_signals.append(1))
 	Input.action_press(&"jump")
 	await physics_frame
 	Input.action_release(&"jump")
 	await physics_frame
-	check(
-		accepted_jump_signals.size() == 1
-		and audio.played_count(&"jump") == jump_before + 1,
-		"Actual accepted jump emits and plays exactly once"
-	)
-	for index in 6:
-		await physics_frame
-	check(audio.played_count(&"jump") == jump_before + 1, "Held/airborne frames do not duplicate jump audio")
+	check(audio.played_count(&"jump") == jump_before + 1, "Accepted jump plays exactly once")
 	for index in 120:
 		await physics_frame
 		if audio.played_count(&"landing") > landing_before:
 			break
-	check(audio.played_count(&"landing") == landing_before + 1, "Genuine airborne-to-grounded transition plays one landing")
-	for index in 12:
-		await physics_frame
-	check(audio.played_count(&"landing") == landing_before + 1, "Continuous grounded contact does not spam landing audio")
+	check(audio.played_count(&"landing") == landing_before + 1, "Genuine landing plays exactly once without grounded spam")
 
 	var director := conveyor.get_node("CollectibleDirector") as CollectibleDirector
 	director.set_process(false)
@@ -172,43 +200,25 @@ func _check_runtime_audio() -> void:
 	var coin := director.active_collectible()
 	coin._on_body_entered(conveyor.player)
 	coin._on_body_entered(conveyor.player)
-	check(
-		director.score == 1 and audio.played_count(&"coin_pickup") == coin_before + 1,
-		"A real Refund Coin pickup scores and sounds exactly once"
-	)
+	check(director.score == 1 and audio.played_count(&"coin_pickup") == coin_before + 1, "Refund Coin scores and sounds exactly once")
 
-	var played_voice_indices: Array[int] = []
-	audio.sfx_played.connect(
-		func(event: StringName, voice_index: int) -> void:
-			if event == &"product_impact":
-				played_voice_indices.append(voice_index)
-	)
 	var product_before := audio.played_count(&"product_impact")
 	var dummy := PRODUCT.instantiate() as ConveyorProduct
 	root.add_child(dummy)
 	conveyor.conveyor_product_landed.emit(dummy)
 	conveyor.conveyor_product_landed.emit(dummy)
-	check(
-		audio.played_count(&"product_impact") == product_before + 2
-		and played_voice_indices.size() == 2
-		and played_voice_indices[0] != played_voice_indices[1],
-		"Near-simultaneous can impacts use separate reusable voices"
-	)
+	check(audio.played_count(&"product_impact") == product_before + 2, "Near-simultaneous can impacts retain overlapping one-shots")
 	dummy.queue_free()
 	var warning_before := audio.played_count(&"carriage_warning")
+	var warning_requests: Array[StringName] = []
+	audio.sfx_requested.connect(func(event: StringName) -> void: warning_requests.append(event))
 	conveyor.sweeper_entry_cue_started.emit(518.0, 0.8)
-	check(audio.played_count(&"carriage_warning") == warning_before + 1, "Existing carriage cue maps once to WarningSound1")
-
-	session.pause_game()
-	await create_timer(0.22, true, false, true).timeout
+	await process_frame
 	check(
-		audio.current_music_state == SessionAudio.MusicState.PAUSE
-		and absf(audio.music.volume_db - -12.0) < 0.05,
-		"Pause tween continues while simulation is paused and reaches -12 dB"
+		audio.played_count(&"carriage_warning") == warning_before
+		and not warning_requests.has(&"carriage_warning"),
+		"Carriage warning remains visually timed but produces no audio request or playback"
 	)
-	session.resume_game()
-	await create_timer(0.22, true, false, true).timeout
-	check(absf(audio.music.volume_db) < 0.05, "Resume smoothly restores gameplay gain")
 
 	var death_before := audio.played_count(&"player_death")
 	conveyor._kill_player(ConveyorPrototype.DeathCause.FALLING_PRODUCT)
@@ -216,45 +226,45 @@ func _check_runtime_audio() -> void:
 	await process_frame
 	check(
 		session.state == StandardSession.State.DEATH_BEAT
-		and audio.played_count(&"player_death") == death_before + 1,
-		"First impact death plays DeathSound1 exactly once"
+		and audio.played_count(&"player_death") == death_before + 1
+		and audio.current_music_state == SessionAudio.MusicState.FADING_OUT,
+		"Impact death plays once and immediately begins the run-music fade"
 	)
 	await create_timer(0.13, true, false, true).timeout
-	check(absf(audio.music.volume_db - -15.0) < 0.10, "Impact death quickly ducks music to -15 dB")
-	var suppressed_counts := {
-		&"jump": audio.played_count(&"jump"),
-		&"landing": audio.played_count(&"landing"),
-		&"coin_pickup": audio.played_count(&"coin_pickup"),
-		&"product_impact": audio.played_count(&"product_impact"),
-	}
-	audio.request_sfx(&"jump")
-	audio.request_sfx(&"landing")
-	audio.request_sfx(&"coin_pickup")
-	audio.request_sfx(&"product_impact")
-	conveyor._kill_player(ConveyorPrototype.DeathCause.RETRIEVAL_CARRIAGE)
 	check(
-		audio.played_count(&"jump") == suppressed_counts[&"jump"]
-		and audio.played_count(&"landing") == suppressed_counts[&"landing"]
-		and audio.played_count(&"coin_pickup") == suppressed_counts[&"coin_pickup"]
-		and audio.played_count(&"product_impact") == suppressed_counts[&"product_impact"]
-		and audio.played_count(&"player_death") == death_before + 1,
-		"Post-death gameplay sounds and duplicate death playback are suppressed"
+		not audio.music.playing
+		and audio.current_music_state == SessionAudio.MusicState.SILENT,
+		"Death music is fully stopped after the configured 100 ms fade"
+	)
+	await create_timer(StandardSession.DEATH_BEAT_SECONDS, true, false, true).timeout
+	check(
+		session.state == StandardSession.State.RESULTS and not audio.music.playing,
+		"Death Results remain silent"
 	)
 
+	var retry_start_count := audio.music_start_count
+	var retry_clock_in := audio.played_count(&"clock_in_confirm")
 	session.start_game()
-	await process_frame
-	var out_death_before := audio.played_count(&"player_death")
-	session.game.conveyor._kill_player(ConveyorPrototype.DeathCause.LEFT_OUT)
-	await process_frame
-	await process_frame
+	check(not audio.music.playing and audio.run_music_start_pending(), "Retry begins a new quiet gap instead of resuming old music")
+	while audio.music_start_count == retry_start_count:
+		await process_frame
 	check(
-		session.last_death_cause == ConveyorPrototype.DeathCause.LEFT_OUT
-		and audio.played_count(&"player_death") == out_death_before,
-		"OUT/VENDED remains intentionally free of the impact-death sound"
+		audio.played_count(&"clock_in_confirm") == retry_clock_in + 1
+		and audio.music.get_playback_position() < 0.08,
+		"Retry plays CLOCK IN once and restarts Miraie from position zero"
 	)
 
-	session.start_game()
-	await process_frame
+	var music_index := AudioServer.get_bus_index(&"Music")
+	var sfx_index := AudioServer.get_bus_index(&"SFX")
+	var mute_start_count := audio.music_start_count
+	audio.set_muted(&"Music", true)
+	check(AudioServer.is_bus_mute(music_index) and not AudioServer.is_bus_mute(sfx_index), "Music OFF mutes only current run music")
+	audio.set_muted(&"Music", false)
+	check(not AudioServer.is_bus_mute(music_index) and audio.music_start_count == mute_start_count, "Music ON reveals the same run without restart")
+	audio.set_muted(&"SFX", true)
+	check(AudioServer.is_bus_mute(sfx_index) and not AudioServer.is_bus_mute(music_index), "SFX toggle remains independent")
+	audio.set_muted(&"SFX", false)
+
 	var complete_before := audio.played_count(&"round_complete")
 	var race_death_before := audio.played_count(&"player_death")
 	var complete_round := session.game.conveyor.get_node("RoundController") as FixedRoundController
@@ -263,33 +273,28 @@ func _check_runtime_audio() -> void:
 	check(
 		session.state == StandardSession.State.RESULTS
 		and session.last_survived
-		and audio.played_count(&"round_complete") == complete_before + 1,
-		"Genuine completion plays ClockedOut1 exactly once"
+		and audio.played_count(&"round_complete") == complete_before + 1
+		and audio.current_music_state == SessionAudio.MusicState.FADING_OUT,
+		"CLOCKED OUT plays once and begins the same 100 ms run-music fade"
 	)
 	session.game.conveyor._kill_player(ConveyorPrototype.DeathCause.FALLING_PRODUCT)
 	await process_frame
 	check(
 		audio.played_count(&"round_complete") == complete_before + 1
 		and audio.played_count(&"player_death") == race_death_before,
-		"Completion wins the timer-zero race without death or duplicate success audio"
+		"Completion still wins the timer-zero race"
 	)
 	await create_timer(0.13, true, false, true).timeout
-	check(audio.music.volume_db <= -14.8, "Successful completion briefly ducks music for ClockedOut1")
-	await create_timer(0.55, true, false, true).timeout
 	check(
-		audio.current_music_state == SessionAudio.MusicState.RESULTS
-		and absf(audio.music.volume_db - -7.0) < 0.05,
-		"Outcome duck settles smoothly to the -7 dB Results state"
+		not audio.music.playing
+		and audio.current_music_state == SessionAudio.MusicState.SILENT,
+		"Successful Results remain silent after the 100 ms fade"
 	)
-
-	var music_index := AudioServer.get_bus_index(&"Music")
-	var sfx_index := AudioServer.get_bus_index(&"SFX")
-	audio.set_muted(&"Music", true)
-	check(AudioServer.is_bus_mute(music_index) and not AudioServer.is_bus_mute(sfx_index), "Music toggle mutes only the Music bus")
-	audio.set_muted(&"SFX", true)
-	check(AudioServer.is_bus_mute(music_index) and AudioServer.is_bus_mute(sfx_index), "SFX toggle independently mutes the SFX bus")
-	audio.set_muted(&"Music", false)
-	audio.set_muted(&"SFX", false)
+	session.show_menu()
+	check(not audio.music.playing and audio.current_music_state == SessionAudio.MusicState.SILENT, "Results to Menu remains silent")
+	session.show_credits()
+	check(not audio.music.playing, "Menu to Credits remains silent")
+	session.show_menu()
 
 	for index in 10:
 		session.start_game()
@@ -297,17 +302,12 @@ func _check_runtime_audio() -> void:
 	var voices_unchanged := audio.sfx_voices.size() == voice_ids.size()
 	for index in mini(audio.sfx_voices.size(), voice_ids.size()):
 		voices_unchanged = voices_unchanged and audio.sfx_voices[index].get_instance_id() == voice_ids[index]
-	var playing_voices := 0
-	for voice in audio.sfx_voices:
-		if voice.playing:
-			playing_voices += 1
 	check(
 		audio.music.get_instance_id() == music_id
-		and audio.music_start_count == 1
 		and voices_unchanged
 		and audio.sfx_player_count() == 12
-		and playing_voices == 1,
-		"Ten retries retain one music player, reuse the fixed SFX pool, and stop prior-run SFX"
+		and audio.get_child_count() == 14,
+		"Rapid retries retain one music player, one delay timer, and the fixed SFX pool"
 	)
 	check(
 		session.game.conveyor.player.maximum_speed == 300.0

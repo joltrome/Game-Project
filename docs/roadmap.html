@@ -198,7 +198,7 @@
       <div class="eyebrow">Game 1 · Core-loop validation</div>
       <h1>Vending Machine Survival</h1>
       <p class="pitch">A tiny person is trapped inside a malfunctioning vending machine. Dodge falling products and increasingly absurd machine failures for as long as possible.</p>
-      <p class="tiny">Roadmap schema version 41 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
+      <p class="tiny">Roadmap schema version 42 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
     </div>
     <div class="actions">
       <button class="btn primary" id="copyHandoff">Copy Codex handoff</button>
@@ -1605,6 +1605,24 @@
     text: 'All eight masters remain byte-identical. The Refund Coin derivative removes exactly 8126 frames / 169.291667 ms without processing. One Music player retains its playhead while configurable gain states transition among Menu, Gameplay, Credits, Pause, outcome duck and Results; 12 fixed reusable SFX voices support overlap without Retry node accumulation. Existing accepted-jump, airborne-to-grounded, coin, landed-product, carriage-warning, first-death and completion transitions each map to the approved sound, with post-outcome gameplay SFX suppressed and OUT intentionally silent. The targeted test passed 33 checks; the single full regression run passed all 36 scripts; the configured scene launched headlessly; the single-threaded Web build exported and loaded through localhost with an empty browser warning/error console. Gameplay, collisions, timing, score, director, UI layout, Miraie source and loop point were unchanged. Subjective mix quality remains unverified pending founder listening. See docs/vm063-audio-pass.md.'
   };
 
+  const vm063FounderAudioReviewEvidence = {
+    id: 'evidence-vm-0.6.3-founder-audio-review-correction',
+    type: 'Evidence', date: '2026-09-12', source: 'Founder gameplay listening of the first VM-0.6.3 audio candidate',
+    text: 'The carriage warning sound was distracting and repetitive at the existing warning cadence, creating fatigue and masking other audio. Screen-dependent gain changes did not make the application-global Miraie playhead feel responsive to a work shift: the music still sounded as though it marched continuously through Menu, Gameplay, outcome and Results.'
+  };
+
+  const vm063RunOwnedMusicDecision = {
+    id: 'decision-vm-0.6.3-run-owned-music-and-silent-warning',
+    type: 'Decision', date: '2026-09-12', source: 'Startup Lab correction following founder listening',
+    text: 'SUPERSEDES the first VM-0.6.3 global-continuous-music and active carriage-warning choices. Preserve WarningSound1 as a rejected source candidate but remove its Standard mapping and hook; preserve the visual warning and cadence. Associate Miraie with an active run only: Menu/Credits/Results silent, fresh position-zero start after CLOCK IN, same playhead through Pause, fast stop on death/completion, and fresh position-zero Retry. Do not redesign the other seven SFX or edit Miraie audio.'
+  };
+
+  const vm063AudioCorrectionResult = {
+    id: 'result-vm-0.6.3-audio-review-correction',
+    type: 'Result', date: '2026-09-12', source: 'VM-0.6.3 focused correction and technical validation',
+    text: 'WarningSound1 remains byte-identical and documented but is absent from the active scene mapping, carriage hook and corrected Web payload. The remaining seven mappings/gains are unchanged. One reusable Music player now observes an enforced 0.20-second real-time CLOCK IN separation, starts the accepted Miraie OST from position zero, retains its playhead through the existing -12 dB Pause state, and fades to stop over 0.10 seconds on death or CLOCKED OUT; silent screens cannot start music. Retry reuses the player but starts a fresh position-zero run. Focused audio automation passed 36 checks with a measured 204 ms initial separation; the presentation lifecycle regression passed; the single full run passed all 36 scripts; the Standard scene launched headlessly; and the corrected single-threaded Web build loaded through localhost with all resources HTTP 200 and an empty warning/error console. Gameplay, UI, warning timing/visuals, KO timing, SFX masters, and Miraie content/loop remain unchanged. Founder re-listening remains required; see docs/vm063-audio-pass.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1736,7 +1754,10 @@
     vm062TypographyCleanup,
     vm063AudioSourceEvidence,
     vm063AudioDecision,
-    vm063AudioResult
+    vm063AudioResult,
+    vm063FounderAudioReviewEvidence,
+    vm063RunOwnedMusicDecision,
+    vm063AudioCorrectionResult
   ];
 
   const defaultFindings = [
@@ -1748,7 +1769,7 @@
   ];
 
   const defaultState = {
-    version: 41,
+    version: 42,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

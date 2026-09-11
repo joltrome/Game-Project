@@ -66,13 +66,6 @@ func _ready() -> void:
 	_layout()
 
 
-func _input(event: InputEvent) -> void:
-	if (event is InputEventScreenTouch and event.pressed) or (event is InputEventMouseButton and event.pressed) or (
-		event is InputEventKey and event.pressed and not event.echo
-	):
-		audio.start_music_once()
-
-
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_ESCAPE,KEY_P]:
 		if state == State.GAME:
@@ -96,7 +89,7 @@ func pause_game() -> void:
 	if state != State.GAME or not is_instance_valid(game) or game.conveyor.gameplay_is_stopped():
 		return
 	state=State.PAUSED
-	audio.set_music_state(SessionAudio.MusicState.PAUSE)
+	audio.pause_run_music()
 	pause_count+=1
 	touch.set_game_active(false)
 	_release_gameplay_actions()
@@ -125,7 +118,7 @@ func resume_game() -> void:
 	_sfx_button=null
 	_release_gameplay_actions()
 	state=State.GAME
-	audio.set_music_state(SessionAudio.MusicState.GAMEPLAY)
+	audio.resume_run_music()
 	get_tree().paused=false
 	touch.set_game_active(true)
 
@@ -136,13 +129,12 @@ func _release_gameplay_actions() -> void:
 
 
 func start_game() -> void:
-	audio.start_music_once()
 	audio.stop_all_sfx()
 	audio.request_sfx(&"clock_in_confirm")
 	_dispose_game()
 	state = State.GAME
 	audio.set_gameplay_sfx_enabled(true)
-	audio.set_music_state(SessionAudio.MusicState.GAMEPLAY)
+	audio.begin_run_music()
 	_run_serial += 1
 	last_death_cause = ConveyorPrototype.DeathCause.UNKNOWN
 	game = STANDARD_SCENE.instantiate() as MotionExperimentShell
@@ -191,7 +183,7 @@ func show_menu() -> void:
 	_dispose_game()
 	state = State.MENU
 	audio.set_gameplay_sfx_enabled(false)
-	audio.set_music_state(SessionAudio.MusicState.MENU)
+	audio.stop_run_music_immediately()
 	_clear_ui()
 	_c2 = C2Screen.new()
 	_ui.add_child(_c2)
@@ -211,7 +203,7 @@ func show_menu() -> void:
 func show_credits() -> void:
 	state = State.CREDITS
 	audio.set_gameplay_sfx_enabled(false)
-	audio.set_music_state(SessionAudio.MusicState.CREDITS)
+	audio.stop_run_music_immediately()
 	audio.request_sfx(&"ui_confirm")
 	_clear_ui()
 	var panel := CohesionScreen.new()
@@ -252,7 +244,7 @@ func _on_death(score: int, _remaining: float, serial: int) -> void:
 	game.conveyor.get_node("HUD/DeathMessage").hide()
 	game.process_mode = Node.PROCESS_MODE_DISABLED
 	audio.set_gameplay_sfx_enabled(false)
-	audio.duck_music_for_death()
+	audio.end_run_music()
 	if death_uses_impact_sound(last_death_cause):
 		audio.request_sfx(&"player_death")
 	_death_ready_at_msec = (death_reaction.started_at_msec if is_instance_valid(death_reaction) else Time.get_ticks_msec()) + roundi(DEATH_BEAT_SECONDS * 1000)
@@ -302,10 +294,8 @@ func _show_results(score: int, survived: bool) -> void:
 	game.hide()
 	audio.set_gameplay_sfx_enabled(false)
 	if survived:
+		audio.end_run_music()
 		audio.request_sfx(&"round_complete")
-		audio.set_music_state(SessionAudio.MusicState.RESULTS, true)
-	else:
-		audio.set_music_state(SessionAudio.MusicState.RESULTS)
 	_clear_ui()
 	result_headline = headline_for(last_death_cause, survived)
 	_c2 = C2Screen.new()

@@ -14,7 +14,7 @@ Recorded: 2026-09-12. The eight local files supplied by the founder were copied 
 | `Jump1.wav` | Accepted jump | 2.307688 s | `8b4a78b15ee297be30cb6a3346f75ff57d17e551c51cd6c5187dfa38256fc0c8` |
 | `Drop1.wav` | Airborne-to-grounded landing | 2.307688 s | `223d8eebedf35c6bcef8315aec90995fa40c8f391519b5936fe643c8253cd6dd` |
 | `CanDrop1.wav` | Product's landed transition | 0.527604 s | `007ae1e6255eee4277267b195f1e7d5a911b17cd9bc0f45f9415d5c1fc484402` |
-| `WarningSound1.wav` | Existing carriage warning cue | 1.683396 s | `1def6901eb79f40b8a86bfe370ff1a70df4e39a8345c2e77ad914c94bad09a65` |
+| `WarningSound1.wav` | Preserved unused candidate; removed from carriage-warning runtime after founder listening | 1.683396 s | `1def6901eb79f40b8a86bfe370ff1a70df4e39a8345c2e77ad914c94bad09a65` |
 | `DeathSound1.wav` | First impact death only | 0.500042 s | `6bedd8a26ee32dbfef5f6436e4118dcf17e9b242636937183ee4f263c466e647` |
 | `ClockInUiConfirm1.wav` | CLOCK IN / run start | 0.278333 s | `d37a14c4bcca6bf825d36090f3f158104f6371db73722873a0b9b45e67ec3769` |
 | `ClockedOut1.wav` | Genuine 60-second completion | 1.880625 s | `31905b2b6b86c96802ce68dfe225d65f9ce8bb0a30a8eebc76ce718f376c36e9` |
@@ -49,9 +49,15 @@ The source location at integration time was `/Users/jeromenicholaz/Downloads/`; 
 4. Change **Audio → music_stream** in `scenes/presentation/standard_session.tscn` to that resource. The menu and gameplay lifecycle require no changes.
 5. Remove the superseded demo from the shipped resource set once no longer required, update this inventory with hashes/permission evidence and repeat Web start/mute/retry/loop QA.
 
+### Founder listening correction
+
+`WarningSound1.wav` is **rejected from Standard runtime due repetition/fatigue and masking of other audio**. Its bytes, lossless Godot import and provenance remain preserved, but `standard_session.tscn` no longer maps it and the carriage warning no longer emits an SFX request. Carriage timing and the visual warning are unchanged. The other seven active mappings and gains remain as recorded in [the VM-0.6.3 report](vm063-audio-pass.md).
+
+The earlier application-global music lifecycle was also rejected by ear. The accepted Miraie WAV and loop are unchanged, but runtime ownership is now per run: silent Menu/Credits/Results, position-zero start after CLOCK IN, preserved playhead through Pause, stop on outcome, and position-zero Retry.
+
 ## Future SFX slots
 
-`SessionAudio.sfx_streams` is an empty event-to-AudioStream dictionary. `request_sfx()` emits `sfx_requested` for local testing and plays only a supplied resource through SFX. No files are fetched or synthesized. Events: `coin_pickup`, `jump`, `landing`, `product_impact`, `rack_warning`, `rack_release`, `carriage_warning`, `carriage_sweep`, `player_death`, `final_seconds`, `round_complete`, `ui_confirm`, `ui_back`.
+`SessionAudio.sfx_streams` currently has seven Standard mappings: `coin_pickup`, `jump`, `landing`, `product_impact`, `clock_in_confirm`, `player_death`, and `round_complete`. `request_sfx()` emits passive instrumentation for local testing and only plays events with supplied resources. No files are fetched or synthesized. Unmapped passive seams include rack warning/release, carriage sweep, final seconds and navigation; carriage warning is deliberately disconnected rather than emitted into an empty player.
 
 All future third-party SFX need source, author, license, permission, modifications and runtime-path records before integration. Sourcing and mix approval belong to a later authorized milestone.
 
