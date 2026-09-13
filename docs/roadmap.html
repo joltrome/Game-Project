@@ -198,7 +198,7 @@
       <div class="eyebrow">Game 1 · Core-loop validation</div>
       <h1>Vending Machine Survival</h1>
       <p class="pitch">A tiny person is trapped inside a malfunctioning vending machine. Dodge falling products and increasingly absurd machine failures for as long as possible.</p>
-      <p class="tiny">Roadmap schema version 42 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
+      <p class="tiny">Roadmap schema version 43 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
     </div>
     <div class="actions">
       <button class="btn primary" id="copyHandoff">Copy Codex handoff</button>
@@ -1623,6 +1623,24 @@
     text: 'WarningSound1 remains byte-identical and documented but is absent from the active scene mapping, carriage hook and corrected Web payload. The remaining seven mappings/gains are unchanged. One reusable Music player now observes an enforced 0.20-second real-time CLOCK IN separation, starts the accepted Miraie OST from position zero, retains its playhead through the existing -12 dB Pause state, and fades to stop over 0.10 seconds on death or CLOCKED OUT; silent screens cannot start music. Retry reuses the player but starts a fresh position-zero run. Focused audio automation passed 36 checks with a measured 204 ms initial separation; the presentation lifecycle regression passed; the single full run passed all 36 scripts; the Standard scene launched headlessly; and the corrected single-threaded Web build loaded through localhost with all resources HTTP 200 and an empty warning/error console. Gameplay, UI, warning timing/visuals, KO timing, SFX masters, and Miraie content/loop remain unchanged. Founder re-listening remains required; see docs/vm063-audio-pass.md.'
   };
 
+  const vm064PreExternalEvidence = {
+    id: 'evidence-vm-0.6.4-pre-external-observations',
+    type: 'Evidence', date: '2026-09-13', source: 'Founder VM-0.6.3 listening and repeated Standard coin observation',
+    text: 'Founder listening found the accepted Jump SFX too quiet against Miraie. Repeated natural play also found that authored multi-coin offers could still read as clusters, lines or one sweepable route rather than competing targets. Mobile Web and itch testing are upcoming requirements. These observations authorize only a runtime Jump-gain correction, coherent existing UI confirmation use, settings/Pause/mobile readiness, and a constrained-scatter replacement for natural coin topology; they do not reopen movement, hazards, D3, conveyor, timing or scoring.'
+  };
+
+  const vm064PreExternalDecision = {
+    id: 'decision-vm-0.6.4-pre-external-pass',
+    type: 'Decision', date: '2026-09-13', source: 'Startup Lab VM-0.6.4 pre-external-test brief',
+    text: 'Raise only the configurable Jump gain by 4 dB, reuse ClockInUiConfirm1 once for actual ordinary button activations, replace Music/SFX booleans with independent persistent 0–100 percent master sliders, expose Pause through P, Escape and one visible upper-left 48x48 mouse/touch target, preserve landscape multitouch controls, and replace natural route-like Refund Coin placement with bounded constrained scatter. Permit a 15 percent intentional close-pair mode. Standard gameplay remains frozen outside this explicitly reopened coin topology.'
+  };
+
+  const vm064PreExternalResult = {
+    id: 'result-vm-0.6.4-pre-external-pass',
+    type: 'Result', date: '2026-09-13', source: 'VM-0.6.4 implementation, deterministic simulation and local technical QA',
+    text: 'Jump runtime gain is +10 dB versus +6 dB in VM-0.6.3; no source WAV changed. One shared confirmation maps to actual CLOCK IN, CREDITS, BACK, Pause/RESUME, RETRY and MENU activations without hover/focus playback. Music and SFX sliders default to 100 percent, persist in schema 2, migrate recognized booleans OFF/ON to 0/100, and layer over existing authored gains and run-owned music states. One upper-left 48x48 Pause target serves desktop and touch; P/Escape toggle only an active run and Pause clears held touch actions. Natural Standard coin scheduling now uses one teaching coin at 1.75 seconds followed by weighted 2/3-coin scatter at 10/90 percent, 15 percent pair mode, normal 120 px separation, exact 64 px pair separation, 96 bounded attempts and a lightweight three-point collinearity rejection. Seeds 401/1701/4202 changed expected opportunity from 54/55/55 to 53/54/52 coins over 21 offers, with zero invalid/player-overlap spawns and 0/1/1 exhausted layouts. All targeted checks and the final uninterrupted 37-script suite passed; Standard launched for 180 headless frames; the single-threaded Web build and root ZIP succeeded; desktop and compact-landscape localhost review rendered correctly and the browser warning/error console was empty. Scattered coins can occupy all three D3 visual paths for their unchanged lifetime, so unchanged D3 correctly waited on explicit collectible_path_overlap rejections and produced 11.4–11.6-second warning gaps while still completing six events. Founder ear/feel review, real-device multitouch, Safari and hosted itch iframe behavior remain unverified. See docs/vm064-pre-external-test.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1757,7 +1775,10 @@
     vm063AudioResult,
     vm063FounderAudioReviewEvidence,
     vm063RunOwnedMusicDecision,
-    vm063AudioCorrectionResult
+    vm063AudioCorrectionResult,
+    vm064PreExternalEvidence,
+    vm064PreExternalDecision,
+    vm064PreExternalResult
   ];
 
   const defaultFindings = [
@@ -1769,7 +1790,7 @@
   ];
 
   const defaultState = {
-    version: 42,
+    version: 43,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

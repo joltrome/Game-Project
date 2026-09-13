@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <rect width="1200" height="720" fill="#0b0d10"/>
+  <text x="48" y="52" fill="#f5c542" font-family="system-ui, sans-serif" font-size="27" font-weight="700">VM-0.6.4 constrained-scatter geometry</text>
+  <text x="48" y="80" fill="#aeb6c2" font-family="system-ui, sans-serif" font-size="15">Deterministic examples from the production candidate generator; gold circles are 24 px Refund Coins.</text>
+  <g font-family="system-ui, sans-serif">
+    <g transform="translate(40 110)">
+      <rect width="350" height="250" rx="10" fill="#141820" stroke="#303744"/>
+      <text x="18" y="28" fill="#f4f6f8" font-size="16" font-weight="700">1 coin · seed 401</text>
+      <line x1="26" y1="210" x2="324" y2="210" stroke="#67d7c4" stroke-width="5"/>
+      <circle cx="118" cy="210" r="12" fill="#f5c542" stroke="#fff0a8" stroke-width="2"/>
+      <text x="18" y="238" fill="#aeb6c2" font-size="12">teaching-compatible grounded target</text>
+    </g>
+    <g transform="translate(425 110)">
+      <rect width="350" height="250" rx="10" fill="#141820" stroke="#303744"/>
+      <text x="18" y="28" fill="#f4f6f8" font-size="16" font-weight="700">2 coins · seed 401</text>
+      <line x1="26" y1="210" x2="324" y2="210" stroke="#67d7c4" stroke-width="5"/>
+      <circle cx="130" cy="210" r="12" fill="#f5c542" stroke="#fff0a8" stroke-width="2"/>
+      <circle cx="229" cy="146" r="12" fill="#f5c542" stroke="#fff0a8" stroke-width="2"/>
+      <text x="18" y="238" fill="#aeb6c2" font-size="12">normal separation ≥120 px</text>
+    </g>
+    <g transform="translate(810 110)">
+      <rect width="350" height="250" rx="10" fill="#141820" stroke="#303744"/>
+      <text x="18" y="28" fill="#f4f6f8" font-size="16" font-weight="700">3 coins · seed 1701</text>
+      <line x1="26" y1="210" x2="324" y2="210" stroke="#67d7c4" stroke-width="5"/>
+      <circle cx="244" cy="206" r="12" fill="#f5c542" stroke="#fff0a8" stroke-width="2"/>
+      <circle cx="38" cy="150" r="12" fill="#f5c542" stroke="#fff0a8" stroke-width="2"/>
+      <circle cx="152" cy="150" r="12" fill="#f5c542" stroke="#fff0a8" stroke-width="2"/>
+      <text x="18" y="238" fill="#aeb6c2" font-size="12">non-collinear independent targets</text>
+    </g>
+    <g transform="translate(40 400)">
+      <rect width="350" height="250" rx="10" fill="#141820" stroke="#303744"/>
+      <text x="18" y="28" fill="#f4f6f8" font-size="16" font-weight="700">2-coin pair mode · seed 1701</text>
+      <line x1="26" y1="210" x2="324" y2="210" stroke="#67d7c4" stroke-width="5"/>
+      <circle cx="177" cy="150" r="12" fill="#f5c542" stroke="#fff0a8" stroke-width="2"/>
+      <circle cx="217" cy="150" r="12" fill="#f5c542" stroke="#fff0a8" stroke-width="2"/>
+      <path d="M177 126 V116 H217 V126" fill="none" stroke="#ffb86b" stroke-width="2"/>
+      <text x="183" y="109" fill="#ffb86b" font-size="12">64 px</text>
+      <text x="18" y="238" fill="#aeb6c2" font-size="12">intentional close pair; no third target</text>
+    </g>
+    <g transform="translate(425 400)">
+      <rect width="350" height="250" rx="10" fill="#141820" stroke="#303744"/>
+      <text x="18" y="28" fill="#f4f6f8" font-size="16" font-weight="700">3-coin pair mode · seed 4202</text>
+      <line x1="26" y1="210" x2="324" y2="210" stroke="#67d7c4" stroke-width="5"/>
+      <circle cx="152" cy="206" r="12" fill="#f5c542" stroke="#fff0a8" stroke-width="2"/>
+      <circle cx="191" cy="206" r="12" fill="#f5c542" stroke="#fff0a8" stroke-width="2"/>
+      <circle cx="70" cy="146" r="12" fill="#f5c542" stroke="#fff0a8" stroke-width="2"/>
+      <text x="18" y="238" fill="#aeb6c2" font-size="12">exact pair + separated third decision</text>
+    </g>
+    <g transform="translate(810 400)">
+      <rect width="350" height="250" rx="10" fill="#141820" stroke="#303744"/>
+      <text x="18" y="28" fill="#f4f6f8" font-size="16" font-weight="700">3 coins · seed 4202</text>
+      <line x1="26" y1="210" x2="324" y2="210" stroke="#67d7c4" stroke-width="5"/>
+      <circle cx="244" cy="150" r="12" fill="#f5c542" stroke="#fff0a8" stroke-width="2"/>
+      <circle cx="155" cy="210" r="12" fill="#f5c542" stroke="#fff0a8" stroke-width="2"/>
+      <circle cx="88" cy="150" r="12" fill="#f5c542" stroke="#fff0a8" stroke-width="2"/>
+      <text x="18" y="238" fill="#aeb6c2" font-size="12">staggered geometry, not a sweepable line</text>
+    </g>
+  </g>
+</svg>

@@ -55,9 +55,15 @@ The source location at integration time was `/Users/jeromenicholaz/Downloads/`; 
 
 The earlier application-global music lifecycle was also rejected by ear. The accepted Miraie WAV and loop are unchanged, but runtime ownership is now per run: silent Menu/Credits/Results, position-zero start after CLOCK IN, preserved playhead through Pause, stop on outcome, and position-zero Retry.
 
+### VM-0.6.4 pre-external adjustments
+
+The Jump runtime gain changed from **+6 dB to +10 dB** after founder listening found it masked. `Jump1.wav` remains byte-identical; all other per-event gains remain unchanged. `ClockInUiConfirm1.wav` now confirms actual CLOCK IN, CREDITS, BACK, Pause/RESUME, RETRY and MENU activations once, with no hover/focus playback. Finishing a changed SFX-slider adjustment may play one preview at the selected level.
+
+Independent persistent Music/SFX sliders replace the prior booleans. Their 0–100% linear master scale layers over existing music-state and per-event gains: 0% mutes and 100% retains the authored reference. Recognized old OFF/ON preferences migrate to 0/100. The accepted run-owned Miraie lifecycle, Pause ducking, outcome fades, source content and loop point remain unchanged.
+
 ## Future SFX slots
 
-`SessionAudio.sfx_streams` currently has seven Standard mappings: `coin_pickup`, `jump`, `landing`, `product_impact`, `clock_in_confirm`, `player_death`, and `round_complete`. `request_sfx()` emits passive instrumentation for local testing and only plays events with supplied resources. No files are fetched or synthesized. Unmapped passive seams include rack warning/release, carriage sweep, final seconds and navigation; carriage warning is deliberately disconnected rather than emitted into an empty player.
+`SessionAudio.sfx_streams` currently has seven Standard mappings: `coin_pickup`, `jump`, `landing`, `product_impact`, `clock_in_confirm`, `player_death`, and `round_complete`. `request_sfx()` emits passive instrumentation for local testing and only plays events with supplied resources. No files are fetched or synthesized. The shared confirm is now used for actual ordinary UI activations. Unmapped passive seams include rack warning/release, carriage sweep and final seconds; carriage warning is deliberately disconnected rather than emitted into an empty player.
 
 All future third-party SFX need source, author, license, permission, modifications and runtime-path records before integration. Sourcing and mix approval belong to a later authorized milestone.
 

@@ -3,6 +3,8 @@
 Date: 2026-09-07 JST  
 Status: accepted by Startup Lab; Standard gameplay frozen (confirmed 2026-09-08)
 
+> Historical checkpoint note: Startup Lab explicitly reopened only natural coin topology in VM-0.6.4. Natural Standard offers now use bounded constrained scatter instead of authored route templates. The authored template APIs and the measurements below remain preserved for historical comparison and direct regression tests.
+
 ## Scope
 
 This checkpoint implements only the final authorized Standard Mode Refund Coin corrections:

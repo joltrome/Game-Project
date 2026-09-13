@@ -2,6 +2,8 @@
 
 Recorded: 2026-09-12
 
+> Historical checkpoint note: VM-0.6.4 later raises only Jump from +6 dB to +10 dB, maps the existing confirm sound to ordinary actual button activations, and replaces binary Music/SFX settings with independent persistent 0–100% sliders. The VM-0.6.3 values below remain the factual record of this checkpoint.
+
 Branch: `release/vm-0.6.3-audio-pass`
 
 Accepted gameplay base: `699f9ed4080a0e955357793eb58fd1ba38d37eb0`
