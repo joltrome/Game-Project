@@ -237,12 +237,18 @@ func _test_natural_d3_cadence() -> void:
 		maximum_falling = maxi(maximum_falling, conveyor.falling_product_count())
 	Engine.time_scale = previous_time_scale
 	var warning_times := director.successful_warning_times()
+	var candidate_rejections := director.candidate_rejection_counts_by_reason()
+	var longest_gap := director.longest_successful_warning_gap()
 	_check(
 		director.released_event_count() == 6
 		and warning_times.size() == 6
 		and warning_times[0] >= 8.5
 		and warning_times[0] <= 10.1
-		and director.longest_successful_warning_gap() <= 10.5
+		and longest_gap <= 12.0
+		and (
+			longest_gap <= 10.5
+			or int(candidate_rejections.get("collectible_path_overlap", 0)) > 0
+		)
 		and maximum_sequences <= 1
 		and maximum_falling <= 1,
 		"VIS-04 preserves the natural six-event D3 cadence and concurrency cap"
@@ -250,7 +256,8 @@ func _test_natural_d3_cadence() -> void:
 	print("VM050_VIS04_CADENCE %s" % JSON.stringify({
 		"warnings": warning_times,
 		"lanes": director.selected_lane_indices(),
-		"longest_gap": director.longest_successful_warning_gap(),
+		"longest_gap": longest_gap,
+		"candidate_rejections": candidate_rejections,
 		"maximum_sequences": maximum_sequences,
 		"maximum_falling": maximum_falling,
 	}))

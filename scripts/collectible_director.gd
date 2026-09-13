@@ -44,6 +44,8 @@ enum RouteArchetype {
 	CLUSTER,
 }
 
+const SCATTER_TEMPLATE := -2
+
 const COLLECTIBLE_SCENE := preload(
 	"res://scenes/collectibles/conveyor_collectible.tscn"
 )
@@ -59,6 +61,7 @@ const REJECTION_SIBLING := "sibling geometry conflict"
 const REJECTION_ROUND_ENDING := "round ending"
 const REJECTION_PLAYER_OVERLAP := "player overlap"
 const REJECTION_PLAYER_BUFFER := "player safety buffer"
+const REJECTION_SCATTER_EXHAUSTED := "scatter retries exhausted"
 const REJECTION_UNKNOWN := "unknown"
 
 @export_category("Offer Timing")
@@ -114,6 +117,16 @@ const REJECTION_UNKNOWN := "unknown"
 @export var player_spawn_safety_padding: float = 8.0
 @export var maximum_delayed_coin_spawn_retries: int = 4
 
+@export_category("Constrained Scatter")
+@export var scatter_offer_count_weights := PackedInt32Array([0, 10, 90])
+@export_range(0.0, 1.0, 0.01) var scatter_pair_mode_probability: float = 0.15
+@export_range(0.5, 1.25, 0.01) var scatter_cadence_multiplier: float = 0.84
+@export var minimum_scatter_separation: float = 120.0
+@export var pair_mode_separation: float = 64.0
+@export var maximum_scatter_layout_attempts: int = 96
+@export var scatter_position_quantum: float = 4.0
+@export var scatter_collinearity_area_threshold: float = 600.0
+
 @export_category("Route Validation")
 @export var trajectory_simulation_step: float = 1.0 / 120.0
 @export var recent_route_history_size: int = 2
@@ -155,6 +168,8 @@ var _alternate_placement_count: int = 0
 var _delayed_player_safety_retry_count: int = 0
 var _delayed_candidate_skip_count: int = 0
 var _player_safety_encounter_counts: Dictionary = {}
+var _last_scatter_layout_attempts: int = 0
+var _scatter_exhausted_count: int = 0
 
 @onready var _conveyor: ConveyorPrototype = get_parent() as ConveyorPrototype
 @onready var _score_label: Label = _conveyor.get_node("HUD/ScoreGroup/CollectibleScore")
@@ -248,6 +263,14 @@ func delayed_candidate_skip_count() -> int:
 	return _delayed_candidate_skip_count
 
 
+func scatter_exhausted_count() -> int:
+	return _scatter_exhausted_count
+
+
+func last_scatter_layout_attempts() -> int:
+	return _last_scatter_layout_attempts
+
+
 func player_safety_encounter_counts() -> Dictionary:
 	return _player_safety_encounter_counts.duplicate(true)
 
@@ -300,6 +323,17 @@ func try_spawn_band_for_test(band: int) -> bool:
 
 func try_spawn_template_for_test(template: int, intended_count: int) -> bool:
 	return _try_spawn_template(template, intended_count, false)
+
+
+func try_spawn_scatter_for_test(intended_count: int, pair_mode: bool = false) -> bool:
+	return _try_spawn_template(
+		SCATTER_TEMPLATE,
+		intended_count,
+		false,
+		-1,
+		false,
+		pair_mode
+	)
 
 
 func preview_band_sequence_for_test(count: int) -> PackedInt32Array:
@@ -417,50 +451,26 @@ func stop_for_round_end() -> void:
 
 func _try_spawn_natural_offer() -> bool:
 	var anti_streak_requested := _should_request_centred_ahead_offer()
-	var selected_template := (
-		OfferTemplate.GROUND_SINGLE
-		if anti_streak_requested
-		else _select_natural_template()
-	)
-	var intended_count := _select_intended_count(selected_template)
-	var attempted: Array[int] = []
-	for rotation in range(OfferTemplate.size()):
-		if anti_streak_requested and rotation > 0:
-			break
-		var template := selected_template if rotation == 0 else posmod(selected_template + rotation + _rotation_offset, OfferTemplate.size())
-		if template == OfferTemplate.COMPACT_BURST and selected_template != OfferTemplate.COMPACT_BURST:
-			continue
-		if _natural_offer_count >= 2 and _recent_natural_templates.has(template):
-			continue
-		if attempted.has(template):
-			continue
-		attempted.append(template)
-		var side_preferences := (
-			[OfferSide.AHEAD, OfferSide.CENTRED]
-			if anti_streak_requested
-			else [-1]
-		)
-		var accepted := false
-		for side_preference in side_preferences:
-			if _try_spawn_template(
-				template,
-				intended_count,
-				true,
-				int(side_preference),
-				anti_streak_requested
-			):
-				accepted = true
-				break
-		if accepted:
+	var intended_count := 1 if _natural_offer_count == 0 else _select_scatter_count()
+	if anti_streak_requested:
+		intended_count = mini(intended_count, 2)
+	var pair_mode := intended_count >= 2 and _select_scatter_pair_mode()
+	var side_preferences: Array[int] = [-1]
+	if anti_streak_requested:
+		side_preferences = _scatter_correction_side_preferences()
+	for side_preference in side_preferences:
+		if _try_spawn_template(
+			SCATTER_TEMPLATE,
+			intended_count,
+			true,
+			int(side_preference),
+			anti_streak_requested,
+			pair_mode
+		):
 			_pending_teaching_template = -1
 			_rotation_offset = 0
-			if not anti_streak_requested:
-				_natural_offer_count += 1
-				_remember_natural_template(template)
+			_natural_offer_count += 1
 			return true
-		if _natural_offer_count < 2:
-			break
-	_rotation_offset = posmod(_rotation_offset + 1, OfferTemplate.size())
 	_next_spawn_time = _conveyor.survival_time + failed_spawn_retry_delay
 	return false
 
@@ -470,7 +480,8 @@ func _try_spawn_template(
 	intended_count: int,
 	natural: bool,
 	side_preference: int = -1,
-	anti_streak_requested: bool = false
+	anti_streak_requested: bool = false,
+	pair_mode: bool = false
 ) -> bool:
 	_refresh_active_offers()
 	var phase := phase_at(_conveyor.survival_time)
@@ -508,6 +519,11 @@ func _try_spawn_template(
 		"behind_streak_after": behind_streak_before,
 		"anti_streak_requested": anti_streak_requested,
 		"route_archetype": route_archetype_name(template),
+		"topology": "CONSTRAINED_SCATTER" if template == SCATTER_TEMPLATE else "AUTHORED_ROUTE",
+		"pair_mode": pair_mode,
+		"minimum_pairwise_separation": INF,
+		"candidate_positions": [],
+		"scatter_layout_attempts": 0,
 		"placement_attempts": 1,
 		"alternate_placement_selected": false,
 		"placement_shift_x": 0.0,
@@ -519,13 +535,24 @@ func _try_spawn_template(
 		return _reject_attempt(log_entry, REJECTION_ROUND_ENDING)
 	if not _can_open_another_offer():
 		return _reject_attempt(log_entry, REJECTION_ACTIVE_LIMIT)
-	var original_candidates := _template_candidates(
-		template,
-		intended_count,
-		side_preference
+	var original_candidates := (
+		_scatter_candidates(
+			intended_count,
+			pair_mode,
+			side_preference,
+			natural and _natural_offer_count == 0
+		)
+		if template == SCATTER_TEMPLATE
+		else _template_candidates(template, intended_count, side_preference)
 	)
+	log_entry.scatter_layout_attempts = _last_scatter_layout_attempts if template == SCATTER_TEMPLATE else 0
 	if original_candidates.is_empty():
-		return _reject_attempt(log_entry, REJECTION_UNKNOWN)
+		if template == SCATTER_TEMPLATE:
+			_scatter_exhausted_count += 1
+		return _reject_attempt(
+			log_entry,
+			REJECTION_SCATTER_EXHAUSTED if template == SCATTER_TEMPLATE else REJECTION_UNKNOWN
+		)
 	var candidates := original_candidates
 	var validation := _offer_candidate_rejection(candidates)
 	if _is_player_safety_rejection(String(validation.reason)):
@@ -554,10 +581,14 @@ func _try_spawn_template(
 		else:
 			log_entry.intended_low_air_count = int(log_entry.intended_low_air_count) + 1
 	log_entry.intended_count = candidates.size()
+	log_entry.candidate_positions = candidates.map(
+		func(candidate: Dictionary) -> Vector2: return candidate.position
+	)
+	log_entry.minimum_pairwise_separation = _minimum_pairwise_separation(candidates)
 	var accepted_candidates: Array[Dictionary] = candidates
 	if not _offer_has_reachable_response(accepted_candidates):
 		return _reject_attempt(log_entry, REJECTION_UNREACHABLE)
-	if _is_post_teaching_route(template):
+	if template != SCATTER_TEMPLATE and _is_post_teaching_route(template):
 		var action_validation := route_action_validation_for_test(template, candidates.size())
 		if not bool(action_validation.valid):
 			return _reject_attempt(log_entry, REJECTION_UNREACHABLE)
@@ -603,7 +634,9 @@ func _try_spawn_template(
 		_longest_offer_gap = maxf(_longest_offer_gap, _conveyor.survival_time - _last_offer_spawn_time)
 	_last_offer_spawn_time = _conveyor.survival_time
 	var cadence := _select_cadence()
-	if anti_streak_requested:
+	if template == SCATTER_TEMPLATE:
+		cadence *= scatter_cadence_multiplier
+	elif anti_streak_requested:
 		cadence *= centred_ahead_followup_cadence_multiplier
 	_next_spawn_time = _conveyor.survival_time + cadence
 	log_entry.accepted = true
@@ -911,11 +944,14 @@ func known_rejection_reasons() -> PackedStringArray:
 		REJECTION_ROUND_ENDING,
 		REJECTION_PLAYER_OVERLAP,
 		REJECTION_PLAYER_BUFFER,
+		REJECTION_SCATTER_EXHAUSTED,
 		REJECTION_UNKNOWN,
 	])
 
 
 func template_name(template: int) -> String:
+	if template == SCATTER_TEMPLATE:
+		return "constrained scatter"
 	match template:
 		OfferTemplate.GROUND_SINGLE:
 			return "ground single"
@@ -935,6 +971,8 @@ func template_name(template: int) -> String:
 
 
 func route_archetype_name(template: int) -> String:
+	if template == SCATTER_TEMPLATE:
+		return "SCATTER"
 	match template:
 		OfferTemplate.LOW_AIR_ARC:
 			return "ARC"
@@ -949,6 +987,221 @@ func route_archetype_name(template: int) -> String:
 		OfferTemplate.STAGGERED_ROUTE:
 			return "STAGGER"
 	return "LINEAR"
+
+
+func _select_scatter_count() -> int:
+	var weights := scatter_offer_count_weights
+	if weights.size() != 3:
+		return 2
+	var total := 0
+	for weight in weights:
+		total += maxi(weight, 0)
+	if total <= 0:
+		return 2
+	_placement_rng_state = _next_rng_state(_placement_rng_state)
+	var roll := posmod(_placement_rng_state, total)
+	for index in range(3):
+		roll -= maxi(weights[index], 0)
+		if roll < 0:
+			return index + 1
+	return 3
+
+
+func _select_scatter_pair_mode() -> bool:
+	var probability := clampf(scatter_pair_mode_probability, 0.0, 1.0)
+	if probability <= 0.0:
+		return false
+	if probability >= 1.0:
+		return true
+	_placement_rng_state = _next_rng_state(_placement_rng_state)
+	return posmod(_placement_rng_state, 10000) < roundi(probability * 10000.0)
+
+
+func _scatter_correction_side_preferences() -> Array[int]:
+	var right_limit := _conveyor.control_band_right - collectible_size.x * 0.5
+	var ahead_threshold := (
+		_conveyor.player.global_position.x
+		+ _conveyor.player_collision_size().x * maxf(offer_side_tolerance_player_widths, 0.0)
+	)
+	if right_limit <= ahead_threshold:
+		return [OfferSide.CENTRED]
+	return [OfferSide.AHEAD, OfferSide.CENTRED]
+
+
+func _scatter_candidates(
+	intended_count: int,
+	pair_mode: bool,
+	side_preference: int = -1,
+	force_ground_single: bool = false
+) -> Array[Dictionary]:
+	_last_scatter_layout_attempts = 0
+	var count := clampi(intended_count, 1, 3)
+	var bounds := _scatter_x_bounds(side_preference, count)
+	if bounds.y <= bounds.x:
+		return []
+	for layout_attempt in range(1, maxi(maximum_scatter_layout_attempts, 1) + 1):
+		_last_scatter_layout_attempts = layout_attempt
+		var candidates: Array[Dictionary] = []
+		if pair_mode and count >= 2:
+			candidates = _sample_pair_layout(count, bounds)
+		else:
+			for candidate_index in range(count):
+				var candidate := _sample_scatter_candidate(
+					bounds,
+					PlacementBand.GROUND if force_ground_single and count == 1 else -1
+				)
+				candidate.route_branch = "scatter_%d" % candidate_index
+				candidates.append(candidate)
+		if candidates.size() != count:
+			continue
+		if side_preference in [OfferSide.BEHIND, OfferSide.CENTRED, OfferSide.AHEAD]:
+			for index in range(candidates.size()):
+				candidates[index].allow_right_edge = side_preference in [OfferSide.CENTRED, OfferSide.AHEAD]
+			candidates = _translate_candidates_for_side(candidates, side_preference)
+		if not _scatter_separation_is_valid(candidates, pair_mode):
+			continue
+		if count == 3 and not pair_mode and _scatter_is_trivially_collinear(candidates):
+			continue
+		if not _scatter_side_matches(candidates, side_preference):
+			continue
+		if not String(_offer_candidate_rejection(candidates).reason).is_empty():
+			continue
+		if not _offer_has_reachable_response(candidates):
+			continue
+		return candidates
+	return []
+
+
+func _sample_pair_layout(count: int, bounds: Vector2) -> Array[Dictionary]:
+	var separation := clampf(
+		pair_mode_separation,
+		collectible_size.x + 1.0,
+		maxf(minimum_scatter_separation - 1.0, collectible_size.x + 1.0)
+	)
+	if bounds.y - bounds.x < separation:
+		return []
+	var pair_band := _random_band()
+	var pair_y := _sample_band_y(pair_band)
+	var pair_center := _sample_quantized(
+		bounds.x + separation * 0.5,
+		bounds.y - separation * 0.5
+	)
+	var candidates: Array[Dictionary] = [
+		{
+			"position": Vector2(pair_center - separation * 0.5, pair_y),
+			"band": pair_band,
+			"route_branch": "pair_a",
+		},
+		{
+			"position": Vector2(pair_center + separation * 0.5, pair_y),
+			"band": pair_band,
+			"route_branch": "pair_b",
+		},
+	]
+	if count == 3:
+		var third := _sample_scatter_candidate(
+			bounds,
+			PlacementBand.LOW_AIR if pair_band == PlacementBand.GROUND else PlacementBand.GROUND
+		)
+		third.route_branch = "distant_choice"
+		candidates.append(third)
+	return candidates
+
+
+func _sample_scatter_candidate(bounds: Vector2, forced_band: int = -1) -> Dictionary:
+	var band := forced_band if forced_band in [PlacementBand.GROUND, PlacementBand.LOW_AIR] else _random_band()
+	return {
+		"position": Vector2(_sample_quantized(bounds.x, bounds.y), _sample_band_y(band)),
+		"band": band,
+		"route_branch": "scatter",
+	}
+
+
+func _scatter_x_bounds(side_preference: int, count: int) -> Vector2:
+	var bounds := _route_bounds()
+	if side_preference in [OfferSide.CENTRED, OfferSide.AHEAD]:
+		bounds.y = _conveyor.control_band_right - collectible_size.x * 0.5
+	if side_preference == OfferSide.AHEAD and count == 1:
+		bounds.x = maxf(
+			bounds.x,
+			_conveyor.player.global_position.x + _conveyor.player_collision_size().x
+		)
+	elif side_preference == OfferSide.CENTRED and count == 1:
+		var player_x := _conveyor.player.global_position.x
+		var radius := _conveyor.player_collision_size().x * 2.0
+		bounds.x = maxf(bounds.x, player_x - radius)
+		bounds.y = minf(bounds.y, player_x + radius)
+	return bounds
+
+
+func _scatter_side_matches(candidates: Array[Dictionary], side_preference: int) -> bool:
+	if side_preference not in [OfferSide.BEHIND, OfferSide.CENTRED, OfferSide.AHEAD]:
+		return true
+	return classify_offer_side_for_test(
+		candidates,
+		_conveyor.player.global_position.x
+	) == side_preference
+
+
+func _random_band() -> int:
+	_placement_rng_state = _next_rng_state(_placement_rng_state)
+	return _band_from_roll(_placement_rng_state)
+
+
+func _sample_band_y(band: int) -> float:
+	var y_range := ground_band_center_y_range if band == PlacementBand.GROUND else low_air_band_center_y_range
+	return _sample_quantized(y_range.x, y_range.y)
+
+
+func _sample_quantized(minimum: float, maximum: float) -> float:
+	if maximum <= minimum:
+		return minimum
+	_placement_rng_state = _next_rng_state(_placement_rng_state)
+	var unit := float(_placement_rng_state) / float(0x7fffffff)
+	var sampled := lerpf(minimum, maximum, unit)
+	var quantum := maxf(scatter_position_quantum, 0.01)
+	return clampf(roundf(sampled / quantum) * quantum, minimum, maximum)
+
+
+func _scatter_separation_is_valid(candidates: Array[Dictionary], pair_mode: bool) -> bool:
+	for first_index in range(candidates.size()):
+		for second_index in range(first_index + 1, candidates.size()):
+			var required := minimum_scatter_separation
+			if pair_mode and first_index == 0 and second_index == 1:
+				required = pair_mode_separation
+			if (
+				(candidates[first_index].position as Vector2).distance_to(
+					candidates[second_index].position
+				) + 0.001
+				< required
+			):
+				return false
+	return true
+
+
+func _scatter_is_trivially_collinear(candidates: Array[Dictionary]) -> bool:
+	if candidates.size() != 3:
+		return false
+	var first: Vector2 = candidates[0].position
+	var second: Vector2 = candidates[1].position
+	var third: Vector2 = candidates[2].position
+	var twice_area := absf((second - first).cross(third - first))
+	return twice_area < maxf(scatter_collinearity_area_threshold, 0.0)
+
+
+func _minimum_pairwise_separation(candidates: Array[Dictionary]) -> float:
+	if candidates.size() < 2:
+		return INF
+	var minimum := INF
+	for first_index in range(candidates.size()):
+		for second_index in range(first_index + 1, candidates.size()):
+			minimum = minf(
+				minimum,
+				(candidates[first_index].position as Vector2).distance_to(
+					candidates[second_index].position
+				)
+			)
+	return minimum
 
 
 func _template_candidates(

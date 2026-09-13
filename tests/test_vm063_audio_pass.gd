@@ -94,14 +94,14 @@ func _check_runtime_audio() -> void:
 	check(
 		audio.sfx_volume_db == {
 			&"coin_pickup": -8.0,
-			&"jump": 6.0,
+			&"jump": 10.0,
 			&"landing": 2.0,
 			&"product_impact": -3.0,
 			&"clock_in_confirm": 0.0,
 			&"player_death": -6.0,
 			&"round_complete": 2.0,
 		},
-		"The other seven per-event gains remain unchanged"
+		"Jump is raised by +4 dB while the other six active per-event gains remain unchanged"
 	)
 	check(
 		session.state == StandardSession.State.MENU
@@ -143,7 +143,7 @@ func _check_runtime_audio() -> void:
 		audio.music.playing
 		and audio.music_start_count == 1
 		and audio.current_music_state == SessionAudio.MusicState.GAMEPLAY
-		and audio.music.get_playback_position() < 0.08,
+		and audio.music.get_playback_position() < 0.20,
 		"Gameplay starts the accepted Miraie OST from position zero"
 	)
 

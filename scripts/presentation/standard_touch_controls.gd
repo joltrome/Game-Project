@@ -36,7 +36,7 @@ func _ready() -> void:
 		add_child(label)
 		_labels.append(label)
 	pause_button=Button.new()
-	pause_button.name="MobilePause"
+	pause_button.name="PauseButton"
 	pause_button.focus_mode=Control.FOCUS_NONE
 	pause_button.position=Vector2(8,8)
 	pause_button.size=Vector2(48,48)
@@ -101,7 +101,8 @@ func _layout() -> void:
 		buttons[i].visible = touch_available and game_active
 		_labels[i].visible = touch_available and game_active
 		_labels[i].position = rect.get_center()-Vector2(floorf(_labels[i].ink_width(LABELS[i],2)/2),7)
-	pause_button.visible=touch_available and game_active
+	# This one control serves desktop mouse and mobile touch; never duplicate it.
+	pause_button.visible=game_active
 	_rotate.position = Vector2(
 		floorf((size.x - _rotate.ink_width(_rotate.text, _rotate.glyph_scale)) * 0.5),
 		12.0

@@ -100,8 +100,8 @@ func _run() -> void:
 		events.has(&"coin_pickup")
 		and events.has(&"round_complete")
 		and events.has(&"clock_in_confirm")
-		and events.has(&"ui_back"),
-		"Pickup, completion, CLOCK IN and navigation reach the SFX event seam"
+		and not events.has(&"ui_back"),
+		"Pickup, completion and every navigation activation use the common confirmation seam"
 	)
 	session.show_menu()
 	session.audio.set_muted(&"Music", false)

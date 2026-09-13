@@ -5,6 +5,7 @@ signal sfx_requested(event: StringName)
 signal sfx_played(event: StringName, voice_index: int)
 signal music_state_changed(state: int, target_db: float)
 signal run_music_started(run_index: int)
+signal user_volume_changed(bus_name: StringName, percent: float)
 
 enum MusicState { SILENT, START_PENDING, GAMEPLAY, PAUSE, FADING_OUT }
 
@@ -16,7 +17,7 @@ enum MusicState { SILENT, START_PENDING, GAMEPLAY, PAUSE, FADING_OUT }
 @export var sfx_voice_count: int = 12
 @export var sfx_volume_db: Dictionary[StringName, float] = {
 	&"coin_pickup": -8.0,
-	&"jump": 6.0,
+	&"jump": 10.0,
 	&"landing": 2.0,
 	&"product_impact": -3.0,
 	&"clock_in_confirm": 0.0,
@@ -32,6 +33,9 @@ enum MusicState { SILENT, START_PENDING, GAMEPLAY, PAUSE, FADING_OUT }
 @export var run_end_fade_seconds: float = 0.10
 @export var silent_music_db: float = -80.0
 
+@export_category("User Volume")
+@export var settings_storage_path: String = "user://standard_audio.cfg"
+
 var music: AudioStreamPlayer
 var sfx: AudioStreamPlayer
 var sfx_voices: Array[AudioStreamPlayer] = []
@@ -45,6 +49,12 @@ var _music_ready_at_msec: int = 0
 var _run_music_active: bool = false
 var _run_music_paused: bool = false
 var _played_counts: Dictionary[StringName, int] = {}
+var _user_volume_percent: Dictionary[StringName, float] = {
+	&"Music": 100.0,
+	&"SFX": 100.0,
+}
+var settings_migrated_from_booleans: bool = false
+var last_settings_error: Error = OK
 
 const GAMEPLAY_SFX_EVENTS: Array[StringName] = [
 	&"coin_pickup",
@@ -61,6 +71,7 @@ func _ready() -> void:
 			var index := AudioServer.bus_count - 1
 			AudioServer.set_bus_name(index, bus_name)
 			AudioServer.set_bus_send(index, &"Master")
+	_load_user_volume_preferences()
 	music = AudioStreamPlayer.new()
 	music.name = "MusicPlayer"
 	music.bus = &"Music"
@@ -273,14 +284,103 @@ func _kill_music_tween() -> void:
 
 
 func set_muted(bus_name: StringName, muted: bool) -> void:
-	var index := AudioServer.get_bus_index(bus_name)
-	if index >= 0 and bus_name in [&"Music", &"SFX"]:
-		AudioServer.set_bus_mute(index, muted)
+	set_user_volume_percent(bus_name, 0.0 if muted else 100.0, false)
 
 
 func is_muted(bus_name: StringName) -> bool:
+	return user_volume_percent(bus_name) <= 0.0
+
+
+func set_user_volume_percent(
+	bus_name: StringName,
+	percent: float,
+	persist: bool = true
+) -> void:
+	if bus_name not in [&"Music", &"SFX"]:
+		return
+	var clamped := clampf(percent, 0.0, 100.0)
+	_user_volume_percent[bus_name] = clamped
+	_apply_user_volume(bus_name)
+	if persist:
+		_save_user_volume_preferences()
+	user_volume_changed.emit(bus_name, clamped)
+
+
+func user_volume_percent(bus_name: StringName) -> float:
+	return float(_user_volume_percent.get(bus_name, 100.0))
+
+
+func _apply_user_volume(bus_name: StringName) -> void:
 	var index := AudioServer.get_bus_index(bus_name)
-	return index >= 0 and AudioServer.is_bus_mute(index)
+	if index < 0:
+		return
+	var percent := user_volume_percent(bus_name)
+	AudioServer.set_bus_mute(index, percent <= 0.0)
+	AudioServer.set_bus_volume_db(
+		index,
+		0.0 if percent <= 0.0 else linear_to_db(percent / 100.0)
+	)
+
+
+func _load_user_volume_preferences() -> void:
+	settings_migrated_from_booleans = false
+	_user_volume_percent[&"Music"] = 100.0
+	_user_volume_percent[&"SFX"] = 100.0
+	var config := ConfigFile.new()
+	last_settings_error = config.load(settings_storage_path)
+	if last_settings_error == OK:
+		var has_percentages := (
+			config.has_section_key("volume", "music_percent")
+			and config.has_section_key("volume", "sfx_percent")
+		)
+		if has_percentages:
+			_user_volume_percent[&"Music"] = _safe_percent(
+				config.get_value("volume", "music_percent", 100.0)
+			)
+			_user_volume_percent[&"SFX"] = _safe_percent(
+				config.get_value("volume", "sfx_percent", 100.0)
+			)
+		else:
+			var music_legacy := _legacy_boolean(config, "music")
+			var sfx_legacy := _legacy_boolean(config, "sfx")
+			if bool(music_legacy.found):
+				_user_volume_percent[&"Music"] = 100.0 if bool(music_legacy.value) else 0.0
+				settings_migrated_from_booleans = true
+			if bool(sfx_legacy.found):
+				_user_volume_percent[&"SFX"] = 100.0 if bool(sfx_legacy.value) else 0.0
+				settings_migrated_from_booleans = true
+			if settings_migrated_from_booleans:
+				_save_user_volume_preferences()
+	elif last_settings_error == ERR_FILE_NOT_FOUND:
+		last_settings_error = OK
+	for bus_name in [&"Music", &"SFX"]:
+		_apply_user_volume(bus_name)
+
+
+func _save_user_volume_preferences() -> void:
+	var config := ConfigFile.new()
+	config.set_value("volume", "schema", 2)
+	config.set_value("volume", "music_percent", user_volume_percent(&"Music"))
+	config.set_value("volume", "sfx_percent", user_volume_percent(&"SFX"))
+	last_settings_error = config.save(settings_storage_path)
+
+
+func _safe_percent(value: Variant) -> float:
+	if value is int or value is float:
+		return clampf(float(value), 0.0, 100.0)
+	return 100.0
+
+
+func _legacy_boolean(config: ConfigFile, prefix: String) -> Dictionary:
+	var candidate_keys := [prefix + "_enabled", prefix + "_on", prefix]
+	for section in ["audio", "settings", "sound", "volume"]:
+		for key in candidate_keys:
+			if not config.has_section_key(section, key):
+				continue
+			var value: Variant = config.get_value(section, key)
+			if value is bool:
+				return {"found": true, "value": value}
+	return {"found": false, "value": true}
 
 
 static func prepare_music_stream(source: AudioStream) -> AudioStream:

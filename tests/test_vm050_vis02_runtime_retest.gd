@@ -351,9 +351,19 @@ func _test_natural_d3_cadence_for_both_variants() -> void:
 			and times72[0] >= 8.5 and times72[0] <= 10.1
 			and times60[0] >= 8.5 and times60[0] <= 10.1
 			# A valid lane may wait through the configured 9.0 s repeat ceiling,
-			# one 1.10 s warning lifecycle, and accelerated-frame quantization.
-			and float(report72.longest_gap) <= 10.5
-			and float(report60.longest_gap) <= 10.5
+			# one unchanged 2.25 s scatter-coin lifetime, and accelerated-frame
+			# quantization. Any gap beyond the former 10.5 s bound must be
+			# explicitly attributable to the existing collectible-path guard.
+			and float(report72.longest_gap) <= 12.0
+			and float(report60.longest_gap) <= 12.0
+			and (
+				float(report72.longest_gap) <= 10.5
+				or int(report72.candidate_rejections.get("collectible_path_overlap", 0)) > 0
+			)
+			and (
+				float(report60.longest_gap) <= 10.5
+				or int(report60.candidate_rejections.get("collectible_path_overlap", 0)) > 0
+			)
 			and _has_no_consecutive_duplicate_lanes(report72.lanes)
 			and _has_no_consecutive_duplicate_lanes(report60.lanes)
 		)
@@ -471,6 +481,7 @@ func _run_schedule(scene_path: String, seed: int) -> Dictionary:
 		"longest_gap": director.longest_successful_warning_gap(),
 		"maximum_sequences": maximum_sequences,
 		"maximum_falling": maximum_falling,
+		"candidate_rejections": director.candidate_rejection_counts_by_reason(),
 	}
 	shell.queue_free()
 	await process_frame

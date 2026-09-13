@@ -155,7 +155,7 @@ func _test_baseline_and_corrected_side_distribution() -> void:
 	)
 	_check(
 		corrected_low_risk_offers > 0,
-		"Anti-streak correction naturally launches centred/ahead one-coin opportunities"
+		"Anti-streak correction naturally launches centred/ahead scatter opportunities"
 	)
 	_check(
 		corrected_risky_multi_offers > 0,
@@ -221,10 +221,9 @@ func _side_metrics(director: CollectibleDirector) -> Dictionary:
 		if bool(entry.anti_streak_requested):
 			_check(
 				side != CollectibleDirector.OfferSide.BEHIND
-				and int(entry.intended_count) == 1
-				and int(entry.ground_count) == 1
-				and int(entry.air_count) == 0,
-				"Accepted correction is centred/ahead, grounded, and worth exactly one coin"
+				and int(entry.intended_count) in [1, 2, 3]
+				and String(entry.get("topology", "")) == "CONSTRAINED_SCATTER",
+				"Accepted correction is centred/ahead and retains bounded scatter topology"
 			)
 			low_risk_offers += 1
 	return {

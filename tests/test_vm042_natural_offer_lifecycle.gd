@@ -22,8 +22,8 @@ func _run() -> void:
 	var scene := load(CONVEYOR_SCENE_PATH) as PackedScene
 	var conveyors: Array[ConveyorPrototype] = []
 	var directors: Array[CollectibleDirector] = []
-	var aggregate_template_counts := PackedInt32Array([0, 0, 0, 0, 0, 0, 0])
-	var aggregate_post_teaching_offers := 0
+	var aggregate_count_distribution := PackedInt32Array([0, 0, 0, 0])
+	var aggregate_pair_mode_offers := 0
 	for seed in TEST_SEEDS:
 		var conveyor := scene.instantiate() as ConveyorPrototype
 		conveyor.left_failure_enabled = false
@@ -47,7 +47,6 @@ func _run() -> void:
 	for index in range(directors.size()):
 		var director := directors[index]
 		var accepted: Array[Dictionary] = []
-		var templates := PackedInt32Array()
 		var ground_count := 0
 		var air_count := 0
 		var unknown_count := 0
@@ -56,30 +55,21 @@ func _run() -> void:
 		var phase_coin_counts := [0, 0, 0, 0]
 		var last_spawn := -1.0
 		var measured_longest_gap := 0.0
-		var maximum_consecutive_template_repeats := 0
-		var consecutive_template_repeats := 0
-		var previous_template := -1
+		var topology_violations := 0
 		for entry in director.offer_log():
 			if entry.event != "attempt":
 				continue
 			if entry.accepted:
 				accepted.append(entry)
-				templates.append(int(entry.template))
-				aggregate_template_counts[int(entry.template)] += 1
-				if int(entry.template) not in [
-					CollectibleDirector.OfferTemplate.GROUND_SINGLE,
-					CollectibleDirector.OfferTemplate.LOW_AIR_ARC,
-				]:
-					aggregate_post_teaching_offers += 1
-				if int(entry.template) == previous_template:
-					consecutive_template_repeats += 1
+				var coin_count := int(entry.intended_count)
+				if coin_count >= 1 and coin_count <= 3:
+					aggregate_count_distribution[coin_count] += 1
 				else:
-					consecutive_template_repeats = 0
-				previous_template = int(entry.template)
-				maximum_consecutive_template_repeats = maxi(
-					maximum_consecutive_template_repeats,
-					consecutive_template_repeats
-				)
+					topology_violations += 1
+				if String(entry.get("topology", "")) != "CONSTRAINED_SCATTER":
+					topology_violations += 1
+				if bool(entry.get("pair_mode", false)):
+					aggregate_pair_mode_offers += 1
 				if not phases.has(int(entry.phase)):
 					phases.append(int(entry.phase))
 				phase_offer_counts[int(entry.phase)] += 1
@@ -95,34 +85,30 @@ func _run() -> void:
 		offered_totals.append(offered)
 		_check(accepted.size() >= 2, "Seed %d produces multiple natural offers" % TEST_SEEDS[index])
 		_check(
-			accepted[0].template == CollectibleDirector.OfferTemplate.GROUND_SINGLE
+			accepted[0].template == CollectibleDirector.SCATTER_TEMPLATE
 			and float(accepted[0].time) >= 1.5
-			and float(accepted[0].time) <= 2.0,
-			"Seed %d naturally teaches a ground offer at 1.5–2.0 seconds" % TEST_SEEDS[index]
+			and float(accepted[0].time) <= 2.0
+			and int(accepted[0].intended_count) == 1
+			and int(accepted[0].ground_count) == 1,
+			"Seed %d naturally teaches one grounded scatter coin at 1.5–2.0 seconds" % TEST_SEEDS[index]
 		)
 		_check(
-			accepted[1].template == CollectibleDirector.OfferTemplate.LOW_AIR_ARC
-			and float(accepted[1].time) <= 6.0
-			and int(accepted[1].air_count) >= 2,
-			"Seed %d naturally guarantees the low-air offer by six seconds" % TEST_SEEDS[index]
+			float(accepted[1].time) <= 6.0
+			and int(accepted[1].intended_count) in [1, 2, 3],
+			"Seed %d naturally follows teaching with a bounded 1-3 coin scatter offer" % TEST_SEEDS[index]
 		)
-		for template in range(CollectibleDirector.OfferTemplate.size()):
-			_check(templates.has(template), "Seed %d naturally launches %s" % [TEST_SEEDS[index], director.template_name(template)])
 		for phase in range(4):
 			_check(phases.has(phase), "Seed %d naturally launches an offer in phase %d" % [TEST_SEEDS[index], phase + 1])
 		_check(
-			offered >= 40 and offered <= 60,
-			"Seed %d offers 40–60 coins during the real 60-second lifecycle" % TEST_SEEDS[index]
+			offered >= 49 and offered <= 61,
+			"Seed %d keeps real-lifecycle opportunity near the 54-55 coin baseline" % TEST_SEEDS[index]
 		)
 		_check(
 			measured_longest_gap <= director.maximum_offer_free_gap + 0.05,
 			"Seed %d stays within the maximum offer-start gap" % TEST_SEEDS[index]
 		)
 		_check(unknown_count == 0, "Seed %d has no unknown rejection category" % TEST_SEEDS[index])
-		_check(
-			maximum_consecutive_template_repeats <= 1,
-			"Seed %d never selects the same authored route three times consecutively" % TEST_SEEDS[index]
-		)
+		_check(topology_violations == 0, "Seed %d never reintroduces natural authored routes or 4+ coin strings" % TEST_SEEDS[index])
 		_check(
 			accepted[0].has("spawn_timestamp")
 			and accepted[0].has("resolve_timestamp")
@@ -137,16 +123,19 @@ func _run() -> void:
 		)
 
 	offered_totals.sort()
-	var compact_count := aggregate_template_counts[CollectibleDirector.OfferTemplate.COMPACT_BURST]
-	var compact_frequency := float(compact_count) / float(maxi(aggregate_post_teaching_offers, 1))
-	_check(compact_frequency < 0.20, "Compact jackpots remain a minority across natural seeds")
+	_check(
+		aggregate_count_distribution[1] > 0
+		and aggregate_count_distribution[2] > 0
+		and aggregate_count_distribution[3] > 0,
+		"Natural deterministic runs exercise 1-, 2-, and 3-coin scatter offers"
+	)
 	print(
 		"VM042_MULTI_SEED_TOTALS min=%d median=%d max=%d"
 		% [offered_totals[0], offered_totals[1], offered_totals[2]]
 	)
 	print(
-		"VM046_NATURAL_ROUTE_COUNTS counts=%s post_teaching=%d compact=%d compact_frequency=%.4f"
-		% [aggregate_template_counts, aggregate_post_teaching_offers, compact_count, compact_frequency]
+		"VM064_NATURAL_SCATTER_COUNTS counts_1_2_3=%s pair_mode=%d"
+		% [[aggregate_count_distribution[1], aggregate_count_distribution[2], aggregate_count_distribution[3]], aggregate_pair_mode_offers]
 	)
 	for conveyor in conveyors:
 		conveyor.queue_free()

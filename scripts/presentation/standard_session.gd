@@ -12,8 +12,10 @@ const INK := Color("172b3d")
 const RED := Color("b93743")
 const TEAL := Color("2ca6a4")
 const GOLD := Color("f2ba45")
+const VOLUME_SLIDER := preload("res://scripts/presentation/c2_volume_slider.gd")
 
 @export var score_storage_path: String = "user://standard_best.cfg"
+@export var audio_settings_path: String = "user://standard_audio.cfg"
 
 var state: State = State.MENU
 var game: MotionExperimentShell
@@ -21,8 +23,8 @@ var scores := StandardScoreStore.new()
 var last_score: int = 0
 var last_survived: bool = false
 var _ui: Control
-var _music_button: Button
-var _sfx_button: Button
+var _music_slider: C2VolumeSlider
+var _sfx_slider: C2VolumeSlider
 var result_headline: String = ""
 var last_death_cause: ConveyorPrototype.DeathCause = ConveyorPrototype.DeathCause.UNKNOWN
 var result_transition_count: int = 0
@@ -39,6 +41,10 @@ var result_score: C2PixelText
 var best_label: C2PixelText
 
 @onready var audio: SessionAudio = $Audio
+
+
+func _enter_tree() -> void:
+	($Audio as SessionAudio).settings_storage_path = audio_settings_path
 
 
 func _ready() -> void:
@@ -59,7 +65,7 @@ func _ready() -> void:
 	add_child(_death_timer)
 	touch = StandardTouchControls.new()
 	add_child(touch)
-	touch.pause_requested.connect(pause_game)
+	touch.pause_requested.connect(_toggle_pause_with_confirm)
 	resized.connect(_layout)
 	get_window().size_changed.connect(_layout)
 	show_menu()
@@ -67,13 +73,14 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_ESCAPE,KEY_P]:
+	if event.is_action_pressed("pause") and not event.is_echo():
 		if state == State.GAME:
-			pause_game()
+			_toggle_pause_with_confirm()
 		elif state == State.PAUSED:
-			resume_game()
-		elif event.keycode == KEY_ESCAPE and state in [State.RESULTS,State.CREDITS]:
-			show_menu()
+			_toggle_pause_with_confirm()
+		get_viewport().set_input_as_handled()
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE and state in [State.RESULTS,State.CREDITS]:
+		_activate_ui(show_menu)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("restart") and state in [State.GAME, State.RESULTS, State.PAUSED]:
 		start_game()
@@ -98,10 +105,10 @@ func pause_game() -> void:
 	(_c2 as CohesionScreen).kind="pause"
 	_ui.add_child(_c2)
 	var panel := _c2 as CohesionScreen
-	var resume := panel.add_action("resume",resume_game)
+	var resume := panel.add_action("resume",_confirmed(resume_game))
 	panel.add_action("pause-retry",start_game)
-	panel.add_action("pause-menu",show_menu)
-	_add_cohesion_sound_controls(panel)
+	panel.add_action("pause-menu",_confirmed(show_menu))
+	_add_volume_sliders(panel, Vector2(694.0, 494.0))
 	panel.wire_focus()
 	resume.grab_focus()
 
@@ -114,8 +121,8 @@ func resume_game() -> void:
 	_ui.remove_child(_c2)
 	_c2.queue_free()
 	_c2=null
-	_music_button=null
-	_sfx_button=null
+	_music_slider=null
+	_sfx_slider=null
 	_release_gameplay_actions()
 	state=State.GAME
 	audio.resume_run_music()
@@ -178,8 +185,6 @@ func start_game() -> void:
 
 
 func show_menu() -> void:
-	if state != State.MENU:
-		audio.request_sfx(&"ui_back")
 	_dispose_game()
 	state = State.MENU
 	audio.set_gameplay_sfx_enabled(false)
@@ -194,8 +199,8 @@ func show_menu() -> void:
 		scale_value -= 1
 	best_label.glyph_scale = scale_value
 	best_label.position = Vector2(1048-best_label.ink_width(best_label.text,scale_value),376)
-	_c2.add_button("credits", "CREDITS", Rect2(660,557,112,44), show_credits)
-	_add_c2_sound_controls()
+	_c2.add_button("credits", "CREDITS", Rect2(660,557,112,44), _confirmed(show_credits))
+	_add_volume_sliders(_c2, Vector2(790.0, 538.0))
 	_c2.wire_focus()
 	play.grab_focus()
 
@@ -204,25 +209,15 @@ func show_credits() -> void:
 	state = State.CREDITS
 	audio.set_gameplay_sfx_enabled(false)
 	audio.stop_run_music_immediately()
-	audio.request_sfx(&"ui_confirm")
 	_clear_ui()
 	var panel := CohesionScreen.new()
 	panel.kind="credits"
 	_c2=panel
 	_ui.add_child(panel)
-	var back := panel.add_action("back",show_menu)
-	_add_cohesion_sound_controls(panel)
+	var back := panel.add_action("back",_confirmed(show_menu))
+	_add_volume_sliders(panel, Vector2(790.0, 538.0))
 	panel.wire_focus()
 	back.grab_focus()
-
-
-func _add_cohesion_sound_controls(panel: CohesionScreen) -> void:
-	var prefix := "pause-" if panel.kind == "pause" else "credits-"
-	_music_button=panel.add_action(prefix+"music-on",_toggle_music)
-	_sfx_button=panel.add_action(prefix+"sfx-on",_toggle_sfx)
-	_music_button.set_meta(&"audio_art_prefix","pause-music" if panel.kind == "pause" else "music")
-	_sfx_button.set_meta(&"audio_art_prefix","pause-sfx" if panel.kind == "pause" else "sfx")
-	_refresh_sound_labels()
 
 
 func _capture_death_pose(snapshot: Dictionary) -> void:
@@ -312,8 +307,8 @@ func _show_results(score: int, survived: bool) -> void:
 		label.glyph_scale = scale_value
 		label.position = Vector2(item[1]-floorf(label.ink_width(label.text,scale_value)/2),291)
 	var retry := _c2.add_button("retry", "RETRY", Rect2(336,472,280,70), start_game, true)
-	_c2.add_button("menu", "MENU", Rect2(644,478,144,64), show_menu)
-	_add_c2_sound_controls()
+	_c2.add_button("menu", "MENU", Rect2(644,478,144,64), _confirmed(show_menu))
+	_add_volume_sliders(_c2, Vector2(790.0, 538.0))
 	_c2.wire_focus()
 	retry.grab_focus()
 
@@ -331,12 +326,6 @@ func _score_text(value: int) -> C2PixelText:
 	label.text = "%02d" % value
 	_c2.add_child(label)
 	return label
-
-
-func _add_c2_sound_controls() -> void:
-	_music_button = _c2.add_button("music-on", "MUSIC ON", Rect2(808,557,136,44), _toggle_music)
-	_sfx_button = _c2.add_button("sfx-on", "SFX ON", Rect2(962,557,122,44), _toggle_sfx)
-	_refresh_sound_labels()
 
 
 func _dispose_game() -> void:
@@ -390,6 +379,8 @@ func _clear_ui() -> void:
 	result_headline = ""
 	result_score = null
 	best_label = null
+	_music_slider = null
+	_sfx_slider = null
 
 
 func _frame(heading: String) -> void:
@@ -403,37 +394,49 @@ func _frame(heading: String) -> void:
 			_rect(Rect2(x, y, 10, 10), GOLD)
 
 
-func _add_sound_controls(at: Vector2, in_game: bool = false) -> void:
-	_music_button = _button("", Rect2(at, Vector2(146, 44)), _toggle_music, CREAM)
-	_sfx_button = _button("", Rect2(at + Vector2(160, 0), Vector2(146, 44)), _toggle_sfx, CREAM)
-	if in_game:
-		_music_button.focus_mode = Control.FOCUS_NONE
-		_sfx_button.focus_mode = Control.FOCUS_NONE
-	_refresh_sound_labels()
+func _add_volume_sliders(host: Control, at: Vector2) -> void:
+	_music_slider = VOLUME_SLIDER.new() as C2VolumeSlider
+	_music_slider.name = "MusicVolume"
+	_music_slider.position = at
+	host.add_child(_music_slider)
+	_music_slider.configure("MUSIC", audio.user_volume_percent(&"Music"))
+	_music_slider.percent_changed.connect(
+		func(percent: float) -> void:
+			audio.set_user_volume_percent(&"Music", percent)
+	)
+	_sfx_slider = VOLUME_SLIDER.new() as C2VolumeSlider
+	_sfx_slider.name = "SFXVolume"
+	_sfx_slider.position = at + Vector2(0.0, 48.0)
+	host.add_child(_sfx_slider)
+	_sfx_slider.configure("SFX", audio.user_volume_percent(&"SFX"))
+	_sfx_slider.percent_changed.connect(
+		func(percent: float) -> void:
+			audio.set_user_volume_percent(&"SFX", percent)
+	)
+	_sfx_slider.adjustment_finished.connect(_preview_sfx_volume)
 
 
-func _toggle_music() -> void:
-	audio.set_muted(&"Music", not audio.is_muted(&"Music"))
-	_refresh_sound_labels()
+func _preview_sfx_volume(_percent: float) -> void:
+	audio.request_sfx(&"clock_in_confirm")
 
 
-func _toggle_sfx() -> void:
-	audio.set_muted(&"SFX", not audio.is_muted(&"SFX"))
-	audio.request_sfx(&"ui_confirm")
-	_refresh_sound_labels()
+func _confirmed(action: Callable) -> Callable:
+	return func() -> void: _activate_ui(action)
 
 
-func _refresh_sound_labels() -> void:
-	if _c2 != null:
-		for entry: Array in [[_music_button,"Music","music"],[_sfx_button,"SFX","sfx"]]:
-			var button := entry[0] as Button
-			var on := not audio.is_muted(entry[1])
-			button.text = str(entry[2]).to_upper() + (" ON" if on else " OFF")
-			button.set_meta(&"art_key", str(button.get_meta(&"audio_art_prefix",entry[2])) + ("-on" if on else "-off"))
-			_c2.refresh_button(button)
+func _activate_ui(action: Callable) -> void:
+	audio.request_sfx(&"clock_in_confirm")
+	action.call()
+
+
+func _toggle_pause_with_confirm() -> void:
+	if state not in [State.GAME, State.PAUSED]:
 		return
-	_music_button.text = "MUSIC: OFF" if audio.is_muted(&"Music") else "MUSIC: ON"
-	_sfx_button.text = "SFX: OFF" if audio.is_muted(&"SFX") else "SFX: ON"
+	audio.request_sfx(&"clock_in_confirm")
+	if state == State.GAME:
+		pause_game()
+	else:
+		resume_game()
 
 
 func _rect(rect: Rect2, color: Color) -> void:

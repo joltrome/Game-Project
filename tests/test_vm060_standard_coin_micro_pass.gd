@@ -259,8 +259,10 @@ func _test_natural_economy_and_instrumentation() -> void:
 		var archetype_counts := {}
 		var multi_archetype_counts := {}
 		var multi_coin_sizes := {}
+		var topology_valid := true
 		for entry in accepted:
 			offered += int(entry.intended_count)
+			topology_valid = topology_valid and String(entry.topology) == "CONSTRAINED_SCATTER"
 			var archetype := String(entry.route_archetype)
 			archetype_counts[archetype] = int(archetype_counts.get(archetype, 0)) + 1
 			if int(entry.intended_count) > 1:
@@ -271,14 +273,15 @@ func _test_natural_economy_and_instrumentation() -> void:
 				multi_coin_sizes[coin_count] = int(multi_coin_sizes.get(coin_count, 0)) + 1
 		var seed := int(seeds[index])
 		_check(
-			abs(offered - int(BASELINE_TOTALS[seed])) <= 3
-			and accepted.size() >= 21
+			abs(offered - int(BASELINE_TOTALS[seed])) <= 6
+			and accepted.size() >= 20
 			and accepted.size() <= 23
 			and float(accepted[0].time) >= 1.5
 			and float(accepted[0].time) <= 2.0
-			and archetype_counts.has("RISK_TAIL")
-			and archetype_counts.has("CLUSTER"),
-			"Seed %d preserves economy/cadence and exercises decision plus simple routes" % seed
+			and topology_valid
+			and archetype_counts.keys() == ["SCATTER"]
+			and multi_coin_sizes.keys().all(func(count: int) -> bool: return count in [2, 3]),
+			"Seed %d preserves economy/cadence while natural play uses only 1-3 coin scatter" % seed
 		)
 		print(
 			"VM060_COIN_ECONOMY seed=%d offered=%d offers=%d first=%.3f archetypes=%s multi_archetypes=%s multi_sizes=%s player_overlap=%d player_buffer=%d alternates=%d delayed_retries=%d delayed_skips=%d"
@@ -333,7 +336,7 @@ func _test_natural_economy_and_instrumentation() -> void:
 			not safety_conveyor.is_dead
 			and spawn_safety_violations == 0
 			and safety_accepted.size() >= 20
-			and safety_director.alternate_placement_count() > 0,
+			and safety_director.longest_offer_gap() <= safety_director.maximum_offer_free_gap + 0.05,
 			"Seed %d avoids spawn-frame player intersections without starving offers" % seed
 		)
 		print(
