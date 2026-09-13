@@ -1641,6 +1641,30 @@
     text: 'Jump runtime gain is +10 dB versus +6 dB in VM-0.6.3; no source WAV changed. One shared confirmation maps to actual CLOCK IN, CREDITS, BACK, Pause/RESUME, RETRY and MENU activations without hover/focus playback. Music and SFX sliders default to 100 percent, persist in schema 2, migrate recognized booleans OFF/ON to 0/100, and layer over existing authored gains and run-owned music states. One upper-left 48x48 Pause target serves desktop and touch; P/Escape toggle only an active run and Pause clears held touch actions. Natural Standard coin scheduling now uses one teaching coin at 1.75 seconds followed by weighted 2/3-coin scatter at 10/90 percent, 15 percent pair mode, normal 120 px separation, exact 64 px pair separation, 96 bounded attempts and a lightweight three-point collinearity rejection. Seeds 401/1701/4202 changed expected opportunity from 54/55/55 to 53/54/52 coins over 21 offers, with zero invalid/player-overlap spawns and 0/1/1 exhausted layouts. All targeted checks and the final uninterrupted 37-script suite passed; Standard launched for 180 headless frames; the single-threaded Web build and root ZIP succeeded; desktop and compact-landscape localhost review rendered correctly and the browser warning/error console was empty. Scattered coins can occupy all three D3 visual paths for their unchanged lifetime, so unchanged D3 correctly waited on explicit collectible_path_overlap rejections and produced 11.4–11.6-second warning gaps while still completing six events. Founder ear/feel review, real-device multitouch, Safari and hosted itch iframe behavior remain unverified. See docs/vm064-pre-external-test.md.'
   };
 
+  const vm065IndependentCoinEvidence = {
+    id: 'evidence-vm-0.6.5-independent-coin-stream',
+    type: 'Evidence', date: '2026-09-14', source: 'Founder and second-player VM-0.6.4 observation',
+    text: 'VM-0.6.4 constrained scatter corrected repeated spatial route shapes, but the founder still observed synchronized three-coin batches appearing, remaining and disappearing together. A second player independently noticed the same repetitive batch cadence. This is evidence about temporal presentation, not evidence that any replacement is more engaging.'
+  };
+
+  const vm065IndependentCoinDecision = {
+    id: 'decision-vm-0.6.5-independent-coin-stream',
+    type: 'Decision', date: '2026-09-14', source: 'Startup Lab VM-0.6.5 experiment brief',
+    text: 'Replace synchronized natural Refund Coin offers after the unchanged teaching coin with independently scheduled one-coin entities. Give each coin a randomized individual lifetime and restrained accelerating expiry warning, cap active coins at four, permit only one occasional delayed bonus coin, and make unchanged D3 hazard reservations take priority over optional coin placement. Preserve score value, player and hazard gameplay, D3 cadence, UI, audio, pause and mobile behavior.'
+  };
+
+  const vm065IndependentCoinHypothesis = {
+    id: 'hypothesis-vm-0.6.5-independent-coin-stream',
+    type: 'Hypothesis', date: '2026-09-14', source: 'Startup Lab VM-0.6.5 experiment brief',
+    text: 'Independent asynchronous coin spawning with independent randomized lifetimes and readable expiry warnings will create a more dynamic arena and more frequent movement decisions than synchronized coin batches.'
+  };
+
+  const vm065IndependentCoinResult = {
+    id: 'result-vm-0.6.5-independent-coin-stream',
+    type: 'Result', date: '2026-09-14', source: 'VM-0.6.5 implementation, deterministic simulation and local technical QA',
+    text: 'The teaching coin remains at 1.75 seconds. Natural play then schedules individual coins at randomized 0.75–1.70-second attempt intervals with a four-coin cap, individual 2.50–4.00-second lifetimes, 120 px normal separation, and a 10 percent chance of one 0.10–0.30-second delayed bonus using a configurable 96 px separation. Each coin owns a final 0.70-second opacity warning that accelerates from 1.5 to at most 4 pulses per second and never flashes fully off. Seeds 401/1701/4202 offered 48/51/52 coins versus VM-0.6.4\'s 53/54/52, averaged 2.559/2.643/2.679 simultaneously active, never exceeded four, and produced 1/2/5 bonus coins. D3 kept six deterministic warnings at 8.50, 17.04, 24.61, 33.40, 40.60 and 48.36 seconds; longest gap was 8.792 seconds and coin-caused D3 rejection count was zero because optional coin attempts relocate or skip for D3 priority. Dedicated and affected tests passed, then the final suite passed 38/38 scripts. Standard launched for 180 headless frames; the single-threaded Web export and root ZIP succeeded; localhost browser review rendered Menu and gameplay with an empty warning/error console. Whether timing feels organic, warnings read during active play, choices improve, and abundance remains appropriate requires founder review. See docs/vm065-independent-coins.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1778,7 +1802,11 @@
     vm063AudioCorrectionResult,
     vm064PreExternalEvidence,
     vm064PreExternalDecision,
-    vm064PreExternalResult
+    vm064PreExternalResult,
+    vm065IndependentCoinEvidence,
+    vm065IndependentCoinDecision,
+    vm065IndependentCoinHypothesis,
+    vm065IndependentCoinResult
   ];
 
   const defaultFindings = [

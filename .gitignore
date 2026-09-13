@@ -1,5 +1,6 @@
 .godot/
 builds/
+docs/screenshots/**/*.svg.import
 .local_art_sources/
 *.tmp
 .DS_Store

@@ -4,6 +4,7 @@ This backlog records ideas without granting implementation approval. Evidence, h
 
 ## Postponed
 
+- **Post-external-test experiment — Hazard-Earned Refund Coins:** Hypothesis: generating Refund Coin opportunities from skillful hazard interaction may produce a stronger risk/reward scoring loop than time-generated opportunities. Possible triggers include successful product evasion, jumping or avoiding dangerous products, and surviving compound hazards. This is explicitly not implemented in VM-0.6.5; it would couple score opportunity to hazard recognition and may over-reward one avoidance action, distort survival priorities, or make scoring less legible without a separate experiment.
 - **Overload Mode:** Possible separate mode where Refund Coins add time while the machine escalates toward a visually explicit overload. This changes coins from optional score temptation into a survival resource, so it must not replace or modify Standard Mode without a separate hypothesis and playtest.
 - **Can-platform bonus routes:** Possible high Refund Coin routes that are comfortably reachable only by using a landed product as a platform. This may deepen scoring decisions, but it creates hazard-state-dependent reachability and is not part of the final Standard coin micro-pass.
 - **Time bonuses for coins:** Do not add time to Standard Mode coins. Revisit only inside a separately approved Overload Mode experiment.
