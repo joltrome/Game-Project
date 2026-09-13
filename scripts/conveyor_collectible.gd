@@ -3,12 +3,19 @@ extends Area2D
 
 signal collected(collectible: ConveyorCollectible)
 signal expired(collectible: ConveyorCollectible)
+signal expiry_warning_started(collectible: ConveyorCollectible)
 
 @export_category("Gameplay")
 @export var lifetime: float = 3.0
 @export var scroll_speed: float = 140.0
 @export var collectible_size: Vector2 = Vector2(24.0, 24.0)
 @export var placement_band: int = 0
+
+@export_category("Expiry Warning")
+@export var expiry_warning_duration: float = 0.70
+@export_range(0.5, 4.0, 0.1) var expiry_warning_start_pulses_per_second: float = 1.5
+@export_range(1.0, 5.0, 0.1) var expiry_warning_end_pulses_per_second: float = 4.0
+@export_range(0.25, 0.9, 0.05) var expiry_warning_minimum_alpha: float = 0.45
 
 @export_category("Visual Identity")
 @export var visual_diameter: float = 32.0
@@ -41,6 +48,10 @@ var _teaching_cue_remaining: float = 0.0
 var _collection_feedback_remaining: float = 0.0
 var _normal_visual_scale := Vector2.ONE
 var _c2_typography_enabled: bool = false
+var _expiry_warning_active: bool = false
+var _expiry_warning_elapsed: float = 0.0
+var _expiry_warning_start_count: int = 0
+var _current_warning_pulses_per_second: float = 0.0
 
 @onready var _collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var _visual_root: Node2D = $VisualRoot
@@ -71,6 +82,7 @@ func _process(delta: float) -> void:
 		return
 	_animation_elapsed += delta
 	_update_looping_visuals(delta)
+	_update_expiry_warning(delta)
 	_update_teaching_cue(delta)
 
 
@@ -88,13 +100,16 @@ func configure(
 	conveyor_scroll_speed: float,
 	size: Vector2,
 	band: int = 0,
-	visual_seed: int = 1
+	visual_seed: int = 1,
+	warning_duration: float = -1.0
 ) -> void:
 	lifetime = maxf(duration, 0.0)
 	scroll_speed = maxf(conveyor_scroll_speed, 0.0)
 	collectible_size = size
 	placement_band = band
 	_visual_seed = maxi(visual_seed, 1)
+	if warning_duration >= 0.0:
+		expiry_warning_duration = warning_duration
 	time_remaining = lifetime
 	_resolved = false
 	monitoring = true
@@ -127,6 +142,7 @@ func stop() -> void:
 	set_process(false)
 	hide_teaching_cue()
 	_collection_feedback.visible = false
+	_cancel_expiry_warning()
 	visible = false
 
 
@@ -177,6 +193,31 @@ func collection_feedback_is_visible() -> bool:
 
 func floating_plus_one_is_visible() -> bool:
 	return _collection_feedback.visible and _plus_one_label.visible
+
+
+func expiry_warning_is_active() -> bool:
+	return _expiry_warning_active
+
+
+func expiry_warning_progress() -> float:
+	if not _expiry_warning_active:
+		return 0.0
+	var duration := minf(maxf(expiry_warning_duration, 0.0), maxf(lifetime, 0.0))
+	if duration <= 0.0:
+		return 1.0
+	return clampf(1.0 - time_remaining / duration, 0.0, 1.0)
+
+
+func current_warning_pulses_per_second() -> float:
+	return _current_warning_pulses_per_second
+
+
+func current_visual_alpha() -> float:
+	return modulate.a
+
+
+func expiry_warning_start_count() -> int:
+	return _expiry_warning_start_count
 
 
 func enable_c2_typography() -> void:
@@ -269,6 +310,7 @@ func _reset_visual_animation() -> void:
 	_visual_root.position = Vector2.ZERO
 	_visual_root.scale = Vector2.ONE * 0.65
 	_normal_visual_scale = Vector2.ONE
+	_cancel_expiry_warning()
 	hide_teaching_cue()
 
 
@@ -308,6 +350,44 @@ func _spawn_pop_scale() -> float:
 	return lerpf(1.12, 1.0, (progress - 0.70) / 0.30)
 
 
+func _update_expiry_warning(delta: float) -> void:
+	var warning_duration := minf(
+		maxf(expiry_warning_duration, 0.0),
+		maxf(lifetime, 0.0)
+	)
+	if warning_duration <= 0.0 or time_remaining > warning_duration + 0.0001:
+		return
+	if not _expiry_warning_active:
+		_expiry_warning_active = true
+		_expiry_warning_elapsed = 0.0
+		_expiry_warning_start_count += 1
+		expiry_warning_started.emit(self)
+	_expiry_warning_elapsed += delta
+	var progress := expiry_warning_progress()
+	_current_warning_pulses_per_second = lerpf(
+		maxf(expiry_warning_start_pulses_per_second, 0.5),
+		maxf(expiry_warning_end_pulses_per_second, expiry_warning_start_pulses_per_second),
+		progress
+	)
+	# Continuous opacity modulation keeps the warning readable without an
+	# aggressive full-on/full-off strobe. The per-coin seed prevents deliberate
+	# synchronization when two warning windows overlap.
+	var phase := (
+		_expiry_warning_elapsed * _current_warning_pulses_per_second * TAU
+		+ _animation_phase * TAU
+	)
+	var pulse := 0.5 + 0.5 * sin(phase)
+	var minimum_alpha := lerpf(0.78, expiry_warning_minimum_alpha, progress)
+	modulate.a = lerpf(minimum_alpha, 1.0, pulse)
+
+
+func _cancel_expiry_warning() -> void:
+	_expiry_warning_active = false
+	_expiry_warning_elapsed = 0.0
+	_current_warning_pulses_per_second = 0.0
+	modulate.a = 1.0
+
+
 func _update_teaching_cue(delta: float) -> void:
 	if not _teaching_cue.visible:
 		return
@@ -318,6 +398,7 @@ func _update_teaching_cue(delta: float) -> void:
 
 func _begin_collection_feedback() -> void:
 	hide_teaching_cue()
+	_cancel_expiry_warning()
 	_visual_root.visible = false
 	_collection_feedback_remaining = maxf(collection_feedback_duration, 0.01)
 	_collection_feedback.visible = true
@@ -349,6 +430,7 @@ func _resolve(was_collected: bool) -> void:
 	_resolved = true
 	set_deferred("monitoring", false)
 	set_physics_process(false)
+	_cancel_expiry_warning()
 	if was_collected:
 		_begin_collection_feedback()
 		collected.emit(self)

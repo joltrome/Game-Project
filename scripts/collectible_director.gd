@@ -62,6 +62,7 @@ const REJECTION_ROUND_ENDING := "round ending"
 const REJECTION_PLAYER_OVERLAP := "player overlap"
 const REJECTION_PLAYER_BUFFER := "player safety buffer"
 const REJECTION_SCATTER_EXHAUSTED := "scatter retries exhausted"
+const REJECTION_D3_PRIORITY := "D3 priority"
 const REJECTION_UNKNOWN := "unknown"
 
 @export_category("Offer Timing")
@@ -127,6 +128,20 @@ const REJECTION_UNKNOWN := "unknown"
 @export var scatter_position_quantum: float = 4.0
 @export var scatter_collinearity_area_threshold: float = 600.0
 
+@export_category("Independent Coin Stream")
+@export var independent_stream_enabled: bool = true
+@export var independent_spawn_interval_range := Vector2(0.75, 1.70)
+@export var maximum_active_independent_coins: int = 4
+@export_range(0.0, 1.0, 0.01) var independent_bonus_probability: float = 0.10
+@export var independent_bonus_delay_range := Vector2(0.10, 0.30)
+@export var maximum_bonus_placement_cycles: int = 4
+@export var independent_lifetime_range := Vector2(2.50, 4.00)
+@export var independent_expiry_warning_duration: float = 0.70
+@export var independent_minimum_separation: float = 120.0
+@export var independent_bonus_minimum_separation: float = 96.0
+@export var maximum_independent_placement_attempts: int = 96
+@export var d3_priority_clearance_time: float = 0.20
+
 @export_category("Route Validation")
 @export var trajectory_simulation_step: float = 1.0 / 120.0
 @export var recent_route_history_size: int = 2
@@ -170,6 +185,15 @@ var _delayed_candidate_skip_count: int = 0
 var _player_safety_encounter_counts: Dictionary = {}
 var _last_scatter_layout_attempts: int = 0
 var _scatter_exhausted_count: int = 0
+var _stream_rng_state: int = 401
+var _pending_bonus_spawn_time: float = INF
+var _pending_bonus: bool = false
+var _normal_stream_spawn_count: int = 0
+var _bonus_stream_spawn_count: int = 0
+var _stream_cap_skip_count: int = 0
+var _stream_priority_skip_count: int = 0
+var _stream_attempt_count: int = 0
+var _stream_lifetime_log := PackedFloat32Array()
 
 @onready var _conveyor: ConveyorPrototype = get_parent() as ConveyorPrototype
 @onready var _score_label: Label = _conveyor.get_node("HUD/ScoreGroup/CollectibleScore")
@@ -178,6 +202,7 @@ var _scatter_exhausted_count: int = 0
 func _ready() -> void:
 	_next_spawn_time = clampf(first_spawn_time, first_spawn_window_min, first_spawn_window_max)
 	_placement_rng_state = placement_seed
+	_stream_rng_state = maxi(posmod(placement_seed * 1664525 + 1013904223, 0x7fffffff), 1)
 	_update_score_label()
 	_conveyor.player_died.connect(_on_player_died)
 
@@ -189,6 +214,8 @@ func _process(delta: float) -> void:
 	_update_staggered_offers()
 	_refresh_active_offers()
 	_update_active_coin_speeds()
+	if independent_stream_enabled:
+		_update_pending_bonus_spawn()
 	if _conveyor.survival_time + 0.0001 < _next_spawn_time:
 		_enforce_scheduling_invariant()
 		return
@@ -265,6 +292,34 @@ func delayed_candidate_skip_count() -> int:
 
 func scatter_exhausted_count() -> int:
 	return _scatter_exhausted_count
+
+
+func normal_stream_spawn_count() -> int:
+	return _normal_stream_spawn_count
+
+
+func bonus_stream_spawn_count() -> int:
+	return _bonus_stream_spawn_count
+
+
+func stream_cap_skip_count() -> int:
+	return _stream_cap_skip_count
+
+
+func stream_priority_skip_count() -> int:
+	return _stream_priority_skip_count
+
+
+func stream_attempt_count() -> int:
+	return _stream_attempt_count
+
+
+func stream_lifetime_log() -> PackedFloat32Array:
+	return _stream_lifetime_log.duplicate()
+
+
+func pending_bonus_spawn_time() -> float:
+	return _pending_bonus_spawn_time
 
 
 func last_scatter_layout_attempts() -> int:
@@ -441,6 +496,8 @@ func normal_jump_collection_intervals(coin_center_y: float) -> Array[Vector2]:
 func stop_for_round_end() -> void:
 	_stopped = true
 	set_process(false)
+	_pending_bonus = false
+	_pending_bonus_spawn_time = INF
 	_reset_score_hud_pulse()
 	for offer in _active_offers:
 		offer.pending_candidates = []
@@ -450,6 +507,8 @@ func stop_for_round_end() -> void:
 
 
 func _try_spawn_natural_offer() -> bool:
+	if independent_stream_enabled:
+		return _try_spawn_natural_stream_coin()
 	var anti_streak_requested := _should_request_centred_ahead_offer()
 	var intended_count := 1 if _natural_offer_count == 0 else _select_scatter_count()
 	if anti_streak_requested:
@@ -473,6 +532,449 @@ func _try_spawn_natural_offer() -> bool:
 			return true
 	_next_spawn_time = _conveyor.survival_time + failed_spawn_retry_delay
 	return false
+
+
+func _try_spawn_natural_stream_coin() -> bool:
+	var teaching := _natural_offer_count == 0
+	var lifetime := (
+		collectible_lifetime
+		if teaching
+		else _stream_random_range(independent_lifetime_range)
+	)
+	var accepted := _try_spawn_independent_coin(
+		"teaching" if teaching else "normal",
+		lifetime,
+		teaching
+	)
+	_schedule_next_stream_attempt()
+	if not accepted:
+		return false
+	_natural_offer_count += 1
+	if teaching:
+		return true
+	_normal_stream_spawn_count += 1
+	if (
+		active_collectible_count() < maxi(maximum_active_independent_coins, 1)
+		and _stream_probability_roll(independent_bonus_probability)
+	):
+		_pending_bonus = true
+		_pending_bonus_spawn_time = (
+			_conveyor.survival_time
+			+ _stream_random_range(independent_bonus_delay_range)
+		)
+	return true
+
+
+func _update_pending_bonus_spawn() -> void:
+	if (
+		not _pending_bonus
+		or _conveyor.survival_time + 0.0001 < _pending_bonus_spawn_time
+	):
+		return
+	_pending_bonus = false
+	_pending_bonus_spawn_time = INF
+	if active_collectible_count() >= maxi(maximum_active_independent_coins, 1):
+		_stream_cap_skip_count += 1
+		_record_stream_rejection("bonus", REJECTION_ACTIVE_LIMIT, 0.0, 0)
+		return
+	for _cycle in range(maxi(maximum_bonus_placement_cycles, 1)):
+		var lifetime := _stream_random_range(independent_lifetime_range)
+		if _try_spawn_independent_coin("bonus", lifetime, false):
+			_bonus_stream_spawn_count += 1
+			return
+
+
+func _schedule_next_stream_attempt() -> void:
+	var interval := _stream_random_range(independent_spawn_interval_range)
+	_next_spawn_time = (
+		_conveyor.survival_time
+		+ interval
+	)
+	if not _offer_log.is_empty():
+		var last: Dictionary = _offer_log[-1]
+		if String(last.get("event", "")) == "attempt":
+			last.next_scheduled_time = _next_spawn_time
+			last.next_stream_interval = interval
+			_offer_log[-1] = last
+
+
+func _try_spawn_independent_coin(
+	spawn_kind: String,
+	lifetime: float,
+	force_ground: bool
+) -> bool:
+	_stream_attempt_count += 1
+	_refresh_active_offers()
+	if _conveyor.gameplay_is_stopped() or _stopped:
+		_record_stream_rejection(spawn_kind, REJECTION_ROUND_ENDING, lifetime, 0)
+		return false
+	if active_collectible_count() >= maxi(maximum_active_independent_coins, 1):
+		_stream_cap_skip_count += 1
+		_record_stream_rejection(spawn_kind, REJECTION_ACTIVE_LIMIT, lifetime, 0)
+		return false
+	var sampled := _sample_independent_candidate(lifetime, force_ground, spawn_kind)
+	var candidate_data: Dictionary = sampled.get("candidate", {})
+	var rejection_reason := String(sampled.get("reason", REJECTION_SCATTER_EXHAUSTED))
+	var placement_attempts := int(sampled.get("attempts", 0))
+	if candidate_data.is_empty():
+		if rejection_reason == REJECTION_D3_PRIORITY:
+			_stream_priority_skip_count += 1
+		_record_stream_rejection(
+			spawn_kind,
+			rejection_reason,
+			lifetime,
+			placement_attempts
+		)
+		return false
+	_offer_id_cursor += 1
+	var offer_id := _offer_id_cursor
+	var coin := _spawn_offer_coin(
+		candidate_data,
+		offer_id,
+		0,
+		lifetime,
+		independent_expiry_warning_duration
+	)
+	coin.set_meta("stream_spawn_kind", spawn_kind)
+	coin.set_meta("stream_spawn_time", _conveyor.survival_time)
+	coin.set_meta("stream_lifetime", lifetime)
+	var offer := {
+		"id": offer_id,
+		"template": SCATTER_TEMPLATE,
+		"phase": phase_at(_conveyor.survival_time),
+		"coins": [coin],
+		"pending_candidates": [],
+		"next_subspawn_time": INF,
+		"pending_retry_count": 0,
+		"total_count": 1,
+		"spawn_time": _conveyor.survival_time,
+		"collected": 0,
+		"expired": 0,
+		"log_index": _offer_log.size(),
+	}
+	_active_offers.append(offer)
+	if spawn_kind == "teaching" and first_offer_teaching_cue_enabled:
+		coin.show_teaching_cue(first_offer_teaching_cue_timeout)
+		_teaching_cue_shown = true
+	last_spawn_band = int(candidate_data.band)
+	spawn_count += 1
+	_stream_lifetime_log.append(lifetime)
+	if first_actual_spawn_time < 0.0:
+		first_actual_spawn_time = _conveyor.survival_time
+	if _last_offer_spawn_time >= 0.0:
+		_longest_offer_gap = maxf(
+			_longest_offer_gap,
+			_conveyor.survival_time - _last_offer_spawn_time
+		)
+	_last_offer_spawn_time = _conveyor.survival_time
+	var candidates: Array[Dictionary] = [candidate_data]
+	var side := classify_offer_side_for_test(
+		candidates,
+		_conveyor.player.global_position.x
+	)
+	_update_offer_side_history(side)
+	_offer_log.append({
+		"event": "attempt",
+		"time": _conveyor.survival_time,
+		"phase": phase_at(_conveyor.survival_time),
+		"template": SCATTER_TEMPLATE,
+		"template_name": "independent coin",
+		"intended_count": 1,
+		"ground_count": 1 if int(candidate_data.band) == PlacementBand.GROUND else 0,
+		"air_count": 1 if int(candidate_data.band) == PlacementBand.LOW_AIR else 0,
+		"intended_ground_count": 1 if int(candidate_data.band) == PlacementBand.GROUND else 0,
+		"intended_low_air_count": 1 if int(candidate_data.band) == PlacementBand.LOW_AIR else 0,
+		"accepted": true,
+		"rejection_reason": "",
+		"spawn_timestamp": _conveyor.survival_time,
+		"resolve_timestamp": -1.0,
+		"spawned_offer_id": offer_id,
+		"resolved_offer_id": -1,
+		"collected": 0,
+		"expired": 0,
+		"next_scheduled_time": _next_spawn_time,
+		"active_offer_count": _active_offers.size(),
+		"active_coin_count": active_collectible_count(),
+		"active_offer_state": _active_offer_state(),
+		"natural": true,
+		"player_x": _conveyor.player.global_position.x,
+		"offer_primary_x": candidate_data.position.x,
+		"offer_side": side,
+		"offer_side_name": offer_side_name(side),
+		"behind_streak_before": maxi(_consecutive_behind_offers - (1 if side == OfferSide.BEHIND else 0), 0),
+		"behind_streak_after": _consecutive_behind_offers,
+		"anti_streak_requested": false,
+		"route_archetype": "INDEPENDENT",
+		"topology": "INDEPENDENT_STREAM",
+		"pair_mode": false,
+		"minimum_pairwise_separation": INF,
+		"candidate_positions": [candidate_data.position],
+		"scatter_layout_attempts": placement_attempts,
+		"placement_attempts": placement_attempts,
+		"alternate_placement_selected": false,
+		"placement_shift_x": 0.0,
+		"player_safety_rejections": 0,
+		"player_overlap_rejections": 0,
+		"player_buffer_rejections": 0,
+		"spawn_kind": spawn_kind,
+		"coin_lifetime": lifetime,
+		"expiry_warning_duration": independent_expiry_warning_duration,
+	})
+	offer_spawned.emit(offer_id, SCATTER_TEMPLATE, 1)
+	return true
+
+
+func _sample_independent_candidate(
+	lifetime: float,
+	force_ground: bool,
+	spawn_kind: String
+) -> Dictionary:
+	var anti_streak_requested := (
+		not force_ground and _should_request_centred_ahead_offer()
+	)
+	var side_preferences: Array[int] = []
+	if anti_streak_requested:
+		side_preferences.assign(_scatter_correction_side_preferences())
+	else:
+		side_preferences.append(-1)
+	var last_reason := REJECTION_SCATTER_EXHAUSTED
+	var total_attempts := 0
+	for side_preference in side_preferences:
+		var bounds := _scatter_x_bounds(int(side_preference), 1)
+		# Independent TTL belongs to the coin, so use the already validated
+		# centred/ahead extent when needed rather than silently truncating expiry
+		# at the left edge.
+		bounds.y = _conveyor.control_band_right - collectible_size.x * 0.5
+		bounds.x = maxf(
+			bounds.x,
+			_conveyor.conveyor_support_left_x
+			+ collectible_size.x * 0.5
+			+ _conveyor.conveyor_speed * maxf(lifetime, 0.0)
+		)
+		if bounds.y <= bounds.x:
+			continue
+		for _attempt in range(maxi(maximum_independent_placement_attempts, 1)):
+			total_attempts += 1
+			var candidate := _sample_scatter_candidate(
+				bounds,
+				PlacementBand.GROUND if force_ground else -1
+			)
+			candidate.route_branch = "independent"
+			candidate.lifetime = lifetime
+			candidate.allow_right_edge = true
+			if int(side_preference) in [OfferSide.BEHIND, OfferSide.CENTRED, OfferSide.AHEAD]:
+				candidate = _translate_candidates_for_side([candidate], int(side_preference))[0]
+			if not _scatter_side_matches([candidate], int(side_preference)):
+				continue
+			var player_reason := _player_spawn_rejection_reason(candidate.position)
+			if not player_reason.is_empty():
+				last_reason = player_reason
+				continue
+			var reason := _candidate_rejection_reason(
+				candidate.position,
+				candidate.band,
+				[],
+				true,
+				bool(candidate.allow_right_edge)
+			)
+			if not reason.is_empty():
+				last_reason = reason
+				continue
+			if not _independent_separation_is_valid(candidate.position, spawn_kind):
+				last_reason = REJECTION_SIBLING
+				continue
+			if not _candidate_preserves_d3_priority(candidate.position, lifetime):
+				last_reason = REJECTION_D3_PRIORITY
+				continue
+			return {
+				"candidate": candidate,
+				"reason": "",
+				"attempts": total_attempts,
+			}
+	return {"candidate": {}, "reason": last_reason, "attempts": total_attempts}
+
+
+func _independent_separation_is_valid(candidate: Vector2, spawn_kind: String) -> bool:
+	var configured_separation := (
+		independent_bonus_minimum_separation
+		if spawn_kind == "bonus"
+		else independent_minimum_separation
+	)
+	for existing in active_collectibles():
+		if (
+			candidate.distance_to(existing.global_position) + 0.001
+			< maxf(configured_separation, collectible_size.x + 1.0)
+		):
+			return false
+	return true
+
+
+func _candidate_preserves_d3_priority(candidate: Vector2, lifetime: float) -> bool:
+	var d3 := _conveyor.get_node_or_null("BackgroundDropDirector") as MotionBackgroundDropDirector
+	if d3 == null or d3.released_event_count() >= d3.maximum_events_per_round:
+		return true
+	# Once D3 has selected a lane, optional coins may continue only when their
+	# complete moving lifetime remains clear of that committed lane. During the
+	# released state the existing falling-product check has already validated the
+	# candidate. This avoids suppressing the coin stream for an entire D3 cycle
+	# without ever allowing a coin to displace the authored hazard event.
+	if d3.state == MotionBackgroundDropDirector.VisualState.SELECTED:
+		return not _projected_coin_blocks_d3_lane(
+			{
+				"x": candidate.x,
+				"remaining": _visible_lifetime_for(candidate.x, lifetime),
+				"size": collectible_size,
+			},
+			d3.selected_lane_x,
+			0.0,
+			d3.warning_time_remaining + d3.target_fall_duration
+		)
+	if d3.state == MotionBackgroundDropDirector.VisualState.RELEASED:
+		return true
+	if d3.state == MotionBackgroundDropDirector.VisualState.STOPPED:
+		return true
+	if not is_finite(d3.next_reservation_time):
+		return true
+	var until_reservation := (
+		0.0
+		if d3.reservation_pending
+		else maxf(d3.next_reservation_time - _conveyor.survival_time, 0.0)
+	)
+	var projected_coins: Array[Dictionary] = []
+	for coin in active_collectibles():
+		if (
+			coin.time_remaining
+			<= maxf(until_reservation - d3_priority_clearance_time, 0.0) + 0.0001
+		):
+			continue
+		projected_coins.append({
+			"x": coin.global_position.x,
+			"remaining": coin.time_remaining,
+			"size": coin.collectible_size,
+		})
+	var visible_lifetime := _visible_lifetime_for(candidate.x, lifetime)
+	if (
+		visible_lifetime
+		> maxf(until_reservation - d3_priority_clearance_time, 0.0) + 0.0001
+	):
+		projected_coins.append({
+			"x": candidate.x,
+			"remaining": visible_lifetime,
+			"size": collectible_size,
+		})
+	if projected_coins.is_empty():
+		return true
+	var excluded_lane := -1
+	var prior_lanes := d3.selected_lane_indices()
+	if d3.candidate_lane_x.size() > 1 and not prior_lanes.is_empty():
+		excluded_lane = int(prior_lanes[-1])
+	for lane_index in range(d3.candidate_lane_x.size()):
+		if lane_index == excluded_lane:
+			continue
+		var blocked := false
+		for coin_data in projected_coins:
+			if _projected_coin_blocks_d3_lane(
+				coin_data,
+				float(d3.candidate_lane_x[lane_index]),
+				until_reservation,
+				d3.warning_duration + d3.target_fall_duration
+			):
+				blocked = true
+				break
+		if not blocked:
+			return true
+	return false
+
+
+func _projected_coin_blocks_d3_lane(
+	coin_data: Dictionary,
+	lane_x: float,
+	until_reservation: float,
+	impact_horizon: float
+) -> bool:
+	if (
+		float(coin_data.remaining)
+		<= maxf(until_reservation - d3_priority_clearance_time, 0.0) + 0.0001
+	):
+		return false
+	var speed := _conveyor.conveyor_speed_at(_conveyor.survival_time)
+	var x_at_reservation := float(coin_data.x) - speed * until_reservation
+	var clearance := (
+		_conveyor.product_size.x + (coin_data.size as Vector2).x
+	) * 0.5
+	var left_at_impact := x_at_reservation - speed * maxf(impact_horizon, 0.0)
+	return (
+		lane_x >= left_at_impact - clearance
+		and lane_x <= x_at_reservation + clearance
+	)
+
+
+func _visible_lifetime_for(candidate_x: float, requested_lifetime: float) -> float:
+	if _conveyor.conveyor_speed <= 0.0:
+		return maxf(requested_lifetime, 0.0)
+	var time_to_left_edge := (
+		candidate_x
+		- collectible_size.x * 0.5
+		- _conveyor.conveyor_support_left_x
+	) / _conveyor.conveyor_speed
+	return minf(maxf(requested_lifetime, 0.0), maxf(time_to_left_edge, 0.0))
+
+
+func _stream_random_range(configured: Vector2) -> float:
+	var minimum := minf(configured.x, configured.y)
+	var maximum := maxf(configured.x, configured.y)
+	_stream_rng_state = _next_rng_state(_stream_rng_state)
+	var unit := float(_stream_rng_state) / float(0x7fffffff)
+	return lerpf(minimum, maximum, unit)
+
+
+func _stream_probability_roll(probability: float) -> bool:
+	var clamped := clampf(probability, 0.0, 1.0)
+	if clamped <= 0.0:
+		return false
+	if clamped >= 1.0:
+		return true
+	_stream_rng_state = _next_rng_state(_stream_rng_state)
+	return (
+		float(_stream_rng_state) / float(0x7fffffff)
+		< clamped
+	)
+
+
+func _record_stream_rejection(
+	spawn_kind: String,
+	reason: String,
+	lifetime: float,
+	placement_attempts: int
+) -> void:
+	var known_reason := reason if reason in known_rejection_reasons() else REJECTION_UNKNOWN
+	_offer_log.append({
+		"event": "attempt",
+		"time": _conveyor.survival_time,
+		"phase": phase_at(_conveyor.survival_time),
+		"template": SCATTER_TEMPLATE,
+		"template_name": "independent coin",
+		"intended_count": 1,
+		"accepted": false,
+		"rejection_reason": known_reason,
+		"spawn_timestamp": -1.0,
+		"resolve_timestamp": -1.0,
+		"spawned_offer_id": -1,
+		"resolved_offer_id": -1,
+		"collected": 0,
+		"expired": 0,
+		"next_scheduled_time": _next_spawn_time,
+		"active_offer_count": _active_offers.size(),
+		"active_coin_count": active_collectible_count(),
+		"natural": true,
+		"topology": "INDEPENDENT_STREAM",
+		"pair_mode": false,
+		"candidate_positions": [],
+		"placement_attempts": placement_attempts,
+		"spawn_kind": spawn_kind,
+		"coin_lifetime": lifetime,
+	})
+	_rejection_counts[known_reason] = int(_rejection_counts.get(known_reason, 0)) + 1
 
 
 func _try_spawn_template(
@@ -665,17 +1167,25 @@ func _try_spawn_template(
 func _spawn_offer_coin(
 	candidate_data: Dictionary,
 	offer_id: int,
-	coin_index: int
+	coin_index: int,
+	lifetime_override: float = -1.0,
+	expiry_warning_override: float = -1.0
 ) -> ConveyorCollectible:
 	var coin := COLLECTIBLE_SCENE.instantiate() as ConveyorCollectible
 	add_child(coin)
 	coin.global_position = candidate_data.position
+	var requested_lifetime := (
+		collectible_lifetime
+		if lifetime_override < 0.0
+		else lifetime_override
+	)
 	coin.configure(
-		_candidate_visible_lifetime(candidate_data.position.x),
+		_visible_lifetime_for(candidate_data.position.x, requested_lifetime),
 		_conveyor.conveyor_speed,
 		collectible_size,
 		candidate_data.band,
-		offer_id * 101 + coin_index * 37 + placement_seed
+		offer_id * 101 + coin_index * 37 + placement_seed,
+		expiry_warning_override
 	)
 	coin.set_meta("offer_id", offer_id)
 	coin.collected.connect(_on_collectible_collected.bind(offer_id))
@@ -685,14 +1195,7 @@ func _spawn_offer_coin(
 
 
 func _candidate_visible_lifetime(candidate_x: float) -> float:
-	if _conveyor.conveyor_speed <= 0.0:
-		return collectible_lifetime
-	var time_to_left_edge := (
-		candidate_x
-		- collectible_size.x * 0.5
-		- _conveyor.conveyor_support_left_x
-	) / _conveyor.conveyor_speed
-	return minf(collectible_lifetime, maxf(time_to_left_edge, 0.0))
+	return _visible_lifetime_for(candidate_x, collectible_lifetime)
 
 
 func _candidate_available_time(candidate_x: float) -> float:
@@ -945,6 +1448,7 @@ func known_rejection_reasons() -> PackedStringArray:
 		REJECTION_PLAYER_OVERLAP,
 		REJECTION_PLAYER_BUFFER,
 		REJECTION_SCATTER_EXHAUSTED,
+		REJECTION_D3_PRIORITY,
 		REJECTION_UNKNOWN,
 	])
 
