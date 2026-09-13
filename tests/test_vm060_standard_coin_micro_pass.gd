@@ -240,6 +240,9 @@ func _test_natural_economy_and_instrumentation() -> void:
 		conveyor.left_failure_enabled = false
 		var director := conveyor.get_node("CollectibleDirector") as CollectibleDirector
 		director.placement_seed = seed
+		# This comparison documents the accepted pre-VM-0.6.5 scatter economy.
+		# Pin it to the preserved compatibility scheduler explicitly.
+		director.independent_stream_enabled = false
 		root.add_child(conveyor)
 		await physics_frame
 		conveyor.player.position = Vector2(640.0, 420.0)
@@ -309,6 +312,7 @@ func _test_natural_economy_and_instrumentation() -> void:
 		safety_conveyor.left_failure_enabled = false
 		var safety_director := safety_conveyor.get_node("CollectibleDirector") as CollectibleDirector
 		safety_director.placement_seed = seed
+		safety_director.independent_stream_enabled = false
 		root.add_child(safety_conveyor)
 		await physics_frame
 		safety_conveyor.set_physics_process(false)

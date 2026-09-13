@@ -29,6 +29,9 @@ func _run() -> void:
 		conveyor.left_failure_enabled = false
 		var director := conveyor.get_node("CollectibleDirector") as CollectibleDirector
 		director.placement_seed = seed
+		# Historical VM-0.4.2/VM-0.6.4 lifecycle coverage exercises the
+		# preserved batch scheduler, not VM-0.6.5's replacement natural stream.
+		director.independent_stream_enabled = false
 		root.add_child(conveyor)
 		await physics_frame
 		conveyor.player.position = Vector2(640.0, 420.0)

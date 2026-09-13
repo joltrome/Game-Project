@@ -318,6 +318,9 @@ func _make_scatter_fixture(seed: int) -> ConveyorPrototype:
 	conveyor.left_failure_enabled = false
 	var director := conveyor.get_node("CollectibleDirector") as CollectibleDirector
 	director.placement_seed = seed
+	# VM-0.6.5 replaces only the natural scheduler. Keep this historical VM-0.6.4
+	# regression pinned to the preserved constrained-scatter compatibility path.
+	director.independent_stream_enabled = false
 	root.add_child(conveyor)
 	await physics_frame
 	conveyor.set_physics_process(false)

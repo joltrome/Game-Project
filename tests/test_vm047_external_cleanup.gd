@@ -174,6 +174,9 @@ func _make_natural_fixture(
 	conveyor.left_failure_enabled = false
 	var director := conveyor.get_node("CollectibleDirector") as CollectibleDirector
 	director.placement_seed = seed
+	# Preserve this VM-0.4.7 audit as a regression of its original authored
+	# side-distribution system after VM-0.6.5 replaces natural scheduling.
+	director.independent_stream_enabled = false
 	director.side_distribution_correction_enabled = correction_enabled
 	root.add_child(conveyor)
 	await physics_frame
