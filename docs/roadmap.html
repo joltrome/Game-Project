@@ -1689,6 +1689,30 @@
     text: 'After the unchanged teaching coin at approximately 1.75 seconds, natural scheduling now selects one/two/three requested coins at 55/35/10 percent weights and samples a new 1.10–2.10-second event interval. The initially proposed 1.20–2.30 seconds produced 43–47 coins, so only interval timing was adjusted to retain the approved size distribution and 48–54 opportunity target. Each delivered coin remains an independent entity with a 2.50–4.00-second requested lifetime; effective lifetime is capped by simulated time to the left exit, never below 1.65 seconds, and its existing final 0.70-second warning follows that effective lifetime. Single-event sides use 35/20/45 percent behind/centred/ahead weights; multi-events use competing side plans. Active/within-event separation is 110/96 px and the cap is five without eviction. Seeds 401/1701/4202 produced 35/36/35 events and 49/53/51 coins, with aggregate single-event sides 33.3/19.3/47.4 percent and average active counts 2.270/2.563/2.414. One cap event truncated one coin; placement failures were 3/5/1. D3 retained six warnings at 8.50, 17.04, 24.61, 33.40, 40.60 and 48.36 seconds with an 8.792-second maximum gap. Focused tests passed, the single full suite passed 39/39 scripts, Standard launched for 180 headless frames, and the single-threaded Web build/ZIP loaded through localhost with an empty browser warning/error console. Whether this rhythm improves choice quality remains unverified and requires founder review; see docs/vm066-variable-coin-events.md.'
   };
 
+  const vm067BallisticCoinEvidence = {
+    id: 'evidence-vm-0.6.7-ballistic-coins',
+    type: 'Evidence', date: '2026-09-14', source: 'Founder VM-0.6.6 manual review and proposal',
+    text: 'The founder reports that VM-0.6.6 variable Refund Coin events now feel good and proposed that visibly moving and bouncing coins may create a stronger scoring verb while using more of the quiet vertical playfield. This is evidence about the accepted control and the origin of the proposal, not evidence that ballistic coins are better.'
+  };
+
+  const vm067BallisticCoinHypothesis = {
+    id: 'hypothesis-vm-0.6.7-ballistic-coins',
+    type: 'Hypothesis', date: '2026-09-14', source: 'Startup Lab VM-0.6.7 experiment brief',
+    text: 'Ballistic Refund Coins that can be predicted, intercepted in the air, recovered after two controlled bounces, and collected briefly on the conveyor will create more prediction, interception and recovery decisions than static-spawn coins.'
+  };
+
+  const vm067BallisticCoinDecision = {
+    id: 'decision-vm-0.6.7-ballistic-coins',
+    type: 'Decision', date: '2026-09-14', source: 'Startup Lab VM-0.6.7 experiment brief',
+    text: 'Preserve VM-0.6.6 at commit 7605554 as the independently runnable control and isolate VM-0.6.7 on a new branch/build. Make no adoption decision until founder and second-player A/B testing compares the two. Hazard-Earned Refund Coins remain postponed and unimplemented.'
+  };
+
+  const vm067BallisticCoinResult = {
+    id: 'result-vm-0.6.7-ballistic-coins',
+    type: 'Result', date: '2026-09-14', source: 'VM-0.6.7 implementation, deterministic simulation and local technical QA',
+    text: 'VM-0.6.7 preserves the control event-attempt interval, 55/35/10 requested event weights, five-coin cap, teaching timing and one-point score, but launches coins through deterministic SHALLOW/MEDIUM/HIGH arcs lasting 0.72/0.90/1.10 seconds. Coins remain collectible throughout flight and two controlled 0.38/0.16 restitution bounces; first conveyor contact starts an independent 2.0–3.0-second lifetime and the unchanged final 0.70-second warning. Seeds 401/1701/4202 selected 35/34/36 events and delivered 21/20/24 coins; all six D3 warnings remained at 8.50, 17.04, 24.61, 33.40, 40.60 and 48.36 seconds with an 8.792-second maximum gap and zero coin-caused delay. The large delivery reduction versus the 49/53/51-coin control is an explicit A/B confound caused by conservative D3, can and sibling-trajectory rejection. All 40 test scripts passed; Standard and both frozen prototype scenes launched headlessly; the single-threaded Web build/ZIP loaded in local Chromium with no console warnings/errors. Readability, skill, choice quality and whether reduced abundance is acceptable remain unverified. See docs/vm067-ballistic-coins.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1834,7 +1858,11 @@
     vm066VariableCoinEvidence,
     vm066VariableCoinDecision,
     vm066VariableCoinHypothesis,
-    vm066VariableCoinResult
+    vm066VariableCoinResult,
+    vm067BallisticCoinEvidence,
+    vm067BallisticCoinHypothesis,
+    vm067BallisticCoinDecision,
+    vm067BallisticCoinResult
   ];
 
   const defaultFindings = [
