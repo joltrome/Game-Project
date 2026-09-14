@@ -34,6 +34,12 @@ enum OfferSide {
 	AHEAD,
 }
 
+enum BallisticArchetype {
+	SHALLOW,
+	MEDIUM,
+	HIGH,
+}
+
 enum RouteArchetype {
 	LINEAR,
 	STAIR_UP,
@@ -151,6 +157,20 @@ const REJECTION_UNKNOWN := "unknown"
 @export var coin_event_minimum_separation: float = 110.0
 @export var coin_event_sibling_minimum_separation: float = 96.0
 
+@export_category("Ballistic Coin Prototype")
+@export var ballistic_coin_events_enabled: bool = false
+@export var ballistic_launch_origins := PackedVector2Array([
+	Vector2(840.0, 300.0),
+	Vector2(720.0, 260.0),
+	Vector2(620.0, 220.0),
+])
+@export var ballistic_flight_durations := PackedFloat32Array([0.72, 0.90, 1.10])
+@export var ballistic_gravity: float = 1250.0
+@export var ballistic_bounce_restitutions := Vector2(0.38, 0.16)
+@export var ballistic_post_contact_lifetime_range := Vector2(2.0, 3.0)
+@export var ballistic_minimum_post_contact_visible_lifetime: float = 2.0
+@export var ballistic_minimum_trajectory_separation: float = 44.0
+
 @export_category("Route Validation")
 @export var trajectory_simulation_step: float = 1.0 / 120.0
 @export var recent_route_history_size: int = 2
@@ -212,6 +232,17 @@ var _coin_event_log: Array[Dictionary] = []
 var _last_stream_spawn_position := Vector2.ZERO
 var _last_stream_effective_lifetime: float = 0.0
 var _last_stream_spawn_side: int = OfferSide.CENTRED
+var _last_ballistic_plan: Dictionary = {}
+var _ballistic_archetype_counts := PackedInt32Array([0, 0, 0])
+var _ballistic_trajectory_failure_count: int = 0
+var _ballistic_first_contact_count: int = 0
+var _ballistic_settled_count: int = 0
+var _ballistic_flight_log := PackedFloat32Array()
+var _ballistic_post_contact_lifetime_log := PackedFloat32Array()
+var _ballistic_launch_side_counts := PackedInt32Array([0, 0, 0])
+var _ballistic_landing_side_counts := PackedInt32Array([0, 0, 0])
+var _ballistic_settle_side_counts := PackedInt32Array([0, 0, 0])
+var _ballistic_player_crossing_count: int = 0
 
 @onready var _conveyor: ConveyorPrototype = get_parent() as ConveyorPrototype
 @onready var _score_label: Label = _conveyor.get_node("HUD/ScoreGroup/CollectibleScore")
@@ -232,6 +263,7 @@ func _process(delta: float) -> void:
 	_update_staggered_offers()
 	_refresh_active_offers()
 	_update_active_coin_speeds()
+	_update_ballistic_player_crossings()
 	if independent_stream_enabled and not variable_coin_events_enabled:
 		_update_pending_bonus_spawn()
 	if _conveyor.survival_time + 0.0001 < _next_spawn_time:
@@ -362,6 +394,46 @@ func coin_event_placement_failure_count() -> int:
 
 func coin_event_log() -> Array[Dictionary]:
 	return _coin_event_log.duplicate(true)
+
+
+func ballistic_archetype_counts() -> PackedInt32Array:
+	return _ballistic_archetype_counts.duplicate()
+
+
+func ballistic_trajectory_failure_count() -> int:
+	return _ballistic_trajectory_failure_count
+
+
+func ballistic_first_contact_count() -> int:
+	return _ballistic_first_contact_count
+
+
+func ballistic_settled_count() -> int:
+	return _ballistic_settled_count
+
+
+func ballistic_flight_log() -> PackedFloat32Array:
+	return _ballistic_flight_log.duplicate()
+
+
+func ballistic_post_contact_lifetime_log() -> PackedFloat32Array:
+	return _ballistic_post_contact_lifetime_log.duplicate()
+
+
+func ballistic_landing_side_counts() -> PackedInt32Array:
+	return _ballistic_landing_side_counts.duplicate()
+
+
+func ballistic_launch_side_counts() -> PackedInt32Array:
+	return _ballistic_launch_side_counts.duplicate()
+
+
+func ballistic_settle_side_counts() -> PackedInt32Array:
+	return _ballistic_settle_side_counts.duplicate()
+
+
+func ballistic_player_crossing_count() -> int:
+	return _ballistic_player_crossing_count
 
 
 func last_scatter_layout_attempts() -> int:
@@ -584,7 +656,15 @@ func _try_spawn_variable_coin_event() -> bool:
 		var teaching_accepted := _try_spawn_independent_coin(
 			"teaching",
 			collectible_lifetime,
-			true
+			true,
+			-1,
+			[],
+			-1,
+			1,
+			0,
+			[],
+			BallisticArchetype.MEDIUM if ballistic_coin_events_enabled else -1,
+			[]
 		)
 		var teaching_interval := _schedule_next_coin_event_attempt()
 		if teaching_accepted:
@@ -616,10 +696,20 @@ func _try_spawn_variable_coin_event() -> bool:
 	var requested_lifetimes := PackedFloat32Array()
 	var effective_lifetimes := PackedFloat32Array()
 	var accepted_sides: Array[int] = []
+	var archetype_plan: Array[int] = []
+	if ballistic_coin_events_enabled:
+		archetype_plan = _ballistic_archetype_plan(requested_count)
+	var accepted_trajectories: Array[Dictionary] = []
+	var accepted_archetypes := PackedInt32Array()
+	var flight_durations := PackedFloat32Array()
 	var placement_failures := 0
 	var priority_skips_before := _stream_priority_skip_count
 	for coin_index in range(target_count):
-		var requested_lifetime := _stream_random_range(independent_lifetime_range)
+		var requested_lifetime := _stream_random_range(
+			ballistic_post_contact_lifetime_range
+			if ballistic_coin_events_enabled
+			else independent_lifetime_range
+		)
 		requested_lifetimes.append(requested_lifetime)
 		var accepted := _try_spawn_independent_coin(
 			"event",
@@ -630,7 +720,9 @@ func _try_spawn_variable_coin_event() -> bool:
 			event_id,
 			requested_count,
 			coin_index,
-			accepted_sides
+			accepted_sides,
+			int(archetype_plan[coin_index]) if ballistic_coin_events_enabled else -1,
+			accepted_trajectories
 		)
 		if not accepted:
 			placement_failures += 1
@@ -639,6 +731,10 @@ func _try_spawn_variable_coin_event() -> bool:
 		accepted_positions.append(_last_stream_spawn_position)
 		effective_lifetimes.append(_last_stream_effective_lifetime)
 		accepted_sides.append(_last_stream_spawn_side)
+		if ballistic_coin_events_enabled and not _last_ballistic_plan.is_empty():
+			accepted_trajectories.append(_last_ballistic_plan.duplicate(true))
+			accepted_archetypes.append(int(_last_ballistic_plan.archetype))
+			flight_durations.append(float(_last_ballistic_plan.flight_duration))
 		_normal_stream_spawn_count += 1
 
 	var next_interval := _schedule_next_coin_event_attempt()
@@ -655,6 +751,9 @@ func _try_spawn_variable_coin_event() -> bool:
 		"spawned_sides": accepted_sides,
 		"requested_lifetimes": requested_lifetimes,
 		"effective_lifetimes": effective_lifetimes,
+		"ballistic": ballistic_coin_events_enabled,
+		"trajectory_archetypes": accepted_archetypes,
+		"flight_durations": flight_durations,
 		"placement_failures": placement_failures,
 		"d3_priority_skips": _stream_priority_skip_count - priority_skips_before,
 		"next_event_interval": next_interval,
@@ -710,6 +809,32 @@ func _copy_side_plan(source: Array) -> Array[int]:
 	for side in source:
 		result.append(int(side))
 	return result
+
+
+func _ballistic_archetype_plan(requested_count: int) -> Array[int]:
+	if requested_count <= 1:
+		return [_stream_random_index(3)]
+	if requested_count == 2:
+		var pair_plans := [
+			[BallisticArchetype.SHALLOW, BallisticArchetype.HIGH],
+			[BallisticArchetype.SHALLOW, BallisticArchetype.MEDIUM],
+			[BallisticArchetype.MEDIUM, BallisticArchetype.HIGH],
+		]
+		return _copy_side_plan(pair_plans[_stream_random_index(pair_plans.size())])
+	return [
+		BallisticArchetype.SHALLOW,
+		BallisticArchetype.MEDIUM,
+		BallisticArchetype.HIGH,
+	]
+
+
+func ballistic_archetype_name(archetype: int) -> String:
+	match archetype:
+		BallisticArchetype.SHALLOW:
+			return "SHALLOW"
+		BallisticArchetype.HIGH:
+			return "HIGH"
+	return "MEDIUM"
 
 
 func _event_side_fallback_preferences(
@@ -822,11 +947,14 @@ func _try_spawn_independent_coin(
 	event_id: int = -1,
 	event_requested_count: int = 1,
 	event_coin_index: int = 0,
-	event_sibling_sides: Array[int] = []
+	event_sibling_sides: Array[int] = [],
+	ballistic_archetype: int = -1,
+	event_sibling_trajectories: Array[Dictionary] = []
 ) -> bool:
 	_last_stream_spawn_position = Vector2.ZERO
 	_last_stream_effective_lifetime = 0.0
 	_last_stream_spawn_side = OfferSide.CENTRED
+	_last_ballistic_plan = {}
 	_stream_attempt_count += 1
 	_refresh_active_offers()
 	if _conveyor.gameplay_is_stopped() or _stopped:
@@ -842,7 +970,9 @@ func _try_spawn_independent_coin(
 		spawn_kind,
 		preferred_side,
 		event_sibling_positions,
-		event_sibling_sides
+		event_sibling_sides,
+		ballistic_archetype,
+		event_sibling_trajectories
 	)
 	var candidate_data: Dictionary = sampled.get("candidate", {})
 	var rejection_reason := String(sampled.get("reason", REJECTION_SCATTER_EXHAUSTED))
@@ -858,6 +988,7 @@ func _try_spawn_independent_coin(
 		)
 		return false
 	var effective_lifetime := float(sampled.get("effective_lifetime", lifetime))
+	var ballistic_plan: Dictionary = sampled.get("ballistic_plan", {})
 	_offer_id_cursor += 1
 	var offer_id := _offer_id_cursor
 	var coin := _spawn_offer_coin(
@@ -866,7 +997,8 @@ func _try_spawn_independent_coin(
 		0,
 		lifetime,
 		independent_expiry_warning_duration,
-		effective_lifetime
+		effective_lifetime,
+		ballistic_plan
 	)
 	coin.set_meta("stream_spawn_kind", spawn_kind)
 	coin.set_meta("stream_spawn_time", _conveyor.survival_time)
@@ -874,6 +1006,28 @@ func _try_spawn_independent_coin(
 	coin.set_meta("stream_effective_lifetime", effective_lifetime)
 	coin.set_meta("coin_event_id", event_id)
 	coin.set_meta("coin_event_index", event_coin_index)
+	if not ballistic_plan.is_empty():
+		coin.set_meta("ballistic_archetype", int(ballistic_plan.archetype))
+		coin.set_meta("ballistic_archetype_name", ballistic_archetype_name(int(ballistic_plan.archetype)))
+		coin.set_meta("ballistic_flight_duration", float(ballistic_plan.flight_duration))
+		var launch_side := classify_offer_side_for_test(
+			[{"position": ballistic_plan.launch_position}],
+			_conveyor.player.global_position.x
+		)
+		coin.set_meta("ballistic_launch_side", launch_side)
+		coin.set_meta(
+			"ballistic_previous_player_delta_x",
+			(ballistic_plan.launch_position as Vector2).x
+			- _conveyor.player.global_position.x
+		)
+		coin.set_meta("ballistic_crossed_player", false)
+		_ballistic_launch_side_counts[launch_side] += 1
+		_last_ballistic_plan = ballistic_plan.duplicate(true)
+		_ballistic_archetype_counts[int(ballistic_plan.archetype)] += 1
+		_ballistic_flight_log.append(float(ballistic_plan.flight_duration))
+		_ballistic_post_contact_lifetime_log.append(effective_lifetime)
+		coin.first_conveyor_contact.connect(_on_ballistic_first_contact)
+		coin.settled.connect(_on_ballistic_settled)
 	var offer := {
 		"id": offer_id,
 		"template": SCATTER_TEMPLATE,
@@ -965,6 +1119,12 @@ func _try_spawn_independent_coin(
 		"coin_event_index": event_coin_index,
 		"preferred_side": preferred_side,
 		"preferred_side_name": offer_side_name(preferred_side),
+		"ballistic": not ballistic_plan.is_empty(),
+		"ballistic_archetype": int(ballistic_plan.get("archetype", -1)),
+		"ballistic_archetype_name": ballistic_archetype_name(int(ballistic_plan.get("archetype", BallisticArchetype.MEDIUM))) if not ballistic_plan.is_empty() else "",
+		"flight_duration": float(ballistic_plan.get("flight_duration", 0.0)),
+		"launch_position": ballistic_plan.get("launch_position", Vector2.ZERO),
+		"landing_position": ballistic_plan.get("landing_position", candidate_data.position),
 	})
 	offer_spawned.emit(offer_id, SCATTER_TEMPLATE, 1)
 	return true
@@ -976,9 +1136,20 @@ func _sample_independent_candidate(
 	spawn_kind: String,
 	preferred_side: int = -1,
 	event_sibling_positions: Array[Vector2] = [],
-	event_sibling_sides: Array[int] = []
+	event_sibling_sides: Array[int] = [],
+	ballistic_archetype: int = -1,
+	event_sibling_trajectories: Array[Dictionary] = []
 ) -> Dictionary:
 	var variable_event := variable_coin_events_enabled and spawn_kind == "event"
+	var ballistic_event := (
+		ballistic_coin_events_enabled
+		and ballistic_archetype in [
+			BallisticArchetype.SHALLOW,
+			BallisticArchetype.MEDIUM,
+			BallisticArchetype.HIGH,
+		]
+		and spawn_kind in ["event", "teaching"]
+	)
 	var anti_streak_requested := (
 		not force_ground and _should_request_centred_ahead_offer()
 	)
@@ -996,7 +1167,15 @@ func _sample_independent_candidate(
 	for side_preference in side_preferences:
 		var bounds := _scatter_x_bounds(int(side_preference), 1)
 		bounds.y = _conveyor.control_band_right - collectible_size.x * 0.5
-		if variable_event:
+		if ballistic_event:
+			bounds.x = maxf(
+				bounds.x,
+				_minimum_ballistic_landing_x(
+					_ballistic_flight_duration(ballistic_archetype)
+				)
+			)
+			bounds = _restrict_event_bounds_to_side(bounds, int(side_preference))
+		elif variable_event:
 			bounds.x = maxf(bounds.x, _minimum_event_spawn_x())
 			bounds = _restrict_event_bounds_to_side(bounds, int(side_preference))
 		else:
@@ -1014,8 +1193,10 @@ func _sample_independent_candidate(
 			total_attempts += 1
 			var candidate := _sample_scatter_candidate(
 				bounds,
-				PlacementBand.GROUND if force_ground else -1
+				PlacementBand.GROUND if force_ground or ballistic_event else -1
 			)
+			if ballistic_event:
+				candidate.position.y = _ballistic_contact_y()
 			candidate.route_branch = "independent"
 			candidate.lifetime = lifetime
 			candidate.allow_right_edge = true
@@ -1027,15 +1208,29 @@ func _sample_independent_candidate(
 			if not player_reason.is_empty():
 				last_reason = player_reason
 				continue
+			var ballistic_plan := (
+				_build_ballistic_plan(candidate.position, ballistic_archetype, lifetime)
+				if ballistic_event
+				else {}
+			)
 			var effective_lifetime := (
-				_event_effective_visible_lifetime(candidate.position.x, lifetime)
-				if variable_event
-				else _visible_lifetime_for(candidate.position.x, lifetime)
+				float(ballistic_plan.effective_post_contact_lifetime)
+				if ballistic_event
+				else (
+					_event_effective_visible_lifetime(candidate.position.x, lifetime)
+					if variable_event
+					else _visible_lifetime_for(candidate.position.x, lifetime)
+				)
 			)
 			if (
-				variable_event
+				(variable_event or ballistic_event)
 				and effective_lifetime + 0.0001
-				< maxf(minimum_guaranteed_visible_lifetime, 0.0)
+				< maxf(
+					ballistic_minimum_post_contact_visible_lifetime
+					if ballistic_event
+					else minimum_guaranteed_visible_lifetime,
+					0.0
+				)
 			):
 				last_reason = REJECTION_LIFETIME
 				continue
@@ -1043,7 +1238,7 @@ func _sample_independent_candidate(
 				candidate.position,
 				candidate.band,
 				[],
-				not variable_event,
+					not variable_event and not ballistic_event,
 				bool(candidate.allow_right_edge),
 				effective_lifetime
 			)
@@ -1051,7 +1246,7 @@ func _sample_independent_candidate(
 				last_reason = reason
 				continue
 			if (
-				variable_event
+				(variable_event or ballistic_event)
 				and not _candidate_is_reachable_with_lifetime(
 					candidate.position,
 					candidate.band,
@@ -1067,12 +1262,27 @@ func _sample_independent_candidate(
 			):
 				last_reason = REJECTION_SIBLING
 				continue
-			if not _candidate_preserves_d3_priority(candidate.position, effective_lifetime):
+			if (
+				ballistic_event
+				and not _ballistic_trajectory_separation_is_valid(
+					ballistic_plan,
+					event_sibling_trajectories
+				)
+			):
+				_ballistic_trajectory_failure_count += 1
+				last_reason = REJECTION_SIBLING
+				continue
+			if not _candidate_preserves_d3_priority(
+				candidate.position,
+				effective_lifetime,
+				ballistic_plan
+			):
 				last_reason = REJECTION_D3_PRIORITY
 				continue
 			return {
 				"candidate": candidate,
 				"effective_lifetime": effective_lifetime,
+				"ballistic_plan": ballistic_plan,
 				"reason": "",
 				"attempts": total_attempts,
 			}
@@ -1094,8 +1304,13 @@ func _independent_separation_is_valid(
 		)
 	)
 	for existing in active_collectibles():
+		var existing_position := (
+			existing.landing_position()
+			if existing.is_ballistic() and not existing.first_contact_occurred()
+			else existing.global_position
+		)
 		if (
-			candidate.distance_to(existing.global_position) + 0.001
+			candidate.distance_to(existing_position) + 0.001
 			< maxf(configured_separation, collectible_size.x + 1.0)
 		):
 			return false
@@ -1113,7 +1328,11 @@ func _independent_separation_is_valid(
 	return true
 
 
-func _candidate_preserves_d3_priority(candidate: Vector2, lifetime: float) -> bool:
+func _candidate_preserves_d3_priority(
+	candidate: Vector2,
+	lifetime: float,
+	ballistic_plan: Dictionary = {}
+) -> bool:
 	var d3 := _conveyor.get_node_or_null("BackgroundDropDirector") as MotionBackgroundDropDirector
 	if d3 == null or d3.released_event_count() >= d3.maximum_events_per_round:
 		return true
@@ -1123,12 +1342,15 @@ func _candidate_preserves_d3_priority(candidate: Vector2, lifetime: float) -> bo
 	# candidate. This avoids suppressing the coin stream for an entire D3 cycle
 	# without ever allowing a coin to displace the authored hazard event.
 	if d3.state == MotionBackgroundDropDirector.VisualState.SELECTED:
+		var selected_coin_data := _projected_candidate_coin_data(
+			candidate,
+			lifetime,
+			ballistic_plan,
+			0.0,
+			d3.warning_time_remaining + d3.target_fall_duration
+		)
 		return not _projected_coin_blocks_d3_lane(
-			{
-				"x": candidate.x,
-				"remaining": _visible_lifetime_for(candidate.x, lifetime),
-				"size": collectible_size,
-			},
+			selected_coin_data,
 			d3.selected_lane_x,
 			0.0,
 			d3.warning_time_remaining + d3.target_fall_duration
@@ -1144,6 +1366,42 @@ func _candidate_preserves_d3_priority(candidate: Vector2, lifetime: float) -> bo
 		if d3.reservation_pending
 		else maxf(d3.next_reservation_time - _conveyor.survival_time, 0.0)
 	)
+	if ballistic_plan.is_empty():
+		return _nonballistic_candidate_preserves_d3_priority(
+			candidate,
+			lifetime,
+			d3,
+			until_reservation
+		)
+	# A ballistic path can cross several logical lanes. To guarantee optional
+	# reward motion never alters a frozen D3 reservation, admit it only when its
+	# complete flight and post-contact opportunity clear before that reservation.
+	var candidate_total_lifetime := (
+		float(ballistic_plan.flight_duration)
+		+ float(ballistic_plan.effective_post_contact_lifetime)
+	)
+	if (
+		candidate_total_lifetime
+		> maxf(until_reservation - d3_priority_clearance_time, 0.0) + 0.0001
+	):
+		return false
+	for active_coin in active_collectibles():
+		if (
+			active_coin.total_collectible_time_remaining()
+			> maxf(until_reservation - d3_priority_clearance_time, 0.0) + 0.0001
+		):
+			return false
+	return true
+
+
+func _nonballistic_candidate_preserves_d3_priority(
+	candidate: Vector2,
+	lifetime: float,
+	d3: MotionBackgroundDropDirector,
+	until_reservation: float
+) -> bool:
+	# This is the accepted VM-0.6.6 path verbatim. Keeping it separate prevents
+	# the isolated ballistic prototype from changing control-build scheduling.
 	var projected_coins: Array[Dictionary] = []
 	for coin in active_collectibles():
 		if (
@@ -1201,16 +1459,50 @@ func _projected_coin_blocks_d3_lane(
 		<= maxf(until_reservation - d3_priority_clearance_time, 0.0) + 0.0001
 	):
 		return false
-	var speed := _conveyor.conveyor_speed_at(_conveyor.survival_time)
-	var x_at_reservation := float(coin_data.x) - speed * until_reservation
 	var clearance := (
 		_conveyor.product_size.x + (coin_data.size as Vector2).x
 	) * 0.5
+	if coin_data.has("horizontal_interval"):
+		var interval := coin_data.horizontal_interval as Vector2
+		return (
+			lane_x >= interval.x - clearance
+			and lane_x <= interval.y + clearance
+		)
+	var speed := _conveyor.conveyor_speed_at(_conveyor.survival_time)
+	var x_at_reservation := float(coin_data.x) - speed * until_reservation
 	var left_at_impact := x_at_reservation - speed * maxf(impact_horizon, 0.0)
 	return (
 		lane_x >= left_at_impact - clearance
 		and lane_x <= x_at_reservation + clearance
 	)
+
+
+func _projected_candidate_coin_data(
+	candidate: Vector2,
+	lifetime: float,
+	ballistic_plan: Dictionary,
+	seconds_from_now: float = 0.0,
+	duration: float = 0.0
+) -> Dictionary:
+	if ballistic_plan.is_empty():
+		return {
+			"x": candidate.x,
+			"remaining": _visible_lifetime_for(candidate.x, lifetime),
+			"size": collectible_size,
+		}
+	return {
+		"x": float((ballistic_plan.launch_position as Vector2).x),
+		"remaining": (
+			float(ballistic_plan.flight_duration)
+			+ float(ballistic_plan.effective_post_contact_lifetime)
+		),
+		"size": collectible_size,
+		"horizontal_interval": _ballistic_plan_horizontal_interval(
+			ballistic_plan,
+			seconds_from_now,
+			duration
+		),
+	}
 
 
 func _visible_lifetime_for(candidate_x: float, requested_lifetime: float) -> float:
@@ -1309,6 +1601,194 @@ func _conveyor_distance_over_duration(duration: float) -> float:
 		distance += maxf((start_speed + end_speed) * 0.5 * delta, 0.0)
 		elapsed += delta
 	return distance
+
+
+func _ballistic_flight_duration(archetype: int) -> float:
+	if ballistic_flight_durations.is_empty():
+		return 0.9
+	var index := clampi(archetype, 0, ballistic_flight_durations.size() - 1)
+	return maxf(float(ballistic_flight_durations[index]), 0.01)
+
+
+func _ballistic_launch_origin(archetype: int) -> Vector2:
+	if ballistic_launch_origins.is_empty():
+		return Vector2(760.0, 260.0)
+	var index := clampi(archetype, 0, ballistic_launch_origins.size() - 1)
+	return ballistic_launch_origins[index]
+
+
+func _ballistic_contact_y() -> float:
+	return _conveyor.floor_y - collectible_size.y * 0.5
+
+
+func _build_ballistic_plan(
+	landing_position: Vector2,
+	archetype: int,
+	requested_post_contact_lifetime: float
+) -> Dictionary:
+	var flight_duration := _ballistic_flight_duration(archetype)
+	var launch_position := _ballistic_launch_origin(archetype)
+	var launch_velocity := Vector2(
+		(landing_position.x - launch_position.x) / flight_duration,
+		(
+			landing_position.y
+			- launch_position.y
+			- 0.5 * ballistic_gravity * flight_duration * flight_duration
+		) / flight_duration
+	)
+	var effective_lifetime := _ballistic_post_contact_effective_lifetime(
+		landing_position.x,
+		requested_post_contact_lifetime,
+		flight_duration
+	)
+	return {
+		"archetype": archetype,
+		"launch_position": launch_position,
+		"landing_position": landing_position,
+		"launch_velocity": launch_velocity,
+		"flight_duration": flight_duration,
+		"gravity": ballistic_gravity,
+		"requested_post_contact_lifetime": requested_post_contact_lifetime,
+		"effective_post_contact_lifetime": effective_lifetime,
+	}
+
+
+func _minimum_ballistic_landing_x(flight_duration: float) -> float:
+	return (
+		_conveyor.conveyor_support_left_x
+		+ collectible_size.x * 0.5
+		+ _conveyor_distance_between(
+			maxf(flight_duration, 0.0),
+			maxf(ballistic_minimum_post_contact_visible_lifetime, 0.0)
+		)
+	)
+
+
+func _ballistic_post_contact_effective_lifetime(
+	landing_x: float,
+	requested_lifetime: float,
+	flight_duration: float
+) -> float:
+	var requested := maxf(requested_lifetime, 0.0)
+	var available_distance := (
+		landing_x
+		- collectible_size.x * 0.5
+		- _conveyor.conveyor_support_left_x
+	)
+	if requested <= 0.0 or available_distance <= 0.0:
+		return 0.0
+	var elapsed := 0.0
+	var travelled := 0.0
+	var step := 1.0 / 120.0
+	while elapsed + 0.000001 < requested:
+		var delta := minf(step, requested - elapsed)
+		var start_speed := _conveyor.conveyor_speed_at(
+			_conveyor.survival_time + flight_duration + elapsed
+		)
+		var end_speed := _conveyor.conveyor_speed_at(
+			_conveyor.survival_time + flight_duration + elapsed + delta
+		)
+		var distance := maxf((start_speed + end_speed) * 0.5 * delta, 0.0)
+		if travelled + distance + 0.000001 >= available_distance:
+			if distance <= 0.0:
+				return requested
+			return elapsed + delta * clampf(
+				(available_distance - travelled) / distance,
+				0.0,
+				1.0
+			)
+		travelled += distance
+		elapsed += delta
+	return requested
+
+
+func _conveyor_distance_between(start_delay: float, duration: float) -> float:
+	var bounded_duration := maxf(duration, 0.0)
+	var elapsed := 0.0
+	var distance := 0.0
+	var step := 1.0 / 120.0
+	while elapsed + 0.000001 < bounded_duration:
+		var delta := minf(step, bounded_duration - elapsed)
+		var start_speed := _conveyor.conveyor_speed_at(
+			_conveyor.survival_time + maxf(start_delay, 0.0) + elapsed
+		)
+		var end_speed := _conveyor.conveyor_speed_at(
+			_conveyor.survival_time + maxf(start_delay, 0.0) + elapsed + delta
+		)
+		distance += maxf((start_speed + end_speed) * 0.5 * delta, 0.0)
+		elapsed += delta
+	return distance
+
+
+func _ballistic_plan_position_at(plan: Dictionary, elapsed: float) -> Vector2:
+	var launch := plan.launch_position as Vector2
+	var landing := plan.landing_position as Vector2
+	var velocity := plan.launch_velocity as Vector2
+	var flight_duration := float(plan.flight_duration)
+	var bounded_elapsed := maxf(elapsed, 0.0)
+	if bounded_elapsed <= flight_duration:
+		return Vector2(
+			launch.x + velocity.x * bounded_elapsed,
+			launch.y
+			+ velocity.y * bounded_elapsed
+			+ 0.5 * float(plan.gravity) * bounded_elapsed * bounded_elapsed
+		)
+	return Vector2(
+		landing.x - _conveyor_distance_between(
+			flight_duration,
+			bounded_elapsed - flight_duration
+		),
+		landing.y
+	)
+
+
+func _ballistic_plan_horizontal_interval(
+	plan: Dictionary,
+	seconds_from_now: float,
+	duration: float
+) -> Vector2:
+	var start := maxf(seconds_from_now, 0.0)
+	var end := start + maxf(duration, 0.0)
+	var samples := PackedFloat32Array([start, end])
+	var flight_duration := float(plan.flight_duration)
+	if flight_duration > start and flight_duration < end:
+		samples.append(flight_duration)
+	var minimum_x := INF
+	var maximum_x := -INF
+	for sample_time in samples:
+		var sample_x := _ballistic_plan_position_at(plan, float(sample_time)).x
+		minimum_x = minf(minimum_x, sample_x)
+		maximum_x = maxf(maximum_x, sample_x)
+	return Vector2(minimum_x, maximum_x)
+
+
+func _ballistic_trajectory_separation_is_valid(
+	candidate_plan: Dictionary,
+	sibling_plans: Array[Dictionary]
+) -> bool:
+	var minimum_separation := maxf(
+		ballistic_minimum_trajectory_separation,
+		collectible_size.x + 1.0
+	)
+	for sibling_plan in sibling_plans:
+		var shared_flight := minf(
+			float(candidate_plan.flight_duration),
+			float(sibling_plan.flight_duration)
+		)
+		var elapsed := 0.0
+		while elapsed <= shared_flight + 0.000001:
+			var candidate_position := _ballistic_plan_position_at(
+				candidate_plan,
+				elapsed
+			)
+			var sibling_position := _ballistic_plan_position_at(
+				sibling_plan,
+				elapsed
+			)
+			if candidate_position.distance_to(sibling_position) < minimum_separation:
+				return false
+			elapsed += 1.0 / 60.0
+	return true
 
 
 func _candidate_is_reachable_with_lifetime(
@@ -1589,7 +2069,8 @@ func _spawn_offer_coin(
 	coin_index: int,
 	lifetime_override: float = -1.0,
 	expiry_warning_override: float = -1.0,
-	effective_lifetime_override: float = -1.0
+	effective_lifetime_override: float = -1.0,
+	ballistic_plan: Dictionary = {}
 ) -> ConveyorCollectible:
 	var coin := COLLECTIBLE_SCENE.instantiate() as ConveyorCollectible
 	add_child(coin)
@@ -1612,6 +2093,17 @@ func _spawn_offer_coin(
 		offer_id * 101 + coin_index * 37 + placement_seed,
 		expiry_warning_override
 	)
+	if not ballistic_plan.is_empty():
+		coin.configure_ballistic(
+			ballistic_plan.launch_position,
+			ballistic_plan.landing_position,
+			ballistic_plan.launch_velocity,
+			float(ballistic_plan.flight_duration),
+			float(ballistic_plan.gravity),
+			effective_lifetime,
+			_conveyor.conveyor_speed,
+			ballistic_bounce_restitutions
+		)
 	coin.set_meta("offer_id", offer_id)
 	coin.collected.connect(_on_collectible_collected.bind(offer_id))
 	coin.expired.connect(_on_collectible_expired.bind(offer_id))
@@ -2891,12 +3383,44 @@ func _update_active_coin_speeds() -> void:
 		coin.scroll_speed = _conveyor.conveyor_speed
 
 
+func _update_ballistic_player_crossings() -> void:
+	if not is_instance_valid(_conveyor.player):
+		return
+	for coin in active_collectibles():
+		if (
+			not coin.is_ballistic()
+			or coin.motion_state() != ConveyorCollectible.MotionState.AIRBORNE
+			or bool(coin.get_meta("ballistic_crossed_player", false))
+		):
+			continue
+		var current_delta := coin.global_position.x - _conveyor.player.global_position.x
+		var previous_delta := float(
+			coin.get_meta("ballistic_previous_player_delta_x", current_delta)
+		)
+		var crossing_margin := (
+			coin.collectible_size.x + _conveyor.player_collision_size().x
+		) * 0.5
+		if (
+			absf(current_delta) <= crossing_margin
+			or signf(current_delta) != signf(previous_delta)
+		):
+			coin.set_meta("ballistic_crossed_player", true)
+			coin.set_meta("ballistic_cross_time", _conveyor.survival_time)
+			_ballistic_player_crossing_count += 1
+		coin.set_meta("ballistic_previous_player_delta_x", current_delta)
+
+
 func _enforce_scheduling_invariant() -> void:
 	if _conveyor.gameplay_is_stopped() or _stopped:
 		return
 	if not is_finite(_next_spawn_time):
 		_record_invariant(REJECTION_UNKNOWN)
 		_next_spawn_time = _conveyor.survival_time + failed_spawn_retry_delay
+	if ballistic_coin_events_enabled:
+		# A D3-protected gap is intentional in this isolated prototype. Keep the
+		# accepted 1.10–2.10 second event-attempt cadence instead of allowing the
+		# generic empty-stream watchdog to convert it into 0.10 second retries.
+		return
 	if _last_offer_spawn_time >= 0.0 and active_offer_count() == 0 and _conveyor.survival_time - _last_offer_spawn_time > maximum_offer_free_gap and _next_spawn_time > _conveyor.survival_time + failed_spawn_retry_delay:
 		_record_invariant("watchdog retry")
 		_next_spawn_time = _conveyor.survival_time + failed_spawn_retry_delay
@@ -2965,6 +3489,26 @@ func _on_collectible_collected(collectible: ConveyorCollectible, offer_id: int) 
 
 func _on_collectible_expired(collectible: ConveyorCollectible, offer_id: int) -> void:
 	_resolve_coin(collectible, offer_id, false)
+
+
+func _on_ballistic_first_contact(collectible: ConveyorCollectible) -> void:
+	_ballistic_first_contact_count += 1
+	var side := classify_offer_side_for_test(
+		[{"position": collectible.global_position}],
+		_conveyor.player.global_position.x
+	)
+	collectible.set_meta("ballistic_first_landing_side", side)
+	_ballistic_landing_side_counts[side] += 1
+
+
+func _on_ballistic_settled(collectible: ConveyorCollectible) -> void:
+	_ballistic_settled_count += 1
+	var side := classify_offer_side_for_test(
+		[{"position": collectible.global_position}],
+		_conveyor.player.global_position.x
+	)
+	collectible.set_meta("ballistic_settle_side", side)
+	_ballistic_settle_side_counts[side] += 1
 
 
 func _on_player_died() -> void:

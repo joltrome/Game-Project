@@ -4,6 +4,16 @@ extends Area2D
 signal collected(collectible: ConveyorCollectible)
 signal expired(collectible: ConveyorCollectible)
 signal expiry_warning_started(collectible: ConveyorCollectible)
+signal first_conveyor_contact(collectible: ConveyorCollectible)
+signal bounce_started(collectible: ConveyorCollectible, bounce_number: int)
+signal settled(collectible: ConveyorCollectible)
+
+enum MotionState {
+	CONVEYOR,
+	AIRBORNE,
+	BOUNCING,
+	SETTLED,
+}
 
 @export_category("Gameplay")
 @export var lifetime: float = 3.0
@@ -37,6 +47,10 @@ signal expiry_warning_started(collectible: ConveyorCollectible)
 @export var collection_feedback_duration: float = 0.34
 @export var teaching_cue_timeout: float = 2.0
 
+@export_category("Ballistic Prototype")
+@export var ballistic_gravity: float = 1250.0
+@export var bounce_restitutions := Vector2(0.38, 0.16)
+
 var time_remaining: float = 0.0
 var _resolved: bool = false
 var _visual_seed: int = 1
@@ -52,6 +66,22 @@ var _expiry_warning_active: bool = false
 var _expiry_warning_elapsed: float = 0.0
 var _expiry_warning_start_count: int = 0
 var _current_warning_pulses_per_second: float = 0.0
+var _ballistic_enabled: bool = false
+var _motion_state: MotionState = MotionState.CONVEYOR
+var _launch_position := Vector2.ZERO
+var _launch_velocity := Vector2.ZERO
+var _flight_duration: float = 0.0
+var _flight_elapsed: float = 0.0
+var _landing_position := Vector2.ZERO
+var _post_contact_lifetime: float = 0.0
+var _first_contact_occurred: bool = false
+var _first_contact_incoming_speed: float = 0.0
+var _first_contact_time: float = -1.0
+var _bounce_number: int = 0
+var _bounce_elapsed: float = 0.0
+var _bounce_duration: float = 0.0
+var _bounce_launch_velocity_y: float = 0.0
+var _settled_count: int = 0
 
 @onready var _collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var _visual_root: Node2D = $VisualRoot
@@ -89,6 +119,9 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if _resolved:
 		return
+	if _ballistic_enabled:
+		_update_ballistic_motion(maxf(delta, 0.0))
+		return
 	position.x -= scroll_speed * delta
 	time_remaining = maxf(time_remaining - delta, 0.0)
 	if time_remaining <= 0.0:
@@ -103,6 +136,8 @@ func configure(
 	visual_seed: int = 1,
 	warning_duration: float = -1.0
 ) -> void:
+	_ballistic_enabled = false
+	_motion_state = MotionState.CONVEYOR
 	lifetime = maxf(duration, 0.0)
 	scroll_speed = maxf(conveyor_scroll_speed, 0.0)
 	collectible_size = size
@@ -119,6 +154,49 @@ func configure(
 	if is_node_ready():
 		_apply_dimensions()
 		_reset_visual_animation()
+
+
+func configure_ballistic(
+	launch_position: Vector2,
+	landing_position: Vector2,
+	launch_velocity: Vector2,
+	flight_duration: float,
+	gravity: float,
+	post_contact_duration: float,
+	conveyor_scroll_speed: float,
+	restitutions: Vector2
+) -> void:
+	_ballistic_enabled = true
+	_motion_state = MotionState.AIRBORNE
+	_launch_position = launch_position
+	_landing_position = landing_position
+	_launch_velocity = launch_velocity
+	_flight_duration = maxf(flight_duration, 0.01)
+	_flight_elapsed = 0.0
+	ballistic_gravity = maxf(gravity, 1.0)
+	_post_contact_lifetime = maxf(post_contact_duration, 0.0)
+	lifetime = _post_contact_lifetime
+	time_remaining = _post_contact_lifetime
+	scroll_speed = maxf(conveyor_scroll_speed, 0.0)
+	bounce_restitutions = Vector2(
+		clampf(restitutions.x, 0.0, 1.0),
+		clampf(restitutions.y, 0.0, 1.0)
+	)
+	_first_contact_occurred = false
+	_first_contact_incoming_speed = 0.0
+	_first_contact_time = -1.0
+	_bounce_number = 0
+	_bounce_elapsed = 0.0
+	_bounce_duration = 0.0
+	_bounce_launch_velocity_y = 0.0
+	_settled_count = 0
+	position = launch_position
+	_resolved = false
+	monitoring = true
+	visible = true
+	set_process(true)
+	set_physics_process(true)
+	_cancel_expiry_warning()
 
 
 func show_teaching_cue(duration: float = -1.0) -> void:
@@ -148,6 +226,87 @@ func stop() -> void:
 
 func is_resolved() -> bool:
 	return _resolved
+
+
+func is_ballistic() -> bool:
+	return _ballistic_enabled
+
+
+func motion_state() -> MotionState:
+	return _motion_state
+
+
+func motion_state_name() -> String:
+	match _motion_state:
+		MotionState.AIRBORNE:
+			return "AIRBORNE"
+		MotionState.BOUNCING:
+			return "BOUNCING"
+		MotionState.SETTLED:
+			return "SETTLED"
+	return "CONVEYOR"
+
+
+func flight_duration() -> float:
+	return _flight_duration
+
+
+func flight_elapsed() -> float:
+	return _flight_elapsed
+
+
+func first_contact_occurred() -> bool:
+	return _first_contact_occurred
+
+
+func first_contact_time() -> float:
+	return _first_contact_time
+
+
+func bounce_count() -> int:
+	return _bounce_number
+
+
+func settled_count() -> int:
+	return _settled_count
+
+
+func landing_position() -> Vector2:
+	return _landing_position
+
+
+func post_contact_lifetime() -> float:
+	return _post_contact_lifetime
+
+
+func total_collectible_time_remaining() -> float:
+	if _ballistic_enabled and _motion_state == MotionState.AIRBORNE:
+		return maxf(_flight_duration - _flight_elapsed, 0.0) + time_remaining
+	return time_remaining
+
+
+func launch_velocity() -> Vector2:
+	return _launch_velocity
+
+
+func projected_horizontal_interval(
+	seconds_from_now: float,
+	duration: float
+) -> Vector2:
+	var start := maxf(seconds_from_now, 0.0)
+	var end := start + maxf(duration, 0.0)
+	var samples := PackedFloat32Array([start, end])
+	if _ballistic_enabled and _motion_state == MotionState.AIRBORNE:
+		var remaining_flight := maxf(_flight_duration - _flight_elapsed, 0.0)
+		if remaining_flight > start and remaining_flight < end:
+			samples.append(remaining_flight)
+	var minimum_x := INF
+	var maximum_x := -INF
+	for sample_time in samples:
+		var projected_x := _projected_x_after(float(sample_time))
+		minimum_x = minf(minimum_x, projected_x)
+		maximum_x = maxf(maximum_x, projected_x)
+	return Vector2(minimum_x, maximum_x)
 
 
 func is_non_solid() -> bool:
@@ -422,6 +581,110 @@ func _update_collection_feedback(delta: float) -> void:
 	if _collection_feedback_remaining <= 0.0:
 		_collection_feedback.visible = false
 		queue_free()
+
+
+func _update_ballistic_motion(delta: float) -> void:
+	var remaining := delta
+	var guard := 0
+	while remaining > 0.000001 and not _resolved and guard < 6:
+		guard += 1
+		match _motion_state:
+			MotionState.AIRBORNE:
+				remaining = _step_airborne(remaining)
+			MotionState.BOUNCING:
+				remaining = _step_bounce(remaining)
+			MotionState.SETTLED:
+				_step_post_contact_lifetime(remaining)
+				position.x -= scroll_speed * remaining
+				remaining = 0.0
+			_:
+				remaining = 0.0
+
+
+func _step_airborne(delta: float) -> float:
+	var flight_remaining := maxf(_flight_duration - _flight_elapsed, 0.0)
+	var step := minf(delta, flight_remaining)
+	_flight_elapsed += step
+	position = Vector2(
+		_launch_position.x + _launch_velocity.x * _flight_elapsed,
+		_launch_position.y
+		+ _launch_velocity.y * _flight_elapsed
+		+ 0.5 * ballistic_gravity * _flight_elapsed * _flight_elapsed
+	)
+	if _flight_elapsed + 0.000001 < _flight_duration:
+		return 0.0
+	position = _landing_position
+	_first_contact_occurred = true
+	_first_contact_time = _flight_elapsed
+	_first_contact_incoming_speed = absf(
+		_launch_velocity.y + ballistic_gravity * _flight_duration
+	)
+	time_remaining = _post_contact_lifetime
+	first_conveyor_contact.emit(self)
+	_start_bounce(1)
+	return maxf(delta - step, 0.0)
+
+
+func _start_bounce(number: int) -> void:
+	_bounce_number = number
+	_motion_state = MotionState.BOUNCING
+	_bounce_elapsed = 0.0
+	var restitution := (
+		bounce_restitutions.x if number == 1 else bounce_restitutions.y
+	)
+	_bounce_launch_velocity_y = -_first_contact_incoming_speed * restitution
+	_bounce_duration = (
+		2.0 * absf(_bounce_launch_velocity_y) / ballistic_gravity
+		if ballistic_gravity > 0.0
+		else 0.0
+	)
+	bounce_started.emit(self, number)
+
+
+func _step_bounce(delta: float) -> float:
+	var bounce_remaining := maxf(_bounce_duration - _bounce_elapsed, 0.0)
+	var step := minf(delta, bounce_remaining)
+	_step_post_contact_lifetime(step)
+	if _resolved:
+		return 0.0
+	position.x -= scroll_speed * step
+	_bounce_elapsed += step
+	position.y = (
+		_landing_position.y
+		+ _bounce_launch_velocity_y * _bounce_elapsed
+		+ 0.5 * ballistic_gravity * _bounce_elapsed * _bounce_elapsed
+	)
+	if _bounce_elapsed + 0.000001 < _bounce_duration:
+		return 0.0
+	position.y = _landing_position.y
+	var leftover := maxf(delta - step, 0.0)
+	if _bounce_number < 2:
+		_start_bounce(_bounce_number + 1)
+	else:
+		_motion_state = MotionState.SETTLED
+		_settled_count += 1
+		settled.emit(self)
+	return leftover
+
+
+func _step_post_contact_lifetime(delta: float) -> void:
+	if not _first_contact_occurred:
+		return
+	time_remaining = maxf(time_remaining - delta, 0.0)
+	if time_remaining <= 0.0:
+		_resolve(false)
+
+
+func _projected_x_after(seconds: float) -> float:
+	var future := maxf(seconds, 0.0)
+	if not _ballistic_enabled or _motion_state in [MotionState.CONVEYOR, MotionState.SETTLED, MotionState.BOUNCING]:
+		return position.x - scroll_speed * future
+	var remaining_flight := maxf(_flight_duration - _flight_elapsed, 0.0)
+	var airborne_time := minf(future, remaining_flight)
+	var projected := position.x + _launch_velocity.x * airborne_time
+	if future > remaining_flight:
+		projected -= scroll_speed * (future - remaining_flight)
+	return projected
 
 
 func _resolve(was_collected: bool) -> void:

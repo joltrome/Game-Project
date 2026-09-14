@@ -302,16 +302,24 @@ func candidate_rejection_reason(
 	var collectibles := _conveyor.get_node_or_null("CollectibleDirector") as CollectibleDirector
 	if include_collectibles and collectibles != null:
 		for coin in collectibles.active_collectibles():
-			var coin_left := (
-				coin.global_position.x
-				- _conveyor.conveyor_speed_at(_conveyor.survival_time) * impact_time
-			)
 			var coin_clearance := half_width + coin.collectible_size.x * 0.5
-			if (
-				candidate_x >= coin_left - coin_clearance
-				and candidate_x <= coin.global_position.x + coin_clearance
-			):
-				return "collectible_path_overlap"
+			if coin.is_ballistic():
+				var interval := coin.projected_horizontal_interval(0.0, impact_time)
+				if candidate_x >= interval.x - coin_clearance and candidate_x <= interval.y + coin_clearance:
+					return "collectible_path_overlap"
+			else:
+				# Preserve the exact accepted VM-0.6.6 projection. Ordinary coins
+				# use the conveyor's current speed, while ballistic coins above use
+				# their own deterministic launch/landing projection.
+				var coin_left := (
+					coin.global_position.x
+					- _conveyor.conveyor_speed_at(_conveyor.survival_time) * impact_time
+				)
+				if (
+					candidate_x >= coin_left - coin_clearance
+					and candidate_x <= coin.global_position.x + coin_clearance
+				):
+					return "collectible_path_overlap"
 	# The frozen carriage band exactly clears a grounded belt player. Therefore
 	# an active carriage preserves a grounded escape response; reject only if a
 	# future baseline changes that exact vertical relationship.
