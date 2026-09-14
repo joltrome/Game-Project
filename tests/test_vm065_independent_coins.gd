@@ -200,6 +200,10 @@ func _test_d3_hazard_priority() -> void:
 		var conveyor := shell.conveyor
 		var coins := conveyor.get_node("CollectibleDirector") as CollectibleDirector
 		var d3 := shell.background_drop_director
+		# Preserve the accepted VM-0.6.5 scheduler as a historical regression
+		# fixture while VM-0.6.6 becomes the runtime default.
+		coins.variable_coin_events_enabled = false
+		coins.maximum_active_independent_coins = 4
 		coins.placement_seed = seed
 		coins._placement_rng_state = seed
 		coins._stream_rng_state = maxi(posmod(seed * 1664525 + 1013904223, 0x7fffffff), 1)
@@ -330,6 +334,8 @@ func _make_fixture(seed: int) -> ConveyorPrototype:
 	conveyor.initial_warning_delay = 999.0
 	conveyor.left_failure_enabled = false
 	var director := conveyor.get_node("CollectibleDirector") as CollectibleDirector
+	director.variable_coin_events_enabled = false
+	director.maximum_active_independent_coins = 4
 	director.placement_seed = seed
 	root.add_child(conveyor)
 	await physics_frame

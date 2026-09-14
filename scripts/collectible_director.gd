@@ -131,7 +131,7 @@ const REJECTION_UNKNOWN := "unknown"
 @export_category("Independent Coin Stream")
 @export var independent_stream_enabled: bool = true
 @export var independent_spawn_interval_range := Vector2(0.75, 1.70)
-@export var maximum_active_independent_coins: int = 4
+@export var maximum_active_independent_coins: int = 5
 @export_range(0.0, 1.0, 0.01) var independent_bonus_probability: float = 0.10
 @export var independent_bonus_delay_range := Vector2(0.10, 0.30)
 @export var maximum_bonus_placement_cycles: int = 4
@@ -141,6 +141,15 @@ const REJECTION_UNKNOWN := "unknown"
 @export var independent_bonus_minimum_separation: float = 96.0
 @export var maximum_independent_placement_attempts: int = 96
 @export var d3_priority_clearance_time: float = 0.20
+
+@export_category("Variable Coin Events")
+@export var variable_coin_events_enabled: bool = true
+@export var coin_event_interval_range := Vector2(1.10, 2.10)
+@export var coin_event_size_weights := PackedInt32Array([55, 35, 10])
+@export var single_event_side_weights := PackedInt32Array([35, 20, 45])
+@export var minimum_guaranteed_visible_lifetime: float = 1.65
+@export var coin_event_minimum_separation: float = 110.0
+@export var coin_event_sibling_minimum_separation: float = 96.0
 
 @export_category("Route Validation")
 @export var trajectory_simulation_step: float = 1.0 / 120.0
@@ -194,6 +203,15 @@ var _stream_cap_skip_count: int = 0
 var _stream_priority_skip_count: int = 0
 var _stream_attempt_count: int = 0
 var _stream_lifetime_log := PackedFloat32Array()
+var _coin_event_count: int = 0
+var _coin_event_size_counts := PackedInt32Array([0, 0, 0, 0])
+var _coin_event_cap_truncated_event_count: int = 0
+var _coin_event_cap_truncated_coin_count: int = 0
+var _coin_event_placement_failure_count: int = 0
+var _coin_event_log: Array[Dictionary] = []
+var _last_stream_spawn_position := Vector2.ZERO
+var _last_stream_effective_lifetime: float = 0.0
+var _last_stream_spawn_side: int = OfferSide.CENTRED
 
 @onready var _conveyor: ConveyorPrototype = get_parent() as ConveyorPrototype
 @onready var _score_label: Label = _conveyor.get_node("HUD/ScoreGroup/CollectibleScore")
@@ -214,7 +232,7 @@ func _process(delta: float) -> void:
 	_update_staggered_offers()
 	_refresh_active_offers()
 	_update_active_coin_speeds()
-	if independent_stream_enabled:
+	if independent_stream_enabled and not variable_coin_events_enabled:
 		_update_pending_bonus_spawn()
 	if _conveyor.survival_time + 0.0001 < _next_spawn_time:
 		_enforce_scheduling_invariant()
@@ -320,6 +338,30 @@ func stream_lifetime_log() -> PackedFloat32Array:
 
 func pending_bonus_spawn_time() -> float:
 	return _pending_bonus_spawn_time
+
+
+func coin_event_count() -> int:
+	return _coin_event_count
+
+
+func coin_event_size_counts() -> PackedInt32Array:
+	return _coin_event_size_counts.duplicate()
+
+
+func coin_event_cap_truncated_event_count() -> int:
+	return _coin_event_cap_truncated_event_count
+
+
+func coin_event_cap_truncated_coin_count() -> int:
+	return _coin_event_cap_truncated_coin_count
+
+
+func coin_event_placement_failure_count() -> int:
+	return _coin_event_placement_failure_count
+
+
+func coin_event_log() -> Array[Dictionary]:
+	return _coin_event_log.duplicate(true)
 
 
 func last_scatter_layout_attempts() -> int:
@@ -508,6 +550,8 @@ func stop_for_round_end() -> void:
 
 func _try_spawn_natural_offer() -> bool:
 	if independent_stream_enabled:
+		if variable_coin_events_enabled:
+			return _try_spawn_variable_coin_event()
 		return _try_spawn_natural_stream_coin()
 	var anti_streak_requested := _should_request_centred_ahead_offer()
 	var intended_count := 1 if _natural_offer_count == 0 else _select_scatter_count()
@@ -532,6 +576,177 @@ func _try_spawn_natural_offer() -> bool:
 			return true
 	_next_spawn_time = _conveyor.survival_time + failed_spawn_retry_delay
 	return false
+
+
+func _try_spawn_variable_coin_event() -> bool:
+	var teaching := _natural_offer_count == 0
+	if teaching:
+		var teaching_accepted := _try_spawn_independent_coin(
+			"teaching",
+			collectible_lifetime,
+			true
+		)
+		var teaching_interval := _schedule_next_coin_event_attempt()
+		if teaching_accepted:
+			_natural_offer_count += 1
+			if not _offer_log.is_empty():
+				_offer_log[-1].next_stream_interval = teaching_interval
+		return teaching_accepted
+
+	_coin_event_count += 1
+	var event_id := _coin_event_count
+	var requested_count := _select_coin_event_size()
+	_coin_event_size_counts[requested_count] += 1
+	var active_before := active_collectible_count()
+	var available_capacity := maxi(
+		maxi(maximum_active_independent_coins, 1) - active_before,
+		0
+	)
+	var target_count := mini(requested_count, available_capacity)
+	var cap_truncated_count := requested_count - target_count
+	if cap_truncated_count > 0:
+		_coin_event_cap_truncated_event_count += 1
+		_coin_event_cap_truncated_coin_count += cap_truncated_count
+
+	var side_plan := _coin_event_side_plan(requested_count)
+	_shuffle_side_plan(side_plan)
+	if side_plan.size() > target_count:
+		side_plan.resize(target_count)
+	var accepted_positions: Array[Vector2] = []
+	var requested_lifetimes := PackedFloat32Array()
+	var effective_lifetimes := PackedFloat32Array()
+	var accepted_sides: Array[int] = []
+	var placement_failures := 0
+	var priority_skips_before := _stream_priority_skip_count
+	for coin_index in range(target_count):
+		var requested_lifetime := _stream_random_range(independent_lifetime_range)
+		requested_lifetimes.append(requested_lifetime)
+		var accepted := _try_spawn_independent_coin(
+			"event",
+			requested_lifetime,
+			false,
+			int(side_plan[coin_index]),
+			accepted_positions,
+			event_id,
+			requested_count,
+			coin_index,
+			accepted_sides
+		)
+		if not accepted:
+			placement_failures += 1
+			_coin_event_placement_failure_count += 1
+			continue
+		accepted_positions.append(_last_stream_spawn_position)
+		effective_lifetimes.append(_last_stream_effective_lifetime)
+		accepted_sides.append(_last_stream_spawn_side)
+		_normal_stream_spawn_count += 1
+
+	var next_interval := _schedule_next_coin_event_attempt()
+	_natural_offer_count += 1
+	_coin_event_log.append({
+		"event_id": event_id,
+		"time": _conveyor.survival_time,
+		"requested_count": requested_count,
+		"capacity_at_event": available_capacity,
+		"cap_truncated_count": cap_truncated_count,
+		"planned_sides": side_plan.duplicate(),
+		"spawned_count": accepted_positions.size(),
+		"spawned_positions": accepted_positions.duplicate(),
+		"spawned_sides": accepted_sides,
+		"requested_lifetimes": requested_lifetimes,
+		"effective_lifetimes": effective_lifetimes,
+		"placement_failures": placement_failures,
+		"d3_priority_skips": _stream_priority_skip_count - priority_skips_before,
+		"next_event_interval": next_interval,
+	})
+	return not accepted_positions.is_empty()
+
+
+func _select_coin_event_size() -> int:
+	return _select_stream_weighted_index(coin_event_size_weights, 0) + 1
+
+
+func _select_single_event_side() -> int:
+	return _select_stream_weighted_index(single_event_side_weights, OfferSide.AHEAD)
+
+
+func _select_stream_weighted_index(weights: PackedInt32Array, fallback: int) -> int:
+	var total := 0
+	for weight in weights:
+		total += maxi(weight, 0)
+	if total <= 0:
+		return fallback
+	_stream_rng_state = _next_rng_state(_stream_rng_state)
+	var roll := posmod(_stream_rng_state, total)
+	for index in range(weights.size()):
+		roll -= maxi(weights[index], 0)
+		if roll < 0:
+			return index
+	return clampi(fallback, 0, maxi(weights.size() - 1, 0))
+
+
+func _coin_event_side_plan(requested_count: int) -> Array[int]:
+	if requested_count <= 1:
+		return [_select_single_event_side()]
+	if requested_count == 2:
+		var pair_plans := [
+			[OfferSide.BEHIND, OfferSide.AHEAD],
+			[OfferSide.BEHIND, OfferSide.AHEAD],
+			[OfferSide.CENTRED, OfferSide.AHEAD],
+			[OfferSide.BEHIND, OfferSide.CENTRED],
+		]
+		return _copy_side_plan(pair_plans[_stream_random_index(pair_plans.size())])
+	var triple_plans := [
+		[OfferSide.BEHIND, OfferSide.CENTRED, OfferSide.AHEAD],
+		[OfferSide.BEHIND, OfferSide.CENTRED, OfferSide.AHEAD],
+		[OfferSide.BEHIND, OfferSide.AHEAD, OfferSide.AHEAD],
+		[OfferSide.BEHIND, OfferSide.BEHIND, OfferSide.AHEAD],
+	]
+	return _copy_side_plan(triple_plans[_stream_random_index(triple_plans.size())])
+
+
+func _copy_side_plan(source: Array) -> Array[int]:
+	var result: Array[int] = []
+	for side in source:
+		result.append(int(side))
+	return result
+
+
+func _event_side_fallback_preferences(
+	preferred_side: int,
+	already_used_sides: Array[int]
+) -> Array[int]:
+	var result: Array[int] = [preferred_side]
+	# A multi-coin event first tries an unused direction so fallback placement
+	# cannot quietly collapse a competing choice into one same-side cluster.
+	for side in [OfferSide.BEHIND, OfferSide.CENTRED, OfferSide.AHEAD]:
+		if side not in result and side not in already_used_sides:
+			result.append(side)
+	for side in [OfferSide.BEHIND, OfferSide.CENTRED, OfferSide.AHEAD]:
+		if side not in result:
+			result.append(side)
+	return result
+
+
+func _shuffle_side_plan(plan: Array[int]) -> void:
+	for index in range(plan.size() - 1, 0, -1):
+		var swap_index := _stream_random_index(index + 1)
+		var held := plan[index]
+		plan[index] = plan[swap_index]
+		plan[swap_index] = held
+
+
+func _stream_random_index(count: int) -> int:
+	if count <= 1:
+		return 0
+	_stream_rng_state = _next_rng_state(_stream_rng_state)
+	return posmod(_stream_rng_state, count)
+
+
+func _schedule_next_coin_event_attempt() -> float:
+	var interval := _stream_random_range(coin_event_interval_range)
+	_next_spawn_time = _conveyor.survival_time + interval
+	return interval
 
 
 func _try_spawn_natural_stream_coin() -> bool:
@@ -601,8 +816,17 @@ func _schedule_next_stream_attempt() -> void:
 func _try_spawn_independent_coin(
 	spawn_kind: String,
 	lifetime: float,
-	force_ground: bool
+	force_ground: bool,
+	preferred_side: int = -1,
+	event_sibling_positions: Array[Vector2] = [],
+	event_id: int = -1,
+	event_requested_count: int = 1,
+	event_coin_index: int = 0,
+	event_sibling_sides: Array[int] = []
 ) -> bool:
+	_last_stream_spawn_position = Vector2.ZERO
+	_last_stream_effective_lifetime = 0.0
+	_last_stream_spawn_side = OfferSide.CENTRED
 	_stream_attempt_count += 1
 	_refresh_active_offers()
 	if _conveyor.gameplay_is_stopped() or _stopped:
@@ -612,7 +836,14 @@ func _try_spawn_independent_coin(
 		_stream_cap_skip_count += 1
 		_record_stream_rejection(spawn_kind, REJECTION_ACTIVE_LIMIT, lifetime, 0)
 		return false
-	var sampled := _sample_independent_candidate(lifetime, force_ground, spawn_kind)
+	var sampled := _sample_independent_candidate(
+		lifetime,
+		force_ground,
+		spawn_kind,
+		preferred_side,
+		event_sibling_positions,
+		event_sibling_sides
+	)
 	var candidate_data: Dictionary = sampled.get("candidate", {})
 	var rejection_reason := String(sampled.get("reason", REJECTION_SCATTER_EXHAUSTED))
 	var placement_attempts := int(sampled.get("attempts", 0))
@@ -626,6 +857,7 @@ func _try_spawn_independent_coin(
 			placement_attempts
 		)
 		return false
+	var effective_lifetime := float(sampled.get("effective_lifetime", lifetime))
 	_offer_id_cursor += 1
 	var offer_id := _offer_id_cursor
 	var coin := _spawn_offer_coin(
@@ -633,11 +865,15 @@ func _try_spawn_independent_coin(
 		offer_id,
 		0,
 		lifetime,
-		independent_expiry_warning_duration
+		independent_expiry_warning_duration,
+		effective_lifetime
 	)
 	coin.set_meta("stream_spawn_kind", spawn_kind)
 	coin.set_meta("stream_spawn_time", _conveyor.survival_time)
 	coin.set_meta("stream_lifetime", lifetime)
+	coin.set_meta("stream_effective_lifetime", effective_lifetime)
+	coin.set_meta("coin_event_id", event_id)
+	coin.set_meta("coin_event_index", event_coin_index)
 	var offer := {
 		"id": offer_id,
 		"template": SCATTER_TEMPLATE,
@@ -672,13 +908,16 @@ func _try_spawn_independent_coin(
 		candidates,
 		_conveyor.player.global_position.x
 	)
+	_last_stream_spawn_position = candidate_data.position
+	_last_stream_effective_lifetime = effective_lifetime
+	_last_stream_spawn_side = side
 	_update_offer_side_history(side)
 	_offer_log.append({
 		"event": "attempt",
 		"time": _conveyor.survival_time,
 		"phase": phase_at(_conveyor.survival_time),
 		"template": SCATTER_TEMPLATE,
-		"template_name": "independent coin",
+		"template_name": "variable coin event" if spawn_kind == "event" else "independent coin",
 		"intended_count": 1,
 		"ground_count": 1 if int(candidate_data.band) == PlacementBand.GROUND else 0,
 		"air_count": 1 if int(candidate_data.band) == PlacementBand.LOW_AIR else 0,
@@ -705,7 +944,7 @@ func _try_spawn_independent_coin(
 		"behind_streak_after": _consecutive_behind_offers,
 		"anti_streak_requested": false,
 		"route_archetype": "INDEPENDENT",
-		"topology": "INDEPENDENT_STREAM",
+		"topology": "VARIABLE_EVENT" if spawn_kind == "event" else "INDEPENDENT_STREAM",
 		"pair_mode": false,
 		"minimum_pairwise_separation": INF,
 		"candidate_positions": [candidate_data.position],
@@ -718,7 +957,14 @@ func _try_spawn_independent_coin(
 		"player_buffer_rejections": 0,
 		"spawn_kind": spawn_kind,
 		"coin_lifetime": lifetime,
+		"requested_lifetime": lifetime,
+		"effective_lifetime": effective_lifetime,
 		"expiry_warning_duration": independent_expiry_warning_duration,
+		"coin_event_id": event_id,
+		"coin_event_requested_count": event_requested_count,
+		"coin_event_index": event_coin_index,
+		"preferred_side": preferred_side,
+		"preferred_side_name": offer_side_name(preferred_side),
 	})
 	offer_spawned.emit(offer_id, SCATTER_TEMPLATE, 1)
 	return true
@@ -727,13 +973,21 @@ func _try_spawn_independent_coin(
 func _sample_independent_candidate(
 	lifetime: float,
 	force_ground: bool,
-	spawn_kind: String
+	spawn_kind: String,
+	preferred_side: int = -1,
+	event_sibling_positions: Array[Vector2] = [],
+	event_sibling_sides: Array[int] = []
 ) -> Dictionary:
+	var variable_event := variable_coin_events_enabled and spawn_kind == "event"
 	var anti_streak_requested := (
 		not force_ground and _should_request_centred_ahead_offer()
 	)
 	var side_preferences: Array[int] = []
-	if anti_streak_requested:
+	if variable_event and preferred_side in [OfferSide.BEHIND, OfferSide.CENTRED, OfferSide.AHEAD]:
+		side_preferences.assign(
+			_event_side_fallback_preferences(preferred_side, event_sibling_sides)
+		)
+	elif anti_streak_requested:
 		side_preferences.assign(_scatter_correction_side_preferences())
 	else:
 		side_preferences.append(-1)
@@ -741,16 +995,19 @@ func _sample_independent_candidate(
 	var total_attempts := 0
 	for side_preference in side_preferences:
 		var bounds := _scatter_x_bounds(int(side_preference), 1)
-		# Independent TTL belongs to the coin, so use the already validated
-		# centred/ahead extent when needed rather than silently truncating expiry
-		# at the left edge.
 		bounds.y = _conveyor.control_band_right - collectible_size.x * 0.5
-		bounds.x = maxf(
-			bounds.x,
-			_conveyor.conveyor_support_left_x
-			+ collectible_size.x * 0.5
-			+ _conveyor.conveyor_speed * maxf(lifetime, 0.0)
-		)
+		if variable_event:
+			bounds.x = maxf(bounds.x, _minimum_event_spawn_x())
+			bounds = _restrict_event_bounds_to_side(bounds, int(side_preference))
+		else:
+			# VM-0.6.5 compatibility path: the complete requested lifetime had to
+			# fit before the left edge. VM-0.6.6 intentionally replaces this rule.
+			bounds.x = maxf(
+				bounds.x,
+				_conveyor.conveyor_support_left_x
+				+ collectible_size.x * 0.5
+				+ _conveyor.conveyor_speed * maxf(lifetime, 0.0)
+			)
 		if bounds.y <= bounds.x:
 			continue
 		for _attempt in range(maxi(maximum_independent_placement_attempts, 1)):
@@ -762,7 +1019,7 @@ func _sample_independent_candidate(
 			candidate.route_branch = "independent"
 			candidate.lifetime = lifetime
 			candidate.allow_right_edge = true
-			if int(side_preference) in [OfferSide.BEHIND, OfferSide.CENTRED, OfferSide.AHEAD]:
+			if not variable_event and int(side_preference) in [OfferSide.BEHIND, OfferSide.CENTRED, OfferSide.AHEAD]:
 				candidate = _translate_candidates_for_side([candidate], int(side_preference))[0]
 			if not _scatter_side_matches([candidate], int(side_preference)):
 				continue
@@ -770,40 +1027,87 @@ func _sample_independent_candidate(
 			if not player_reason.is_empty():
 				last_reason = player_reason
 				continue
+			var effective_lifetime := (
+				_event_effective_visible_lifetime(candidate.position.x, lifetime)
+				if variable_event
+				else _visible_lifetime_for(candidate.position.x, lifetime)
+			)
+			if (
+				variable_event
+				and effective_lifetime + 0.0001
+				< maxf(minimum_guaranteed_visible_lifetime, 0.0)
+			):
+				last_reason = REJECTION_LIFETIME
+				continue
 			var reason := _candidate_rejection_reason(
 				candidate.position,
 				candidate.band,
 				[],
-				true,
-				bool(candidate.allow_right_edge)
+				not variable_event,
+				bool(candidate.allow_right_edge),
+				effective_lifetime
 			)
 			if not reason.is_empty():
 				last_reason = reason
 				continue
-			if not _independent_separation_is_valid(candidate.position, spawn_kind):
+			if (
+				variable_event
+				and not _candidate_is_reachable_with_lifetime(
+					candidate.position,
+					candidate.band,
+					effective_lifetime
+				)
+			):
+				last_reason = REJECTION_UNREACHABLE
+				continue
+			if not _independent_separation_is_valid(
+				candidate.position,
+				spawn_kind,
+				event_sibling_positions
+			):
 				last_reason = REJECTION_SIBLING
 				continue
-			if not _candidate_preserves_d3_priority(candidate.position, lifetime):
+			if not _candidate_preserves_d3_priority(candidate.position, effective_lifetime):
 				last_reason = REJECTION_D3_PRIORITY
 				continue
 			return {
 				"candidate": candidate,
+				"effective_lifetime": effective_lifetime,
 				"reason": "",
 				"attempts": total_attempts,
 			}
 	return {"candidate": {}, "reason": last_reason, "attempts": total_attempts}
 
 
-func _independent_separation_is_valid(candidate: Vector2, spawn_kind: String) -> bool:
+func _independent_separation_is_valid(
+	candidate: Vector2,
+	spawn_kind: String,
+	event_sibling_positions: Array[Vector2] = []
+) -> bool:
 	var configured_separation := (
-		independent_bonus_minimum_separation
-		if spawn_kind == "bonus"
-		else independent_minimum_separation
+		coin_event_minimum_separation
+		if spawn_kind == "event"
+		else (
+			independent_bonus_minimum_separation
+			if spawn_kind == "bonus"
+			else independent_minimum_separation
+		)
 	)
 	for existing in active_collectibles():
 		if (
 			candidate.distance_to(existing.global_position) + 0.001
 			< maxf(configured_separation, collectible_size.x + 1.0)
+		):
+			return false
+	for sibling_position in event_sibling_positions:
+		var sibling_separation := (
+			coin_event_sibling_minimum_separation
+			if spawn_kind == "event"
+			else configured_separation
+		)
+		if (
+			candidate.distance_to(sibling_position) + 0.001
+			< maxf(sibling_separation, collectible_size.x + 1.0)
 		):
 			return false
 	return true
@@ -920,6 +1224,121 @@ func _visible_lifetime_for(candidate_x: float, requested_lifetime: float) -> flo
 	return minf(maxf(requested_lifetime, 0.0), maxf(time_to_left_edge, 0.0))
 
 
+func _minimum_event_spawn_x() -> float:
+	return (
+		_conveyor.conveyor_support_left_x
+		+ collectible_size.x * 0.5
+		+ _conveyor_distance_over_duration(
+			maxf(minimum_guaranteed_visible_lifetime, 0.0)
+		)
+	)
+
+
+func _restrict_event_bounds_to_side(bounds: Vector2, side: int) -> Vector2:
+	if side not in [OfferSide.BEHIND, OfferSide.CENTRED, OfferSide.AHEAD]:
+		return bounds
+	var player_x := _conveyor.player.global_position.x
+	var tolerance := (
+		_conveyor.player_collision_size().x
+		* maxf(offer_side_tolerance_player_widths, 0.0)
+	)
+	var strict_margin := maxf(scatter_position_quantum, 0.01)
+	match side:
+		OfferSide.BEHIND:
+			bounds.y = minf(bounds.y, player_x - tolerance - strict_margin)
+		OfferSide.CENTRED:
+			bounds.x = maxf(bounds.x, player_x - tolerance)
+			bounds.y = minf(bounds.y, player_x + tolerance)
+		OfferSide.AHEAD:
+			bounds.x = maxf(bounds.x, player_x + tolerance + strict_margin)
+	return bounds
+
+
+func _event_effective_visible_lifetime(
+	candidate_x: float,
+	requested_lifetime: float
+) -> float:
+	var requested := maxf(requested_lifetime, 0.0)
+	if requested <= 0.0:
+		return 0.0
+	var available_distance := (
+		candidate_x
+		- collectible_size.x * 0.5
+		- _conveyor.conveyor_support_left_x
+	)
+	if available_distance <= 0.0:
+		return 0.0
+	var elapsed := 0.0
+	var travelled := 0.0
+	var step := 1.0 / 120.0
+	while elapsed + 0.000001 < requested:
+		var delta := minf(step, requested - elapsed)
+		var start_speed := _conveyor.conveyor_speed_at(
+			_conveyor.survival_time + elapsed
+		)
+		var end_speed := _conveyor.conveyor_speed_at(
+			_conveyor.survival_time + elapsed + delta
+		)
+		var distance := maxf((start_speed + end_speed) * 0.5 * delta, 0.0)
+		if travelled + distance + 0.000001 >= available_distance:
+			if distance <= 0.0:
+				return requested
+			return elapsed + delta * clampf(
+				(available_distance - travelled) / distance,
+				0.0,
+				1.0
+			)
+		travelled += distance
+		elapsed += delta
+	return requested
+
+
+func _conveyor_distance_over_duration(duration: float) -> float:
+	var bounded_duration := maxf(duration, 0.0)
+	var elapsed := 0.0
+	var distance := 0.0
+	var step := 1.0 / 120.0
+	while elapsed + 0.000001 < bounded_duration:
+		var delta := minf(step, bounded_duration - elapsed)
+		var start_speed := _conveyor.conveyor_speed_at(
+			_conveyor.survival_time + elapsed
+		)
+		var end_speed := _conveyor.conveyor_speed_at(
+			_conveyor.survival_time + elapsed + delta
+		)
+		distance += maxf((start_speed + end_speed) * 0.5 * delta, 0.0)
+		elapsed += delta
+	return distance
+
+
+func _candidate_is_reachable_with_lifetime(
+	candidate: Vector2,
+	band: int,
+	visible_lifetime: float
+) -> bool:
+	var relative_control_speed := _conveyor.player.maximum_speed
+	if relative_control_speed <= _conveyor.conveyor_speed:
+		return false
+	var available_time := maxf(visible_lifetime - reachability_reserve, 0.0)
+	var horizontal_time := (
+		absf(candidate.x - _conveyor.player.global_position.x) / relative_control_speed
+		if relative_control_speed > 0.0
+		else INF
+	)
+	if band == PlacementBand.GROUND:
+		return (
+			_grounded_player_overlaps_y(candidate.y)
+			and horizontal_time <= available_time + 0.0001
+		)
+	var intervals := normal_jump_collection_intervals(candidate.y)
+	if intervals.is_empty() or _grounded_player_overlaps_y(candidate.y):
+		return false
+	return (
+		normal_jump_collection_margin(candidate.y) >= minimum_normal_jump_margin
+		and maxf(horizontal_time, intervals[0].x) <= available_time + 0.0001
+	)
+
+
 func _stream_random_range(configured: Vector2) -> float:
 	var minimum := minf(configured.x, configured.y)
 	var maximum := maxf(configured.x, configured.y)
@@ -953,7 +1372,7 @@ func _record_stream_rejection(
 		"time": _conveyor.survival_time,
 		"phase": phase_at(_conveyor.survival_time),
 		"template": SCATTER_TEMPLATE,
-		"template_name": "independent coin",
+		"template_name": "variable coin event" if spawn_kind == "event" else "independent coin",
 		"intended_count": 1,
 		"accepted": false,
 		"rejection_reason": known_reason,
@@ -967,7 +1386,7 @@ func _record_stream_rejection(
 		"active_offer_count": _active_offers.size(),
 		"active_coin_count": active_collectible_count(),
 		"natural": true,
-		"topology": "INDEPENDENT_STREAM",
+		"topology": "VARIABLE_EVENT" if spawn_kind == "event" else "INDEPENDENT_STREAM",
 		"pair_mode": false,
 		"candidate_positions": [],
 		"placement_attempts": placement_attempts,
@@ -1169,7 +1588,8 @@ func _spawn_offer_coin(
 	offer_id: int,
 	coin_index: int,
 	lifetime_override: float = -1.0,
-	expiry_warning_override: float = -1.0
+	expiry_warning_override: float = -1.0,
+	effective_lifetime_override: float = -1.0
 ) -> ConveyorCollectible:
 	var coin := COLLECTIBLE_SCENE.instantiate() as ConveyorCollectible
 	add_child(coin)
@@ -1179,8 +1599,13 @@ func _spawn_offer_coin(
 		if lifetime_override < 0.0
 		else lifetime_override
 	)
+	var effective_lifetime := (
+		_visible_lifetime_for(candidate_data.position.x, requested_lifetime)
+		if effective_lifetime_override < 0.0
+		else effective_lifetime_override
+	)
 	coin.configure(
-		_visible_lifetime_for(candidate_data.position.x, requested_lifetime),
+		effective_lifetime,
 		_conveyor.conveyor_speed,
 		collectible_size,
 		candidate_data.band,
@@ -2193,7 +2618,8 @@ func _candidate_rejection_reason(
 	band: int,
 	siblings: Array[Dictionary],
 	enforce_current_reachability: bool = true,
-	allow_right_edge: bool = false
+	allow_right_edge: bool = false,
+	visible_lifetime_override: float = -1.0
 ) -> String:
 	if collectible_lifetime <= reachability_reserve or collectible_lifetime <= 0.0:
 		return REJECTION_LIFETIME
@@ -2205,7 +2631,12 @@ func _candidate_rejection_reason(
 	)
 	if candidate.x - half_size.x < _conveyor.belt_left_x or candidate.x + half_size.x > _conveyor.control_band_right or candidate.x > risky_right_limit or candidate.y - half_size.y <= 0.0 or candidate.y + half_size.y > _conveyor.floor_y:
 		return REJECTION_OFF_BELT
-	if _candidate_available_time(candidate.x) <= 0.0:
+	var available_time := (
+		_candidate_available_time(candidate.x)
+		if visible_lifetime_override < 0.0
+		else maxf(visible_lifetime_override - reachability_reserve, 0.0)
+	)
+	if available_time <= 0.0:
 		return REJECTION_OFF_BELT
 	if band == PlacementBand.LOW_AIR and normal_jump_collection_margin(candidate.y) < minimum_normal_jump_margin:
 		return REJECTION_JUMP_MARGIN
@@ -2217,7 +2648,7 @@ func _candidate_rejection_reason(
 	for existing in active_collectibles():
 		if _rectangles_overlap(candidate, collectible_size, existing.global_position, existing.collectible_size):
 			return REJECTION_SIBLING
-	if _can_hazard_conflicts(candidate):
+	if _can_hazard_conflicts(candidate, visible_lifetime_override):
 		return REJECTION_CAN_OVERLAP
 	if _sweeper_schedule_conflicts(candidate, band):
 		return REJECTION_SWEEPER
@@ -2231,24 +2662,39 @@ func _offer_has_reachable_response(candidates: Array[Dictionary]) -> bool:
 	return false
 
 
-func _can_hazard_conflicts(candidate: Vector2) -> bool:
+func _can_hazard_conflicts(
+	candidate: Vector2,
+	visible_lifetime_override: float = -1.0
+) -> bool:
 	for product in _conveyor.active_falling_products():
-		if _falling_can_path_conflicts(candidate, product):
+		if _falling_can_path_conflicts(candidate, product, visible_lifetime_override):
 			return true
 	for product in _conveyor.active_landed_products():
 		var landed_center := Vector2(product.conveyor_center_x(), product.global_position.y)
 		if _rectangles_overlap(candidate, collectible_size, landed_center, product.landed_size):
 			return true
-	return _warning_or_reserved_can_conflicts(candidate.x)
+	return _warning_or_reserved_can_conflicts(candidate.x, visible_lifetime_override)
 
 
-func _falling_can_path_conflicts(candidate: Vector2, product: ConveyorProduct) -> bool:
-	var coin_left_at_expiry := candidate.x - _conveyor.conveyor_speed * _candidate_visible_lifetime(candidate.x)
+func _falling_can_path_conflicts(
+	candidate: Vector2,
+	product: ConveyorProduct,
+	visible_lifetime_override: float = -1.0
+) -> bool:
+	var visible_lifetime := (
+		_candidate_visible_lifetime(candidate.x)
+		if visible_lifetime_override < 0.0
+		else visible_lifetime_override
+	)
+	var coin_left_at_expiry := candidate.x - _conveyor.conveyor_speed * visible_lifetime
 	var half_width_sum := (collectible_size.x + product.falling_size.x) * 0.5
 	return product.global_position.x >= coin_left_at_expiry - half_width_sum and product.global_position.x <= candidate.x + half_width_sum
 
 
-func _warning_or_reserved_can_conflicts(candidate_x: float) -> bool:
+func _warning_or_reserved_can_conflicts(
+	candidate_x: float,
+	visible_lifetime_override: float = -1.0
+) -> bool:
 	var possible_x_positions := PackedFloat32Array()
 	var warning_x := _conveyor.current_warning_x()
 	if not is_nan(warning_x):
@@ -2262,7 +2708,12 @@ func _warning_or_reserved_can_conflicts(candidate_x: float) -> bool:
 		var target_x := _conveyor.right_pressure_target_x()
 		if not is_nan(target_x):
 			possible_x_positions.append(target_x)
-	var coin_left_at_expiry := candidate_x - _conveyor.conveyor_speed * _candidate_visible_lifetime(candidate_x)
+	var visible_lifetime := (
+		_candidate_visible_lifetime(candidate_x)
+		if visible_lifetime_override < 0.0
+		else visible_lifetime_override
+	)
+	var coin_left_at_expiry := candidate_x - _conveyor.conveyor_speed * visible_lifetime
 	var half_width_sum := (collectible_size.x + _conveyor.product_size.x) * 0.5
 	for possible_x in possible_x_positions:
 		if possible_x >= coin_left_at_expiry - half_width_sum and possible_x <= candidate_x + half_width_sum:
