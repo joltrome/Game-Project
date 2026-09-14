@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620">
+  <rect width="1200" height="620" fill="#0d1424"/>
+  <text x="48" y="48" fill="#f2e7c9" font-family="system-ui, sans-serif" font-size="25" font-weight="700">VM-0.6.6 deterministic variable-event timeline · seed 401</text>
+  <text x="48" y="78" fill="#93a8b8" font-family="system-ui, sans-serif" font-size="15">First 12 post-teaching events. Bars show each coin's independent effective visible lifetime.</text>
+
+  <line x1="180" y1="112" x2="1145" y2="112" stroke="#6e8291" stroke-width="2"/>
+  <g fill="#93a8b8" font-family="ui-monospace, monospace" font-size="13" text-anchor="middle">
+    <text x="205" y="103">2s</text><text x="312" y="103">4s</text><text x="419" y="103">6s</text>
+    <text x="526" y="103">8s</text><text x="633" y="103">10s</text><text x="740" y="103">12s</text>
+    <text x="847" y="103">14s</text><text x="954" y="103">16s</text><text x="1061" y="103">18s</text>
+  </g>
+  <g stroke="#263b4a" stroke-width="1">
+    <line x1="205" y1="112" x2="205" y2="568"/><line x1="312" y1="112" x2="312" y2="568"/>
+    <line x1="419" y1="112" x2="419" y2="568"/><line x1="526" y1="112" x2="526" y2="568"/>
+    <line x1="633" y1="112" x2="633" y2="568"/><line x1="740" y1="112" x2="740" y2="568"/>
+    <line x1="847" y1="112" x2="847" y2="568"/><line x1="954" y1="112" x2="954" y2="568"/>
+    <line x1="1061" y1="112" x2="1061" y2="568"/>
+  </g>
+
+  <g font-family="ui-monospace, monospace" font-size="13">
+    <text x="48" y="142" fill="#f2e7c9">2.92 · DOUBLE</text>
+    <rect x="254" y="126" width="149" height="12" rx="4" fill="#e7b94c"/><rect x="254" y="143" width="114" height="12" rx="4" fill="#db6b57"/>
+    <text x="411" y="137" fill="#e7b94c">centre 2.78</text><text x="376" y="154" fill="#db6b57">behind 2.14</text>
+
+    <text x="48" y="184" fill="#f2e7c9">4.45 · SINGLE</text>
+    <rect x="336" y="169" width="167" height="12" rx="4" fill="#e7b94c"/><text x="511" y="180" fill="#e7b94c">centre 3.12</text>
+
+    <text x="48" y="226" fill="#f2e7c9">5.98 · DOUBLE</text>
+    <rect x="418" y="210" width="137" height="12" rx="4" fill="#4aa7a4"/><rect x="418" y="227" width="157" height="12" rx="4" fill="#db6b57"/>
+    <text x="563" y="221" fill="#4aa7a4">ahead 2.56</text><text x="583" y="238" fill="#db6b57">behind 2.94</text>
+
+    <text x="48" y="268" fill="#f2e7c9">7.19 · TRIPLE→1</text>
+    <rect x="483" y="253" width="151" height="12" rx="4" fill="#e7b94c"/><text x="642" y="264" fill="#e7b94c">centre 2.82 · safety-truncated</text>
+
+    <text x="48" y="310" fill="#f2e7c9">8.67 · SINGLE</text>
+    <rect x="562" y="295" width="149" height="12" rx="4" fill="#db6b57"/><text x="719" y="306" fill="#db6b57">behind 2.78</text>
+
+    <text x="48" y="352" fill="#f2e7c9">10.73 · SINGLE</text>
+    <rect x="673" y="337" width="107" height="12" rx="4" fill="#db6b57"/><text x="788" y="348" fill="#db6b57">behind 2.01</text>
+
+    <text x="48" y="394" fill="#f2e7c9">12.43 · DOUBLE</text>
+    <rect x="764" y="378" width="163" height="12" rx="4" fill="#e7b94c"/><rect x="764" y="395" width="204" height="12" rx="4" fill="#4aa7a4"/>
+    <text x="935" y="389" fill="#e7b94c">centre 3.04</text><text x="976" y="406" fill="#4aa7a4">ahead 3.81</text>
+
+    <text x="48" y="436" fill="#f2e7c9">14.26 · SINGLE</text>
+    <rect x="862" y="421" width="190" height="12" rx="4" fill="#4aa7a4"/><text x="1060" y="432" fill="#4aa7a4">ahead 3.55</text>
+
+    <text x="48" y="478" fill="#f2e7c9">16.18 · TRIPLE→2</text>
+    <rect x="965" y="462" width="184" height="12" rx="4" fill="#4aa7a4"/><rect x="965" y="479" width="150" height="12" rx="4" fill="#db6b57"/>
+    <text x="1000" y="510" fill="#93a8b8">requested TTLs 3.63 / 2.99 / 3.89; two valid placements</text>
+
+    <text x="48" y="541" fill="#f2e7c9">18.10 · DOUBLE</text>
+    <rect x="1068" y="525" width="146" height="12" rx="4" fill="#db6b57"/><rect x="1068" y="542" width="135" height="12" rx="4" fill="#4aa7a4"/>
+  </g>
+
+  <g font-family="system-ui, sans-serif" font-size="14">
+    <circle cx="52" cy="592" r="6" fill="#db6b57"/><text x="65" y="597" fill="#d7e1e8">behind</text>
+    <circle cx="143" cy="592" r="6" fill="#e7b94c"/><text x="156" y="597" fill="#d7e1e8">centred</text>
+    <circle cx="253" cy="592" r="6" fill="#4aa7a4"/><text x="266" y="597" fill="#d7e1e8">ahead</text>
+    <text x="380" y="597" fill="#93a8b8">Diagnostic simulation; not evidence of player experience or balance.</text>
+  </g>
+</svg>

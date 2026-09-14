@@ -1665,6 +1665,30 @@
     text: 'The teaching coin remains at 1.75 seconds. Natural play then schedules individual coins at randomized 0.75–1.70-second attempt intervals with a four-coin cap, individual 2.50–4.00-second lifetimes, 120 px normal separation, and a 10 percent chance of one 0.10–0.30-second delayed bonus using a configurable 96 px separation. Each coin owns a final 0.70-second opacity warning that accelerates from 1.5 to at most 4 pulses per second and never flashes fully off. Seeds 401/1701/4202 offered 48/51/52 coins versus VM-0.6.4\'s 53/54/52, averaged 2.559/2.643/2.679 simultaneously active, never exceeded four, and produced 1/2/5 bonus coins. D3 kept six deterministic warnings at 8.50, 17.04, 24.61, 33.40, 40.60 and 48.36 seconds; longest gap was 8.792 seconds and coin-caused D3 rejection count was zero because optional coin attempts relocate or skip for D3 priority. Dedicated and affected tests passed, then the final suite passed 38/38 scripts. Standard launched for 180 headless frames; the single-threaded Web export and root ZIP succeeded; localhost browser review rendered Menu and gameplay with an empty warning/error console. Whether timing feels organic, warnings read during active play, choices improve, and abundance remains appropriate requires founder review. See docs/vm065-independent-coins.md.'
   };
 
+  const vm066VariableCoinEvidence = {
+    id: 'evidence-vm-0.6.6-variable-coin-events',
+    type: 'Evidence', date: '2026-09-14', source: 'Founder VM-0.6.5 manual review and implementation inspection',
+    text: 'VM-0.6.4 presented synchronized coin batches. VM-0.6.5 removed shared lifetimes and cleanup, but founder review found the resulting one-coin stream temporally uniform and sparse, and found that coins appeared predominantly ahead/right. Code inspection confirmed a structural contributor to the latter: VM-0.6.5 required enough distance to the left edge for each coin\'s complete 2.50–4.00-second requested lifetime, which shifted the legal minimum X rightward as lifetime increased.'
+  };
+
+  const vm066VariableCoinDecision = {
+    id: 'decision-vm-0.6.6-variable-coin-events',
+    type: 'Decision', date: '2026-09-14', source: 'Startup Lab VM-0.6.6 experiment brief',
+    text: 'Preserve independent coin lifetimes, warnings, resolution, D3 priority, teaching timing and one-point score. Replace the normal single-plus-rare-bonus scheduler with configurable 1/2/3-coin events, intentionally select player-relative behind/centred/ahead directions, replace the full-requested-TTL left-edge constraint with a 1.65-second minimum guaranteed visible lifetime, and increase the active cap to five. Optional coins may relocate, truncate or skip but may not delay D3 or evict existing coins.'
+  };
+
+  const vm066VariableCoinHypothesis = {
+    id: 'hypothesis-vm-0.6.6-variable-coin-events',
+    type: 'Hypothesis', date: '2026-09-14', source: 'Startup Lab VM-0.6.6 experiment brief',
+    text: 'Variable-intensity asynchronous coin events, combined with deliberate player-relative placement and independent lifetimes, will create more interesting movement choices than either synchronized triples or a uniform one-coin stream.'
+  };
+
+  const vm066VariableCoinResult = {
+    id: 'result-vm-0.6.6-variable-coin-events',
+    type: 'Result', date: '2026-09-14', source: 'VM-0.6.6 implementation, deterministic simulation and local technical QA',
+    text: 'After the unchanged teaching coin at approximately 1.75 seconds, natural scheduling now selects one/two/three requested coins at 55/35/10 percent weights and samples a new 1.10–2.10-second event interval. The initially proposed 1.20–2.30 seconds produced 43–47 coins, so only interval timing was adjusted to retain the approved size distribution and 48–54 opportunity target. Each delivered coin remains an independent entity with a 2.50–4.00-second requested lifetime; effective lifetime is capped by simulated time to the left exit, never below 1.65 seconds, and its existing final 0.70-second warning follows that effective lifetime. Single-event sides use 35/20/45 percent behind/centred/ahead weights; multi-events use competing side plans. Active/within-event separation is 110/96 px and the cap is five without eviction. Seeds 401/1701/4202 produced 35/36/35 events and 49/53/51 coins, with aggregate single-event sides 33.3/19.3/47.4 percent and average active counts 2.270/2.563/2.414. One cap event truncated one coin; placement failures were 3/5/1. D3 retained six warnings at 8.50, 17.04, 24.61, 33.40, 40.60 and 48.36 seconds with an 8.792-second maximum gap. Focused tests passed, the single full suite passed 39/39 scripts, Standard launched for 180 headless frames, and the single-threaded Web build/ZIP loaded through localhost with an empty browser warning/error console. Whether this rhythm improves choice quality remains unverified and requires founder review; see docs/vm066-variable-coin-events.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1806,7 +1830,11 @@
     vm065IndependentCoinEvidence,
     vm065IndependentCoinDecision,
     vm065IndependentCoinHypothesis,
-    vm065IndependentCoinResult
+    vm065IndependentCoinResult,
+    vm066VariableCoinEvidence,
+    vm066VariableCoinDecision,
+    vm066VariableCoinHypothesis,
+    vm066VariableCoinResult
   ];
 
   const defaultFindings = [
@@ -1818,7 +1846,7 @@
   ];
 
   const defaultState = {
-    version: 43,
+    version: 44,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []
