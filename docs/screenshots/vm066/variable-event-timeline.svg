@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620">
   <rect width="1200" height="620" fill="#0d1424"/>
   <text x="48" y="48" fill="#f2e7c9" font-family="system-ui, sans-serif" font-size="25" font-weight="700">VM-0.6.6 deterministic variable-event timeline · seed 401</text>
-  <text x="48" y="78" fill="#93a8b8" font-family="system-ui, sans-serif" font-size="15">First 12 post-teaching events. Bars show each coin's independent effective visible lifetime.</text>
+  <text x="48" y="78" fill="#93a8b8" font-family="system-ui, sans-serif" font-size="15">Early post-teaching events. Bars show each coin's independent effective visible lifetime.</text>
 
   <line x1="180" y1="112" x2="1145" y2="112" stroke="#6e8291" stroke-width="2"/>
   <g fill="#93a8b8" font-family="ui-monospace, monospace" font-size="13" text-anchor="middle">

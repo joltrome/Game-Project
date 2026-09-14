@@ -59,7 +59,7 @@ The isolated fixtures below measure offered opportunities, not player collection
 
 Average opportunity was **51.0 coins**. Across all single events, sides were **19 behind / 11 centred / 27 ahead**, or **33.3% / 19.3% / 47.4%**, broadly matching 35/20/45. Across all coins, sides were 49/38/66. Requested TTLs spanned **2.508–3.977 seconds**; effective TTLs spanned **1.685–3.966 seconds**, and 102 of 153 coins were exit-limited. The configured interval was 1.10–2.10 seconds and observed intervals spanned 1.105–2.067 seconds.
 
-The deterministic seed-401 sequence is shown in [variable-event-timeline.svg](screenshots/vm066/variable-event-timeline.svg). It includes singles, doubles, selected triples, behind-player placement, and overlapping independent lifetimes. It also shows that safety may truncate a selected event; it is a diagnostic artifact, not evidence of subjective quality.
+An early deterministic seed-401 sequence is shown in [variable-event-timeline.svg](screenshots/vm066/variable-event-timeline.svg). It includes singles, doubles, selected triples, behind-player placement, and overlapping independent lifetimes. It also shows that safety may truncate a selected event; it is a diagnostic artifact, not evidence of subjective quality.
 
 ## D3 priority
 
