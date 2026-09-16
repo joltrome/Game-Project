@@ -411,7 +411,38 @@ func _select_valid_lane() -> int:
 			_lane_cursor = index + 1
 			return index
 		_latest_candidate_rejection_details[index] = reason
+	# VM-0.6.8 gives the authored D3 hazard final priority over optional rewards.
+	# Prefer a coin-clear lane above; if rewards alone occupy every otherwise fair
+	# lane, choose a physically valid lane without waiting for coins to expire.
+	# This is gated by the experiment flag, so VM-0.6.7 and earlier keep their
+	# exact selection behavior.
+	if _ballistic_abundance_can_yield_collectible_space():
+		if _active_schedule_index == 0:
+			var preferred := clampi(
+				first_event_preferred_lane_index,
+				0,
+				candidate_lane_x.size() - 1
+			)
+			if candidate_rejection_reason(candidate_lane_x[preferred], -1.0, false).is_empty():
+				_lane_cursor = preferred + 1
+				return preferred
+		for offset in range(candidate_lane_x.size()):
+			var index := posmod(_lane_cursor + offset, candidate_lane_x.size())
+			if index == _last_selected_lane_index and candidate_lane_x.size() > 1:
+				continue
+			if candidate_rejection_reason(candidate_lane_x[index], -1.0, false).is_empty():
+				_lane_cursor = index + 1
+				return index
 	return -1
+
+
+func _ballistic_abundance_can_yield_collectible_space() -> bool:
+	var collectibles := _conveyor.get_node_or_null("CollectibleDirector") as CollectibleDirector
+	return (
+		collectibles != null
+		and collectibles.ballistic_coin_events_enabled
+		and collectibles.ballistic_abundance_enabled
+	)
 
 
 func _release_selected_product() -> void:

@@ -17,6 +17,7 @@ const VOLUME_SLIDER := preload("res://scripts/presentation/c2_volume_slider.gd")
 @export var score_storage_path: String = "user://standard_best.cfg"
 @export var audio_settings_path: String = "user://standard_audio.cfg"
 @export var ballistic_coins_enabled: bool = false
+@export var ballistic_abundance_enabled: bool = false
 
 var state: State = State.MENU
 var game: MotionExperimentShell
@@ -151,7 +152,9 @@ func start_game() -> void:
 	game.clean_tester_presentation = true
 	game.clean_control_hint_duration = 0.0
 	game.local_instrumentation_enabled = false
-	if ballistic_coins_enabled:
+	if ballistic_abundance_enabled:
+		game.build_id_override = "VM-0.6.8-BALLISTIC-ABUNDANCE"
+	elif ballistic_coins_enabled:
 		game.build_id_override = "VM-0.6.7-BALLISTIC-COINS"
 	# Both flags are required. A normal release can never enable the overlay.
 	game.debug_overlay_toggle_allowed = OS.is_debug_build() and OS.has_feature("standard_debug")
@@ -168,6 +171,7 @@ func start_game() -> void:
 	game.v2_visual_integration.landed_contact_offset_y=4.0
 	var collectible_director := game.conveyor.get_node("CollectibleDirector") as CollectibleDirector
 	collectible_director.ballistic_coin_events_enabled = ballistic_coins_enabled
+	collectible_director.ballistic_abundance_enabled = ballistic_abundance_enabled
 	var round_controller := game.conveyor.get_node("RoundController") as FixedRoundController
 	# Death can originate inside a physics collision callback. Finish that callback
 	# before disabling the complete run and its collision objects.

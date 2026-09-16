@@ -171,6 +171,20 @@ const REJECTION_UNKNOWN := "unknown"
 @export var ballistic_minimum_post_contact_visible_lifetime: float = 2.0
 @export var ballistic_minimum_trajectory_separation: float = 44.0
 
+@export_category("Ballistic Abundance Prototype")
+@export var ballistic_abundance_enabled: bool = false
+@export_range(0.0, 1.0, 0.01) var ballistic_double_stagger_probability: float = 0.50
+@export_range(0.0, 1.0, 0.01) var ballistic_triple_stagger_probability: float = 0.75
+@export var ballistic_double_stagger_delay_range := Vector2(0.10, 0.30)
+@export var ballistic_triple_stagger_delay_range := Vector2(0.10, 0.25)
+@export var ballistic_launch_origin_variance := Vector2(20.0, 16.0)
+@export_range(0.0, 0.10, 0.005) var ballistic_flight_duration_variance_ratio: float = 0.075
+@export var ballistic_maximum_landed_can_ricochets: int = 2
+@export var ballistic_can_top_restitution: float = 0.34
+@export var ballistic_can_side_horizontal_restitution: float = 0.35
+@export var ballistic_can_side_upward_speed: float = 180.0
+@export var ballistic_can_horizontal_deflection: float = 70.0
+
 @export_category("Route Validation")
 @export var trajectory_simulation_step: float = 1.0 / 120.0
 @export var recent_route_history_size: int = 2
@@ -243,6 +257,18 @@ var _ballistic_launch_side_counts := PackedInt32Array([0, 0, 0])
 var _ballistic_landing_side_counts := PackedInt32Array([0, 0, 0])
 var _ballistic_settle_side_counts := PackedInt32Array([0, 0, 0])
 var _ballistic_player_crossing_count: int = 0
+var _ballistic_simultaneous_multi_event_count: int = 0
+var _ballistic_staggered_multi_event_count: int = 0
+var _ballistic_collection_counts := {
+	"AIRBORNE": 0,
+	"BOUNCING": 0,
+	"SETTLED": 0,
+}
+var _ballistic_expired_count: int = 0
+var _ballistic_exited_left_count: int = 0
+var _ballistic_total_ricochet_count: int = 0
+var _ballistic_collection_time_total: float = 0.0
+var _ballistic_collection_time_samples: int = 0
 
 @onready var _conveyor: ConveyorPrototype = get_parent() as ConveyorPrototype
 @onready var _score_label: Label = _conveyor.get_node("HUD/ScoreGroup/CollectibleScore")
@@ -436,6 +462,67 @@ func ballistic_player_crossing_count() -> int:
 	return _ballistic_player_crossing_count
 
 
+func ballistic_simultaneous_multi_event_count() -> int:
+	return _ballistic_simultaneous_multi_event_count
+
+
+func ballistic_staggered_multi_event_count() -> int:
+	return _ballistic_staggered_multi_event_count
+
+
+func ballistic_collection_counts() -> Dictionary:
+	return _ballistic_collection_counts.duplicate(true)
+
+
+func ballistic_expired_count() -> int:
+	return _ballistic_expired_count
+
+
+func ballistic_exited_left_count() -> int:
+	return _ballistic_exited_left_count
+
+
+func ballistic_total_ricochet_count() -> int:
+	return _ballistic_total_ricochet_count
+
+
+func ballistic_collection_rate() -> float:
+	return (
+		float(_ballistic_collection_time_samples) / float(spawn_count)
+		if spawn_count > 0
+		else 0.0
+	)
+
+
+func ballistic_average_launch_to_collection_time() -> float:
+	return (
+		_ballistic_collection_time_total / float(_ballistic_collection_time_samples)
+		if _ballistic_collection_time_samples > 0
+		else 0.0
+	)
+
+
+func ballistic_run_summary() -> Dictionary:
+	var collections := ballistic_collection_counts()
+	var collected_total := (
+		int(collections.get("AIRBORNE", 0))
+		+ int(collections.get("BOUNCING", 0))
+		+ int(collections.get("SETTLED", 0))
+	)
+	return {
+		"delivered": spawn_count,
+		"collected": collected_total,
+		"airborne": int(collections.get("AIRBORNE", 0)),
+		"bouncing": int(collections.get("BOUNCING", 0)),
+		"settled": int(collections.get("SETTLED", 0)),
+		"expired": _ballistic_expired_count,
+		"exited_left": _ballistic_exited_left_count,
+		"landed_can_ricochets": _ballistic_total_ricochet_count,
+		"collection_rate": ballistic_collection_rate(),
+		"average_launch_to_collection_time": ballistic_average_launch_to_collection_time(),
+	}
+
+
 func last_scatter_layout_attempts() -> int:
 	return _last_scatter_layout_attempts
 
@@ -608,7 +695,11 @@ func normal_jump_collection_intervals(coin_center_y: float) -> Array[Vector2]:
 
 
 func stop_for_round_end() -> void:
+	if _stopped:
+		return
 	_stopped = true
+	if ballistic_coin_events_enabled and ballistic_abundance_enabled:
+		print("VM068_COIN_SUMMARY ", JSON.stringify(ballistic_run_summary()))
 	set_process(false)
 	_pending_bonus = false
 	_pending_bonus_spawn_time = INF
@@ -699,6 +790,20 @@ func _try_spawn_variable_coin_event() -> bool:
 	var archetype_plan: Array[int] = []
 	if ballistic_coin_events_enabled:
 		archetype_plan = _ballistic_archetype_plan(requested_count)
+	var launch_delay_plan := PackedFloat32Array()
+	var launch_rhythm := "SIMULTANEOUS"
+	if ballistic_coin_events_enabled:
+		launch_delay_plan = _ballistic_launch_delay_plan(requested_count)
+		launch_rhythm = (
+			"STAGGERED"
+			if launch_delay_plan.size() > 1 and launch_delay_plan[-1] > 0.0
+			else "SIMULTANEOUS"
+		)
+		if requested_count > 1 and ballistic_abundance_enabled:
+			if launch_rhythm == "STAGGERED":
+				_ballistic_staggered_multi_event_count += 1
+			else:
+				_ballistic_simultaneous_multi_event_count += 1
 	var accepted_trajectories: Array[Dictionary] = []
 	var accepted_archetypes := PackedInt32Array()
 	var flight_durations := PackedFloat32Array()
@@ -722,7 +827,8 @@ func _try_spawn_variable_coin_event() -> bool:
 			coin_index,
 			accepted_sides,
 			int(archetype_plan[coin_index]) if ballistic_coin_events_enabled else -1,
-			accepted_trajectories
+			accepted_trajectories,
+			float(launch_delay_plan[coin_index]) if not launch_delay_plan.is_empty() else 0.0
 		)
 		if not accepted:
 			placement_failures += 1
@@ -754,6 +860,8 @@ func _try_spawn_variable_coin_event() -> bool:
 		"ballistic": ballistic_coin_events_enabled,
 		"trajectory_archetypes": accepted_archetypes,
 		"flight_durations": flight_durations,
+		"launch_rhythm": launch_rhythm,
+		"launch_delays": launch_delay_plan,
 		"placement_failures": placement_failures,
 		"d3_priority_skips": _stream_priority_skip_count - priority_skips_before,
 		"next_event_interval": next_interval,
@@ -826,6 +934,24 @@ func _ballistic_archetype_plan(requested_count: int) -> Array[int]:
 		BallisticArchetype.MEDIUM,
 		BallisticArchetype.HIGH,
 	]
+
+
+func _ballistic_launch_delay_plan(requested_count: int) -> PackedFloat32Array:
+	var delays := PackedFloat32Array()
+	for _index in range(maxi(requested_count, 0)):
+		delays.append(0.0)
+	if not ballistic_abundance_enabled or requested_count <= 1:
+		return delays
+	if requested_count == 2:
+		if _stream_probability_roll(ballistic_double_stagger_probability):
+			delays[1] = _stream_random_range(ballistic_double_stagger_delay_range)
+		return delays
+	if _stream_probability_roll(ballistic_triple_stagger_probability):
+		delays[1] = _stream_random_range(ballistic_triple_stagger_delay_range)
+		delays[2] = delays[1] + _stream_random_range(
+			ballistic_triple_stagger_delay_range
+		)
+	return delays
 
 
 func ballistic_archetype_name(archetype: int) -> String:
@@ -949,7 +1075,8 @@ func _try_spawn_independent_coin(
 	event_coin_index: int = 0,
 	event_sibling_sides: Array[int] = [],
 	ballistic_archetype: int = -1,
-	event_sibling_trajectories: Array[Dictionary] = []
+	event_sibling_trajectories: Array[Dictionary] = [],
+	ballistic_launch_delay: float = 0.0
 ) -> bool:
 	_last_stream_spawn_position = Vector2.ZERO
 	_last_stream_effective_lifetime = 0.0
@@ -972,7 +1099,8 @@ func _try_spawn_independent_coin(
 		event_sibling_positions,
 		event_sibling_sides,
 		ballistic_archetype,
-		event_sibling_trajectories
+		event_sibling_trajectories,
+		ballistic_launch_delay
 	)
 	var candidate_data: Dictionary = sampled.get("candidate", {})
 	var rejection_reason := String(sampled.get("reason", REJECTION_SCATTER_EXHAUSTED))
@@ -1010,6 +1138,7 @@ func _try_spawn_independent_coin(
 		coin.set_meta("ballistic_archetype", int(ballistic_plan.archetype))
 		coin.set_meta("ballistic_archetype_name", ballistic_archetype_name(int(ballistic_plan.archetype)))
 		coin.set_meta("ballistic_flight_duration", float(ballistic_plan.flight_duration))
+		coin.set_meta("ballistic_launch_delay", float(ballistic_plan.get("launch_delay", 0.0)))
 		var launch_side := classify_offer_side_for_test(
 			[{"position": ballistic_plan.launch_position}],
 			_conveyor.player.global_position.x
@@ -1123,6 +1252,7 @@ func _try_spawn_independent_coin(
 		"ballistic_archetype": int(ballistic_plan.get("archetype", -1)),
 		"ballistic_archetype_name": ballistic_archetype_name(int(ballistic_plan.get("archetype", BallisticArchetype.MEDIUM))) if not ballistic_plan.is_empty() else "",
 		"flight_duration": float(ballistic_plan.get("flight_duration", 0.0)),
+		"launch_delay": float(ballistic_plan.get("launch_delay", 0.0)),
 		"launch_position": ballistic_plan.get("launch_position", Vector2.ZERO),
 		"landing_position": ballistic_plan.get("landing_position", candidate_data.position),
 	})
@@ -1138,7 +1268,8 @@ func _sample_independent_candidate(
 	event_sibling_positions: Array[Vector2] = [],
 	event_sibling_sides: Array[int] = [],
 	ballistic_archetype: int = -1,
-	event_sibling_trajectories: Array[Dictionary] = []
+	event_sibling_trajectories: Array[Dictionary] = [],
+	ballistic_launch_delay: float = 0.0
 ) -> Dictionary:
 	var variable_event := variable_coin_events_enabled and spawn_kind == "event"
 	var ballistic_event := (
@@ -1209,7 +1340,13 @@ func _sample_independent_candidate(
 				last_reason = player_reason
 				continue
 			var ballistic_plan := (
-				_build_ballistic_plan(candidate.position, ballistic_archetype, lifetime)
+				_build_ballistic_plan(
+					candidate.position,
+					ballistic_archetype,
+					lifetime,
+					ballistic_launch_delay,
+					ballistic_abundance_enabled
+				)
 				if ballistic_event
 				else {}
 			)
@@ -1240,7 +1377,8 @@ func _sample_independent_candidate(
 				[],
 					not variable_event and not ballistic_event,
 				bool(candidate.allow_right_edge),
-				effective_lifetime
+				effective_lifetime,
+				ballistic_event and ballistic_abundance_enabled
 			)
 			if not reason.is_empty():
 				last_reason = reason
@@ -1373,11 +1511,18 @@ func _candidate_preserves_d3_priority(
 			d3,
 			until_reservation
 		)
+	if ballistic_abundance_enabled:
+		return _ballistic_opportunities_leave_d3_lane(
+			d3,
+			ballistic_plan,
+			until_reservation
+		)
 	# A ballistic path can cross several logical lanes. To guarantee optional
 	# reward motion never alters a frozen D3 reservation, admit it only when its
 	# complete flight and post-contact opportunity clear before that reservation.
 	var candidate_total_lifetime := (
-		float(ballistic_plan.flight_duration)
+		float(ballistic_plan.get("launch_delay", 0.0))
+		+ float(ballistic_plan.flight_duration)
 		+ float(ballistic_plan.effective_post_contact_lifetime)
 	)
 	if (
@@ -1392,6 +1537,63 @@ func _candidate_preserves_d3_priority(
 		):
 			return false
 	return true
+
+
+func _ballistic_opportunities_leave_d3_lane(
+	d3: MotionBackgroundDropDirector,
+	candidate_plan: Dictionary,
+	until_reservation: float
+) -> bool:
+	# VM-0.6.7 rejected every reward whose complete lifetime crossed the next
+	# reservation timestamp. VM-0.6.8 instead proves that at least one authored
+	# D3 lane remains clear for the complete warning + fall horizon. This relaxes
+	# unnecessary reward starvation without allowing an optional coin to delay
+	# the frozen hazard schedule.
+	var impact_horizon := d3.warning_duration + d3.target_fall_duration
+	var candidate_total := (
+		float(candidate_plan.get("launch_delay", 0.0))
+		+ float(candidate_plan.flight_duration)
+		+ float(candidate_plan.effective_post_contact_lifetime)
+	)
+	for lane_x in d3.candidate_lane_x:
+		var lane_is_clear := true
+		var clearance := (
+			_conveyor.product_size.x + collectible_size.x
+		) * 0.5
+		if candidate_total > until_reservation + 0.0001:
+			var candidate_duration := minf(
+				impact_horizon,
+				candidate_total - until_reservation
+			)
+			var candidate_interval := _ballistic_plan_horizontal_interval(
+				candidate_plan,
+				until_reservation,
+				candidate_duration
+			)
+			if (
+				float(lane_x) >= candidate_interval.x - clearance
+				and float(lane_x) <= candidate_interval.y + clearance
+			):
+				lane_is_clear = false
+		if not lane_is_clear:
+			continue
+		for active_coin in active_collectibles():
+			var remaining := active_coin.total_collectible_time_remaining()
+			if remaining <= until_reservation + 0.0001:
+				continue
+			var interval := active_coin.projected_horizontal_interval(
+				until_reservation,
+				minf(impact_horizon, remaining - until_reservation)
+			)
+			if (
+				float(lane_x) >= interval.x - clearance
+				and float(lane_x) <= interval.y + clearance
+			):
+				lane_is_clear = false
+				break
+		if lane_is_clear:
+			return true
+	return false
 
 
 func _nonballistic_candidate_preserves_d3_priority(
@@ -1493,7 +1695,8 @@ func _projected_candidate_coin_data(
 	return {
 		"x": float((ballistic_plan.launch_position as Vector2).x),
 		"remaining": (
-			float(ballistic_plan.flight_duration)
+			float(ballistic_plan.get("launch_delay", 0.0))
+			+ float(ballistic_plan.flight_duration)
 			+ float(ballistic_plan.effective_post_contact_lifetime)
 		),
 		"size": collectible_size,
@@ -1624,10 +1827,29 @@ func _ballistic_contact_y() -> float:
 func _build_ballistic_plan(
 	landing_position: Vector2,
 	archetype: int,
-	requested_post_contact_lifetime: float
+	requested_post_contact_lifetime: float,
+	launch_delay: float = 0.0,
+	apply_variation: bool = false
 ) -> Dictionary:
 	var flight_duration := _ballistic_flight_duration(archetype)
 	var launch_position := _ballistic_launch_origin(archetype)
+	if apply_variation:
+		launch_position += Vector2(
+			_stream_random_range(Vector2(
+				-ballistic_launch_origin_variance.x,
+				ballistic_launch_origin_variance.x
+			)),
+			_stream_random_range(Vector2(
+				-ballistic_launch_origin_variance.y,
+				ballistic_launch_origin_variance.y
+			))
+		)
+		var duration_variance := _stream_random_range(Vector2(
+			-ballistic_flight_duration_variance_ratio,
+			ballistic_flight_duration_variance_ratio
+		))
+		flight_duration *= 1.0 + duration_variance
+	flight_duration = maxf(flight_duration, 0.01)
 	var launch_velocity := Vector2(
 		(landing_position.x - launch_position.x) / flight_duration,
 		(
@@ -1639,7 +1861,8 @@ func _build_ballistic_plan(
 	var effective_lifetime := _ballistic_post_contact_effective_lifetime(
 		landing_position.x,
 		requested_post_contact_lifetime,
-		flight_duration
+		flight_duration,
+		launch_delay
 	)
 	return {
 		"archetype": archetype,
@@ -1647,6 +1870,7 @@ func _build_ballistic_plan(
 		"landing_position": landing_position,
 		"launch_velocity": launch_velocity,
 		"flight_duration": flight_duration,
+		"launch_delay": maxf(launch_delay, 0.0),
 		"gravity": ballistic_gravity,
 		"requested_post_contact_lifetime": requested_post_contact_lifetime,
 		"effective_post_contact_lifetime": effective_lifetime,
@@ -1667,7 +1891,8 @@ func _minimum_ballistic_landing_x(flight_duration: float) -> float:
 func _ballistic_post_contact_effective_lifetime(
 	landing_x: float,
 	requested_lifetime: float,
-	flight_duration: float
+	flight_duration: float,
+	launch_delay: float = 0.0
 ) -> float:
 	var requested := maxf(requested_lifetime, 0.0)
 	var available_distance := (
@@ -1683,10 +1908,10 @@ func _ballistic_post_contact_effective_lifetime(
 	while elapsed + 0.000001 < requested:
 		var delta := minf(step, requested - elapsed)
 		var start_speed := _conveyor.conveyor_speed_at(
-			_conveyor.survival_time + flight_duration + elapsed
+			_conveyor.survival_time + launch_delay + flight_duration + elapsed
 		)
 		var end_speed := _conveyor.conveyor_speed_at(
-			_conveyor.survival_time + flight_duration + elapsed + delta
+			_conveyor.survival_time + launch_delay + flight_duration + elapsed + delta
 		)
 		var distance := maxf((start_speed + end_speed) * 0.5 * delta, 0.0)
 		if travelled + distance + 0.000001 >= available_distance:
@@ -1726,6 +1951,10 @@ func _ballistic_plan_position_at(plan: Dictionary, elapsed: float) -> Vector2:
 	var velocity := plan.launch_velocity as Vector2
 	var flight_duration := float(plan.flight_duration)
 	var bounded_elapsed := maxf(elapsed, 0.0)
+	var launch_delay := float(plan.get("launch_delay", 0.0))
+	if bounded_elapsed <= launch_delay:
+		return launch
+	bounded_elapsed -= launch_delay
 	if bounded_elapsed <= flight_duration:
 		return Vector2(
 			launch.x + velocity.x * bounded_elapsed,
@@ -1735,7 +1964,7 @@ func _ballistic_plan_position_at(plan: Dictionary, elapsed: float) -> Vector2:
 		)
 	return Vector2(
 		landing.x - _conveyor_distance_between(
-			flight_duration,
+			launch_delay + flight_duration,
 			bounded_elapsed - flight_duration
 		),
 		landing.y
@@ -1750,9 +1979,12 @@ func _ballistic_plan_horizontal_interval(
 	var start := maxf(seconds_from_now, 0.0)
 	var end := start + maxf(duration, 0.0)
 	var samples := PackedFloat32Array([start, end])
-	var flight_duration := float(plan.flight_duration)
-	if flight_duration > start and flight_duration < end:
-		samples.append(flight_duration)
+	var launch_delay := float(plan.get("launch_delay", 0.0))
+	var flight_end := launch_delay + float(plan.flight_duration)
+	if launch_delay > start and launch_delay < end:
+		samples.append(launch_delay)
+	if flight_end > start and flight_end < end:
+		samples.append(flight_end)
 	var minimum_x := INF
 	var maximum_x := -INF
 	for sample_time in samples:
@@ -1771,12 +2003,17 @@ func _ballistic_trajectory_separation_is_valid(
 		collectible_size.x + 1.0
 	)
 	for sibling_plan in sibling_plans:
-		var shared_flight := minf(
-			float(candidate_plan.flight_duration),
-			float(sibling_plan.flight_duration)
+		var candidate_start := float(candidate_plan.get("launch_delay", 0.0))
+		var sibling_start := float(sibling_plan.get("launch_delay", 0.0))
+		var overlap_start := maxf(candidate_start, sibling_start)
+		var overlap_end := minf(
+			candidate_start + float(candidate_plan.flight_duration),
+			sibling_start + float(sibling_plan.flight_duration)
 		)
-		var elapsed := 0.0
-		while elapsed <= shared_flight + 0.000001:
+		if overlap_end < overlap_start:
+			continue
+		var elapsed := overlap_start
+		while elapsed <= overlap_end + 0.000001:
 			var candidate_position := _ballistic_plan_position_at(
 				candidate_plan,
 				elapsed
@@ -2102,8 +2339,24 @@ func _spawn_offer_coin(
 			float(ballistic_plan.gravity),
 			effective_lifetime,
 			_conveyor.conveyor_speed,
-			ballistic_bounce_restitutions
+			ballistic_bounce_restitutions,
+			float(ballistic_plan.get("launch_delay", 0.0)),
+			_conveyor.conveyor_support_left_x
 		)
+		if ballistic_abundance_enabled:
+			coin.configure_landed_can_collision(
+				Callable(self, "_landed_can_collision_rects"),
+				Vector2(
+					_conveyor.conveyor_support_left_x + collectible_size.x * 0.5,
+					_conveyor.control_band_right - collectible_size.x * 0.5
+				),
+				ballistic_maximum_landed_can_ricochets,
+				ballistic_can_top_restitution,
+				ballistic_can_side_horizontal_restitution,
+				ballistic_can_side_upward_speed,
+				ballistic_can_horizontal_deflection
+			)
+			coin.landed_can_ricochet.connect(_on_ballistic_landed_can_ricochet)
 	coin.set_meta("offer_id", offer_id)
 	coin.collected.connect(_on_collectible_collected.bind(offer_id))
 	coin.expired.connect(_on_collectible_expired.bind(offer_id))
@@ -3111,7 +3364,8 @@ func _candidate_rejection_reason(
 	siblings: Array[Dictionary],
 	enforce_current_reachability: bool = true,
 	allow_right_edge: bool = false,
-	visible_lifetime_override: float = -1.0
+	visible_lifetime_override: float = -1.0,
+	allow_landed_can_ricochet: bool = false
 ) -> String:
 	if collectible_lifetime <= reachability_reserve or collectible_lifetime <= 0.0:
 		return REJECTION_LIFETIME
@@ -3140,7 +3394,11 @@ func _candidate_rejection_reason(
 	for existing in active_collectibles():
 		if _rectangles_overlap(candidate, collectible_size, existing.global_position, existing.collectible_size):
 			return REJECTION_SIBLING
-	if _can_hazard_conflicts(candidate, visible_lifetime_override):
+	if _can_hazard_conflicts(
+		candidate,
+		visible_lifetime_override,
+		allow_landed_can_ricochet
+	):
 		return REJECTION_CAN_OVERLAP
 	if _sweeper_schedule_conflicts(candidate, band):
 		return REJECTION_SWEEPER
@@ -3156,15 +3414,17 @@ func _offer_has_reachable_response(candidates: Array[Dictionary]) -> bool:
 
 func _can_hazard_conflicts(
 	candidate: Vector2,
-	visible_lifetime_override: float = -1.0
+	visible_lifetime_override: float = -1.0,
+	allow_landed_can_ricochet: bool = false
 ) -> bool:
 	for product in _conveyor.active_falling_products():
 		if _falling_can_path_conflicts(candidate, product, visible_lifetime_override):
 			return true
-	for product in _conveyor.active_landed_products():
-		var landed_center := Vector2(product.conveyor_center_x(), product.global_position.y)
-		if _rectangles_overlap(candidate, collectible_size, landed_center, product.landed_size):
-			return true
+	if not allow_landed_can_ricochet:
+		for product in _conveyor.active_landed_products():
+			var landed_center := Vector2(product.conveyor_center_x(), product.global_position.y)
+			if _rectangles_overlap(candidate, collectible_size, landed_center, product.landed_size):
+				return true
 	return _warning_or_reserved_can_conflicts(candidate.x, visible_lifetime_override)
 
 
@@ -3383,6 +3643,22 @@ func _update_active_coin_speeds() -> void:
 		coin.scroll_speed = _conveyor.conveyor_speed
 
 
+func _landed_can_collision_rects() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for product in _conveyor.active_landed_products():
+		if not is_instance_valid(product):
+			continue
+		result.append({
+			"id": product.get_instance_id(),
+			"center": Vector2(
+				product.conveyor_center_x(),
+				product.global_position.y
+			),
+			"size": product.landed_size,
+		})
+	return result
+
+
 func _update_ballistic_player_crossings() -> void:
 	if not is_instance_valid(_conveyor.player):
 		return
@@ -3484,11 +3760,33 @@ func _on_collectible_collected(collectible: ConveyorCollectible, offer_id: int) 
 	# A queued collision after death/completion cannot change the final score.
 	if _stopped:
 		return
+	if collectible.is_ballistic():
+		var phase := collectible.collection_phase()
+		_ballistic_collection_counts[phase] = int(
+			_ballistic_collection_counts.get(phase, 0)
+		) + 1
+		var collection_time := collectible.collection_time_from_launch()
+		if collection_time >= 0.0:
+			_ballistic_collection_time_total += collection_time
+			_ballistic_collection_time_samples += 1
 	_resolve_coin(collectible, offer_id, true)
 
 
 func _on_collectible_expired(collectible: ConveyorCollectible, offer_id: int) -> void:
+	if collectible.is_ballistic():
+		if collectible.resolution_reason() == "EXITED_LEFT":
+			_ballistic_exited_left_count += 1
+		else:
+			_ballistic_expired_count += 1
 	_resolve_coin(collectible, offer_id, false)
+
+
+func _on_ballistic_landed_can_ricochet(
+	_collectible: ConveyorCollectible,
+	_ricochet_count: int,
+	_contact_kind: String
+) -> void:
+	_ballistic_total_ricochet_count += 1
 
 
 func _on_ballistic_first_contact(collectible: ConveyorCollectible) -> void:
