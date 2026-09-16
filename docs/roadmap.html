@@ -1713,6 +1713,30 @@
     text: 'VM-0.6.7 preserves the control event-attempt interval, 55/35/10 requested event weights, five-coin cap, teaching timing and one-point score, but launches coins through deterministic SHALLOW/MEDIUM/HIGH arcs lasting 0.72/0.90/1.10 seconds. Coins remain collectible throughout flight and two controlled 0.38/0.16 restitution bounces; first conveyor contact starts an independent 2.0–3.0-second lifetime and the unchanged final 0.70-second warning. Seeds 401/1701/4202 selected 35/34/36 events and delivered 21/20/24 coins; all six D3 warnings remained at 8.50, 17.04, 24.61, 33.40, 40.60 and 48.36 seconds with an 8.792-second maximum gap and zero coin-caused delay. The large delivery reduction versus the 49/53/51-coin control is an explicit A/B confound caused by conservative D3, can and sibling-trajectory rejection. All 40 test scripts passed; Standard and both frozen prototype scenes launched headlessly; the single-threaded Web build/ZIP loaded in local Chromium with no console warnings/errors. Readability, skill, choice quality and whether reduced abundance is acceptable remain unverified. See docs/vm067-ballistic-coins.md.'
   };
 
+  const vm068BallisticAbundanceEvidence = {
+    id: 'evidence-vm-0.6.8-ballistic-abundance',
+    type: 'Evidence', date: '2026-09-17', source: 'Founder VM-0.6.7 manual review and deterministic VM-0.6.7 diagnostics',
+    text: 'Founder review found the ballistic direction promising, but VM-0.6.7 delivered only 21/20/24 opportunities versus the static control\'s 49/53/51 and sometimes rendered coins embedded in landed cans. This abundance difference prevents a clean comparison and the embedding is a concrete readability/reachability defect.'
+  };
+
+  const vm068BallisticAbundanceHypothesis = {
+    id: 'hypothesis-vm-0.6.8-ballistic-abundance',
+    type: 'Hypothesis', date: '2026-09-17', source: 'Startup Lab VM-0.6.8 experiment brief',
+    text: 'A denser but still readable ballistic Refund Coin stream, with controlled landed-can ricochet and varied multi-coin launch rhythm, will preserve prediction and interception while creating enough scoring opportunities to sustain decisions.'
+  };
+
+  const vm068BallisticAbundanceDecision = {
+    id: 'decision-vm-0.6.8-ballistic-abundance',
+    type: 'Decision', date: '2026-09-17', source: 'Startup Lab VM-0.6.8 experiment brief',
+    text: 'Run one isolated abundance/collision experiment from VM-0.6.7. Preserve VM-0.6.6 as control and VM-0.6.7 as the ballistic baseline. Use bounded deterministic landed-can responses rather than full physics, keep D3 authoritative, and add local collection-state telemetry. Hazard-Earned Ballistic Refund Coins remain postponed.'
+  };
+
+  const vm068BallisticAbundanceResult = {
+    id: 'result-vm-0.6.8-ballistic-abundance',
+    type: 'Result', date: '2026-09-17', source: 'VM-0.6.8 implementation and deterministic technical QA',
+    text: 'VM-0.6.8 retains 1.10–2.10-second attempts, 55/35/10 event weights, cap five, 2.0–3.0-second post-contact lifetime and 0.70-second warning. Doubles use 50 percent 0.10–0.30-second staggering; triples use 75 percent cumulative 0.10–0.25-second staggering. Authored arcs gain bounded ±20×±16 px source and ±7.5 percent duration variation. Landed-can top/side contact is deterministic with at most two ricochets, followed by clear-space settle or expiry. Seeds 401/1701/4202 delivered 39/34/37 coins, averaged 2.037/1.719/1.926 active and never exceeded five. All six D3 warnings remained at approximately 8.50, 17.04, 24.61, 33.40, 40.60 and 48.36 seconds, longest gap 8.792 seconds, zero coin-caused delay. Local telemetry distinguishes AIRBORNE/BOUNCING/SETTLED collection, EXPIRED, EXITED_LEFT and can ricochets. All 41 automated test scripts passed and all three relevant scenes launched headlessly. The Web build loaded and ran locally with no JavaScript/game error, although automated Chromium reported repeated WebGL buffer warnings, so a strictly clean console remains unverified. Human collection distribution, readability, choice quality and preference remain unverified. See docs/vm068-ballistic-abundance.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1862,7 +1886,11 @@
     vm067BallisticCoinEvidence,
     vm067BallisticCoinHypothesis,
     vm067BallisticCoinDecision,
-    vm067BallisticCoinResult
+    vm067BallisticCoinResult,
+    vm068BallisticAbundanceEvidence,
+    vm068BallisticAbundanceHypothesis,
+    vm068BallisticAbundanceDecision,
+    vm068BallisticAbundanceResult
   ];
 
   const defaultFindings = [
@@ -1874,7 +1902,7 @@
   ];
 
   const defaultState = {
-    version: 44,
+    version: 45,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []
