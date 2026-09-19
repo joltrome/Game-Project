@@ -1,3 +1,31 @@
+# VM-0.6.10 Refund Chute integration prototype
+
+VM-0.6.10 is an isolated Concept C visual/mechanical-source test built on the
+VM-0.6.9 ballistic direction. It gives all ballistic Refund Coins one compact
+physical emitter without changing Standard difficulty. It is awaiting Startup
+Lab motion review and is not merged into the stable gameplay baseline.
+
+Run the normal candidate:
+
+```bash
+/Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --path . res://scenes/presentation/standard_session.tscn
+```
+
+Run the deterministic trajectory gallery and press `1`–`6` for SHALLOW,
+MEDIUM, HIGH, simultaneous double, staggered double and staggered triple:
+
+```bash
+/Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --path . res://scenes/tests/refund_chute_trajectory_review.tscn
+```
+
+Export with preset `Web GET CANNED VM-0.6.10 Refund Chute` to
+`builds/VM-0.6.10-REFUND-CHUTE/index.html`. See
+[`docs/vm0610-refund-chute.md`](docs/vm0610-refund-chute.md) for the exact
+visual contract, measured integrity/performance results, known risk and local
+review instructions.
+
+---
+
 # VM-0.6.0 Standard presentation/audio candidate
 
 F5 now opens the main menu. PLAY starts the accepted S1/P-A/C-A Standard scene. Move with A/D or Left/Right; jump with Space. Results offer RETRY and MENU; R retries, Escape returns from results/credits. Music and SFX have independent mute controls. Best score is local to the device/browser.

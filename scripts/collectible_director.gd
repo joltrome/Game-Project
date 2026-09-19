@@ -4,6 +4,8 @@ extends Node2D
 signal collectible_spawned(collectible: ConveyorCollectible)
 signal offer_spawned(offer_id: int, template: int, coin_count: int)
 signal score_changed(score: int)
+signal refund_chute_sequence_cued(pre_eject_duration: float, last_launch_delay: float)
+signal refund_chute_sequence_reset
 
 enum PlacementBand {
 	GROUND,
@@ -191,6 +193,17 @@ const REJECTION_UNKNOWN := "unknown"
 @export var ballistic_group_member_placement_attempts: int = 12
 @export var ballistic_group_combination_checks: int = 64
 @export var ballistic_single_placement_attempts: int = 48
+
+@export_category("Refund Chute Integration Prototype")
+@export var refund_chute_enabled: bool = false
+@export var refund_chute_pre_eject_duration: float = 0.15
+@export var refund_chute_open_after_final_launch_duration: float = 0.15
+@export var refund_chute_nominal_launch_position := Vector2(732.0, 374.0)
+@export var refund_chute_launch_segment_start := Vector2(714.0, 380.0)
+@export var refund_chute_launch_segment_end := Vector2(746.0, 368.0)
+@export var refund_chute_single_variance_x: float = 6.0
+@export var refund_chute_launch_grace_duration: float = 0.10
+@export var refund_chute_launch_grace_distance: float = 50.0
 
 @export_category("Performance Diagnostics")
 @export var performance_profiling_enabled: bool = false
@@ -791,7 +804,11 @@ func stop_for_round_end() -> void:
 	if _stopped:
 		return
 	_stopped = true
-	if ballistic_coin_events_enabled and ballistic_integrity_enabled:
+	if refund_chute_enabled:
+		refund_chute_sequence_reset.emit()
+	if refund_chute_enabled and ballistic_coin_events_enabled and ballistic_integrity_enabled:
+		print("VM0610_COIN_SUMMARY ", JSON.stringify(ballistic_run_summary()))
+	elif ballistic_coin_events_enabled and ballistic_integrity_enabled:
 		print("VM069_COIN_SUMMARY ", JSON.stringify(ballistic_run_summary()))
 	elif ballistic_coin_events_enabled and ballistic_abundance_enabled:
 		print("VM068_COIN_SUMMARY ", JSON.stringify(ballistic_run_summary()))
@@ -851,11 +868,16 @@ func _try_spawn_variable_coin_event() -> bool:
 			0,
 			[],
 			BallisticArchetype.MEDIUM if ballistic_coin_events_enabled else -1,
-			[]
+			[],
+			refund_chute_pre_eject_duration if refund_chute_enabled else 0.0,
+			{},
+			refund_chute_nominal_launch_position if refund_chute_enabled else null
 		)
 		var teaching_interval := _schedule_next_coin_event_attempt()
 		if teaching_accepted:
 			_natural_offer_count += 1
+			if refund_chute_enabled and ballistic_coin_events_enabled:
+				_cue_refund_chute_from_plans([_last_ballistic_plan])
 			if not _offer_log.is_empty():
 				_offer_log[-1].next_stream_interval = teaching_interval
 		_end_performance_event_profile(1, 1 if teaching_accepted else 0)
@@ -893,9 +915,18 @@ func _try_spawn_variable_coin_event() -> bool:
 		launch_delay_plan = _ballistic_launch_delay_plan(requested_count)
 		launch_rhythm = (
 			"STAGGERED"
-			if launch_delay_plan.size() > 1 and launch_delay_plan[-1] > 0.0
+			if (
+				launch_delay_plan.size() > 1
+				and launch_delay_plan[-1] - launch_delay_plan[0] > 0.0001
+			)
 			else "SIMULTANEOUS"
 		)
+		if refund_chute_enabled:
+			for delay_index in range(launch_delay_plan.size()):
+				launch_delay_plan[delay_index] += maxf(
+					refund_chute_pre_eject_duration,
+					0.0
+				)
 		if requested_count > 1 and ballistic_abundance_enabled:
 			if launch_rhythm == "STAGGERED":
 				_ballistic_staggered_multi_event_count += 1
@@ -980,6 +1011,8 @@ func _try_spawn_variable_coin_event() -> bool:
 			if cap_truncated_count == 0
 			else REJECTION_ACTIVE_LIMIT
 		)
+	if refund_chute_enabled and not accepted_trajectories.is_empty():
+		_cue_refund_chute_from_plans(accepted_trajectories)
 
 	var next_interval := _schedule_next_coin_event_attempt()
 	_natural_offer_count += 1
@@ -1046,7 +1079,13 @@ func _plan_ballistic_event_group(
 			int(archetype_plan[0]),
 			[],
 			float(launch_delay_plan[0]) if not launch_delay_plan.is_empty() else 0.0,
-			maxi(ballistic_single_placement_attempts, 1)
+			maxi(ballistic_single_placement_attempts, 1),
+			_refund_chute_origin_for_member(
+				1,
+				0,
+				launch_delay_plan,
+				side_plan
+			) if refund_chute_enabled else null
 		)
 		if performance_profiling_enabled:
 			_performance_current_event_placement_attempts += int(
@@ -1083,6 +1122,16 @@ func _plan_ballistic_event_group(
 		var pool: Array[Dictionary] = []
 		var pool_calls := 0
 		var maximum_pool_calls := maxi(ballistic_group_candidate_pool_size, 1) * 2
+		var launch_override: Variant = (
+			_refund_chute_origin_for_member(
+				target_count,
+				coin_index,
+				launch_delay_plan,
+				side_plan
+			)
+			if refund_chute_enabled
+			else null
+		)
 		while (
 			pool.size() < maxi(ballistic_group_candidate_pool_size, 1)
 			and pool_calls < maximum_pool_calls
@@ -1106,7 +1155,8 @@ func _plan_ballistic_event_group(
 				archetype,
 				[],
 				launch_delay,
-				maxi(ballistic_group_member_placement_attempts, 1)
+				maxi(ballistic_group_member_placement_attempts, 1),
+				launch_override
 			)
 			if performance_profiling_enabled:
 				_performance_current_event_placement_attempts += int(
@@ -1169,7 +1219,13 @@ func _plan_ballistic_event_group(
 		int(archetype_plan[0]),
 		[],
 		float(launch_delay_plan[0]) if not launch_delay_plan.is_empty() else 0.0,
-		maxi(ballistic_single_placement_attempts, 1)
+		maxi(ballistic_single_placement_attempts, 1),
+		_refund_chute_origin_for_member(
+			1,
+			0,
+			launch_delay_plan,
+			side_plan
+		) if refund_chute_enabled else null
 	)
 	if performance_profiling_enabled:
 		_performance_current_event_placement_attempts += int(
@@ -1454,6 +1510,78 @@ func _ballistic_launch_delay_plan(requested_count: int) -> PackedFloat32Array:
 	return delays
 
 
+func _refund_chute_origin_for_member(
+	member_count: int,
+	member_index: int,
+	launch_delays: PackedFloat32Array,
+	side_plan: Array[int] = []
+) -> Vector2:
+	if member_count == 2 and launch_delays.size() >= 2:
+		var simultaneous := absf(launch_delays[1] - launch_delays[0]) <= 0.0001
+		if simultaneous:
+			if side_plan.size() >= 2 and side_plan[0] != side_plan[1]:
+				var first_is_left := side_plan[0] < side_plan[1]
+				return (
+					refund_chute_launch_segment_start
+					if (member_index == 0) == first_is_left
+					else refund_chute_launch_segment_end
+				)
+			return (
+				refund_chute_launch_segment_start
+				if member_index == 0
+				else refund_chute_launch_segment_end
+			)
+	if member_count <= 1:
+		var varied_x := clampf(
+			refund_chute_nominal_launch_position.x
+			+ _stream_random_range(Vector2(
+				-refund_chute_single_variance_x,
+				refund_chute_single_variance_x
+			)),
+			refund_chute_launch_segment_start.x,
+			refund_chute_launch_segment_end.x
+		)
+		return _refund_chute_point_on_segment(varied_x)
+	var offsets := [-4.0, 0.0, 4.0]
+	var offset_index := posmod(member_index, offsets.size())
+	return _refund_chute_point_on_segment(
+		refund_chute_nominal_launch_position.x + offsets[offset_index]
+	)
+
+
+func _refund_chute_point_on_segment(x: float) -> Vector2:
+	var span_x := (
+		refund_chute_launch_segment_end.x
+		- refund_chute_launch_segment_start.x
+	)
+	if is_zero_approx(span_x):
+		return refund_chute_nominal_launch_position
+	var t := clampf(
+		(x - refund_chute_launch_segment_start.x) / span_x,
+		0.0,
+		1.0
+	)
+	return refund_chute_launch_segment_start.lerp(
+		refund_chute_launch_segment_end,
+		t
+	)
+
+
+func _cue_refund_chute_from_plans(plans: Array[Dictionary]) -> void:
+	if not refund_chute_enabled or plans.is_empty():
+		return
+	var last_launch_delay := 0.0
+	for plan in plans:
+		last_launch_delay = maxf(
+			last_launch_delay,
+			float(plan.get("launch_delay", 0.0))
+		)
+	refund_chute_sequence_cued.emit(
+		maxf(refund_chute_pre_eject_duration, 0.0),
+		last_launch_delay
+	)
+
+
 func ballistic_archetype_name(archetype: int) -> String:
 	match archetype:
 		BallisticArchetype.SHALLOW:
@@ -1577,7 +1705,8 @@ func _try_spawn_independent_coin(
 	ballistic_archetype: int = -1,
 	event_sibling_trajectories: Array[Dictionary] = [],
 	ballistic_launch_delay: float = 0.0,
-	preplanned_sample: Dictionary = {}
+	preplanned_sample: Dictionary = {},
+	ballistic_launch_position_override: Variant = null
 ) -> bool:
 	_last_stream_spawn_position = Vector2.ZERO
 	_last_stream_effective_lifetime = 0.0
@@ -1604,7 +1733,9 @@ func _try_spawn_independent_coin(
 			event_sibling_sides,
 			ballistic_archetype,
 			event_sibling_trajectories,
-			ballistic_launch_delay
+			ballistic_launch_delay,
+			-1,
+			ballistic_launch_position_override
 		)
 	)
 	var candidate_data: Dictionary = sampled.get("candidate", {})
@@ -1777,7 +1908,8 @@ func _sample_independent_candidate(
 	ballistic_archetype: int = -1,
 	event_sibling_trajectories: Array[Dictionary] = [],
 	ballistic_launch_delay: float = 0.0,
-	maximum_attempts_override: int = -1
+	maximum_attempts_override: int = -1,
+	ballistic_launch_position_override: Variant = null
 ) -> Dictionary:
 	var variable_event := variable_coin_events_enabled and spawn_kind == "event"
 	var ballistic_event := (
@@ -1858,7 +1990,8 @@ func _sample_independent_candidate(
 					ballistic_archetype,
 					lifetime,
 					ballistic_launch_delay,
-					ballistic_abundance_enabled
+					ballistic_abundance_enabled,
+					ballistic_launch_position_override
 				)
 				if ballistic_event
 				else {}
@@ -2347,21 +2480,28 @@ func _build_ballistic_plan(
 	archetype: int,
 	requested_post_contact_lifetime: float,
 	launch_delay: float = 0.0,
-	apply_variation: bool = false
+	apply_variation: bool = false,
+	launch_position_override: Variant = null
 ) -> Dictionary:
 	var flight_duration := _ballistic_flight_duration(archetype)
-	var launch_position := _ballistic_launch_origin(archetype)
+	var uses_refund_chute := refund_chute_enabled and launch_position_override is Vector2
+	var launch_position := (
+		launch_position_override as Vector2
+		if uses_refund_chute
+		else _ballistic_launch_origin(archetype)
+	)
 	if apply_variation:
-		launch_position += Vector2(
-			_stream_random_range(Vector2(
-				-ballistic_launch_origin_variance.x,
-				ballistic_launch_origin_variance.x
-			)),
-			_stream_random_range(Vector2(
-				-ballistic_launch_origin_variance.y,
-				ballistic_launch_origin_variance.y
-			))
-		)
+		if not uses_refund_chute:
+			launch_position += Vector2(
+				_stream_random_range(Vector2(
+					-ballistic_launch_origin_variance.x,
+					ballistic_launch_origin_variance.x
+				)),
+				_stream_random_range(Vector2(
+					-ballistic_launch_origin_variance.y,
+					ballistic_launch_origin_variance.y
+				))
+			)
 		var duration_variance := _stream_random_range(Vector2(
 			-ballistic_flight_duration_variance_ratio,
 			ballistic_flight_duration_variance_ratio
@@ -2392,6 +2532,7 @@ func _build_ballistic_plan(
 		"gravity": ballistic_gravity,
 		"requested_post_contact_lifetime": requested_post_contact_lifetime,
 		"effective_post_contact_lifetime": effective_lifetime,
+		"refund_chute_launch": uses_refund_chute,
 	}
 
 
@@ -2606,10 +2747,43 @@ func _ballistic_trajectory_separation_is_valid(
 				sibling_plan,
 				elapsed
 			)
+			if (
+				_refund_chute_plan_is_inside_launch_grace(
+					candidate_plan,
+					candidate_position,
+					elapsed
+				)
+				and _refund_chute_plan_is_inside_launch_grace(
+					sibling_plan,
+					sibling_position,
+					elapsed
+				)
+			):
+				elapsed += 1.0 / 60.0
+				continue
 			if candidate_position.distance_to(sibling_position) < minimum_separation:
 				return false
 			elapsed += 1.0 / 60.0
 	return true
+
+
+func _refund_chute_plan_is_inside_launch_grace(
+	plan: Dictionary,
+	current_position: Vector2,
+	elapsed: float
+) -> bool:
+	if not refund_chute_enabled or not bool(plan.get("refund_chute_launch", false)):
+		return false
+	var time_since_launch := elapsed - float(plan.get("launch_delay", 0.0))
+	if (
+		time_since_launch < -0.0001
+		or time_since_launch > maxf(refund_chute_launch_grace_duration, 0.0)
+	):
+		return false
+	return current_position.distance_to(plan.launch_position) <= maxf(
+		refund_chute_launch_grace_distance,
+		0.0
+	) + 0.0001
 
 
 func _ballistic_post_contact_separation_is_valid(

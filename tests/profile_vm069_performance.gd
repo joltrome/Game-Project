@@ -22,9 +22,10 @@ func _run() -> void:
 			_mode_filter = argument.trim_prefix("--mode=")
 	var integrity_available := await _director_has_integrity_property()
 	for mode in [
-		{"name": "VM066", "ballistic": false, "abundance": false, "integrity": false},
-		{"name": "VM068", "ballistic": true, "abundance": true, "integrity": false},
-		{"name": "VM069", "ballistic": true, "abundance": true, "integrity": true},
+		{"name": "VM066", "ballistic": false, "abundance": false, "integrity": false, "refund_chute": false},
+		{"name": "VM068", "ballistic": true, "abundance": true, "integrity": false, "refund_chute": false},
+		{"name": "VM069", "ballistic": true, "abundance": true, "integrity": true, "refund_chute": false},
+		{"name": "VM0610", "ballistic": true, "abundance": true, "integrity": true, "refund_chute": true},
 	]:
 		if not _mode_filter.is_empty() and String(mode.name) != _mode_filter:
 			continue
@@ -38,6 +39,7 @@ func _run() -> void:
 
 func _profile_mode(mode: Dictionary, seed: int) -> Dictionary:
 	var shell := MOTION_SCENE.instantiate() as MotionExperimentShell
+	shell.local_instrumentation_enabled = false
 	root.add_child(shell)
 	await process_frame
 	var conveyor := shell.conveyor
@@ -47,6 +49,8 @@ func _profile_mode(mode: Dictionary, seed: int) -> Dictionary:
 	director.ballistic_abundance_enabled = bool(mode.abundance)
 	if _has_property(director, &"ballistic_integrity_enabled"):
 		director.set("ballistic_integrity_enabled", bool(mode.integrity))
+	if _has_property(director, &"refund_chute_enabled"):
+		director.set("refund_chute_enabled", bool(mode.refund_chute))
 	director.performance_profiling_enabled = true
 	director.placement_seed = seed
 	director._placement_rng_state = seed

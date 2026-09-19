@@ -116,6 +116,7 @@ var vis04_enabled: bool = false
 var vis04_coin_collision_size := Vector2(24.0, 24.0)
 var vis04_configuration_id: String = ""
 var c2_live_typography_enabled: bool = false
+var refund_chute_enabled: bool = false
 
 var _technician_anchor: Node2D
 var _technician_sprite: AnimatedSprite2D
@@ -138,6 +139,7 @@ var _ordinary_variant_cursor: int = 0
 var _previous_grounded: bool = false
 var _land_visual_remaining: float = 0.0
 var _ordinary_warning_was_visible: bool = false
+var _refund_chute_visual: RefundChuteVisual
 
 
 func _ready() -> void:
@@ -156,6 +158,7 @@ func _ready() -> void:
 	_install_warning_visuals()
 	_install_rack_visuals()
 	_connect_runtime_signals()
+	_install_refund_chute_visual()
 	_install_debug_overlay()
 	_scan_runtime_objects()
 	_previous_grounded = conveyor.player.is_on_floor()
@@ -278,6 +281,24 @@ func falling_collision_variant_id() -> String:
 
 func d3_warning_sprite() -> AnimatedSprite2D:
 	return _d3_warning_sprite
+
+
+func refund_chute_visual() -> RefundChuteVisual:
+	return _refund_chute_visual
+
+
+func _install_refund_chute_visual() -> void:
+	if not refund_chute_enabled:
+		return
+	var collectibles := conveyor.get_node("CollectibleDirector") as CollectibleDirector
+	_refund_chute_visual = RefundChuteVisual.new()
+	_refund_chute_visual.name = "RefundChute"
+	_refund_chute_visual.director = collectibles
+	_refund_chute_visual.pre_eject_duration = collectibles.refund_chute_pre_eject_duration
+	_refund_chute_visual.open_after_final_launch_duration = (
+		collectibles.refund_chute_open_after_final_launch_duration
+	)
+	conveyor.add_child(_refund_chute_visual)
 
 
 func debug_overlay() -> MotionV2DebugOverlay:

@@ -16,6 +16,7 @@ const VIS04_BASELINE_COIN_COLLISION_SIZE := Vector2(24.0, 24.0)
 @export var vis04_carriage_raise_pixels: float = 0.0
 @export var vis04_coin_collision_size := VIS04_BASELINE_COIN_COLLISION_SIZE
 @export var vis04_configuration_id: String = ""
+@export var refund_chute_enabled: bool = false
 @export var v2_debug_overlay_enabled: bool = false
 @export var debug_overlay_toggle_allowed: bool = true
 @export var clean_tester_presentation: bool = false
@@ -148,6 +149,7 @@ func _build_variant() -> void:
 		v2_visual_integration.vis04_enabled = vis04_runtime_art_enabled
 		v2_visual_integration.vis04_coin_collision_size = vis04_coin_collision_size
 		v2_visual_integration.vis04_configuration_id = vis04_configuration_id
+		v2_visual_integration.refund_chute_enabled = refund_chute_enabled
 		v2_visual_integration.debug_overlay_enabled = v2_debug_overlay_enabled
 		v2_visual_integration.debug_overlay_toggle_allowed = debug_overlay_toggle_allowed
 		conveyor.add_child(v2_visual_integration)

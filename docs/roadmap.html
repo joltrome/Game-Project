@@ -1761,6 +1761,30 @@
     text: 'VM-0.6.9 retains the 1.10–2.10-second cadence, 55/35/10 event weights, cap five, authored trajectory families, launch rhythm, D3 schedule and all gameplay/difficulty values. Bounded candidate-pool group planning, analytical conveyor-distance/lifetime calculations and per-physics-frame landed-can geometry caching reduced the same stress profile\'s mean event planning from 56.959 ms to 8.664 ms and maximum from 210.635 ms to 53.696 ms versus VM-0.6.8; steps over 33.33 ms fell from 59 to 12 across three seeds. Natural runs improved full doubles from 14/39 (35.9 percent) to 23/44 (52.3 percent) and full triples from 1/11 (9.1 percent) to 1/7 (14.3 percent), delivering 41/38/39 coins. All six D3 warnings remained on the frozen schedule. Web export/load succeeded; VM-0.6.6, VM-0.6.8 and VM-0.6.9 all reproduce the same WebGL buffer warnings in automated Chromium, so the warnings are not ballistic-specific and the founder\'s normal itch browser remains unverified. Human preference, sustained normal-browser/mobile performance and subjective multi-event readability remain unverified. See docs/vm069-ballistic-integrity.md.'
   };
 
+  const vm0610RefundChuteEvidence = {
+    id: 'evidence-vm-0.6.10-refund-chute',
+    type: 'Evidence', date: '2026-09-20', source: 'Founder/second-player VM-0.6.9 preference and Work Concept C handoff',
+    text: 'The founder prefers the ballistic direction conceptually, a second player independently described VM-0.6.9 as more fun, and the ballistic coins still lacked a visible physical source. Work selected Concept C, a compact angled Refund Hopper, for a controlled runtime integration test. This does not establish that the chute works in motion.'
+  };
+
+  const vm0610RefundChuteHypothesis = {
+    id: 'hypothesis-vm-0.6.10-refund-chute',
+    type: 'Hypothesis', date: '2026-09-20', source: 'Startup Lab VM-0.6.10 brief',
+    text: 'One visible angled Refund Chute and compact emitter zone may plausibly support SHALLOW, MEDIUM, HIGH, simultaneous-double and staggered-multi ballistic Refund Coins while improving visual causality and preserving gameplay fairness.'
+  };
+
+  const vm0610RefundChuteDecision = {
+    id: 'decision-vm-0.6.10-refund-chute',
+    type: 'Decision', date: '2026-09-20', source: 'Startup Lab VM-0.6.10 brief',
+    text: 'Build VM-0.6.10 as an isolated Concept C integration prototype from VM-0.6.9. Preserve the control and all difficulty/gameplay values. Do not begin VM-0.7.0, weaken global separation, merge the branch or upload the build until Startup Lab reviews all six trajectory cases in motion.'
+  };
+
+  const vm0610RefundChuteResult = {
+    id: 'result-vm-0.6.10-refund-chute',
+    type: 'Result', date: '2026-09-20', source: 'VM-0.6.10 deterministic integration, profiling and visual QA',
+    text: 'Concept C is integrated at 84×66 px and (692,338), with a diagonal mouth segment from (714,380) to (746,368), 150 ms PRE-EJECT and OPEN through the last sibling plus 150 ms. Controlled SHALLOW/MEDIUM/HIGH, simultaneous-double, staggered-double and staggered-triple cases all begin at the mouth and retain distinct deterministic trajectories. The global 44 px separation is unchanged; only chute launches receive at most 100 ms/50 px of mouth grace. Three natural runs delivered 38/41/34 coins, preserved cap five and all six frozen D3 events. However, complete natural multi-event integrity fell to 16/46 doubles (34.8 percent) and 0/10 triples, versus VM-0.6.9\'s recorded 23/44 and 1/7. Current-code stress profiling found no meaningful CPU regression: mean planning was 7.535 ms versus 7.377 ms and maximum was 44.207 ms versus 44.586 ms. Whether HIGH and rapid multi-ejection look physically plausible remains a subjective Startup Lab review question. See docs/vm0610-refund-chute.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1918,7 +1942,11 @@
     vm069BallisticIntegrityEvidence,
     vm069BallisticIntegrityHypothesis,
     vm069BallisticIntegrityDecision,
-    vm069BallisticIntegrityResult
+    vm069BallisticIntegrityResult,
+    vm0610RefundChuteEvidence,
+    vm0610RefundChuteHypothesis,
+    vm0610RefundChuteDecision,
+    vm0610RefundChuteResult
   ];
 
   const defaultFindings = [
@@ -1930,7 +1958,7 @@
   ];
 
   const defaultState = {
-    version: 46,
+    version: 47,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []
