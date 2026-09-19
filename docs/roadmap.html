@@ -1737,6 +1737,30 @@
     text: 'VM-0.6.8 retains 1.10–2.10-second attempts, 55/35/10 event weights, cap five, 2.0–3.0-second post-contact lifetime and 0.70-second warning. Doubles use 50 percent 0.10–0.30-second staggering; triples use 75 percent cumulative 0.10–0.25-second staggering. Authored arcs gain bounded ±20×±16 px source and ±7.5 percent duration variation. Landed-can top/side contact is deterministic with at most two ricochets, followed by clear-space settle or expiry. Seeds 401/1701/4202 delivered 39/34/37 coins, averaged 2.037/1.719/1.926 active and never exceeded five. All six D3 warnings remained at approximately 8.50, 17.04, 24.61, 33.40, 40.60 and 48.36 seconds, longest gap 8.792 seconds, zero coin-caused delay. Local telemetry distinguishes AIRBORNE/BOUNCING/SETTLED collection, EXPIRED, EXITED_LEFT and can ricochets. All 41 automated test scripts passed and all three relevant scenes launched headlessly. The Web build loaded and ran locally with no JavaScript/game error, although automated Chromium reported repeated WebGL buffer warnings, so a strictly clean console remains unverified. Human collection distribution, readability, choice quality and preference remain unverified. See docs/vm068-ballistic-abundance.md.'
   };
 
+  const vm069BallisticIntegrityEvidence = {
+    id: 'evidence-vm-0.6.9-ballistic-integrity',
+    type: 'Evidence', date: '2026-09-19', source: 'Founder VM-0.6.8 review plus controlled VM-0.6.6/0.6.8 profiling',
+    text: 'The founder prefers the ballistic scoring direction conceptually but reported possible stutter and observed that selected doubles/triples still often appear as single-coin drip-feed. Controlled 60-second native stress profiles confirmed rare synchronous planning spikes in both the static and ballistic paths; VM-0.6.8 was worse, with maximum event planning of 210.635 ms versus 155.100 ms in VM-0.6.6. Ricochet-active steps remained below 0.60 ms on average, identifying candidate placement/lifetime/collision planning rather than ricochet stepping as the meaningful hotspot. No fresh-player evidence supports increasing Standard difficulty.'
+  };
+
+  const vm069BallisticIntegrityHypothesis = {
+    id: 'hypothesis-vm-0.6.9-ballistic-integrity',
+    type: 'Hypothesis', date: '2026-09-19', source: 'Startup Lab VM-0.6.9 validation brief',
+    text: 'Planning selected ballistic pairs/triples as bounded complete groups, while correcting confirmed placement-planning hotspots, may make real multi-coin choices survive more often without changing Standard difficulty, event cadence, D3 authority or hazard readability.'
+  };
+
+  const vm069BallisticIntegrityDecision = {
+    id: 'decision-vm-0.6.9-ballistic-integrity',
+    type: 'Decision', date: '2026-09-19', source: 'Startup Lab VM-0.6.9 validation brief',
+    text: 'Continue the ballistic direction for one isolated evidence pass while retaining VM-0.6.6 as the static fallback/control and VM-0.6.8 as the preserved baseline. Do not increase Standard difficulty. Experienced-player challenge should primarily come from score optimization and a separately approved future Overload Mode; Hazard-Earned Ballistic Refund Coins remain postponed.'
+  };
+
+  const vm069BallisticIntegrityResult = {
+    id: 'result-vm-0.6.9-ballistic-integrity',
+    type: 'Result', date: '2026-09-19', source: 'VM-0.6.9 deterministic performance/integrity QA',
+    text: 'VM-0.6.9 retains the 1.10–2.10-second cadence, 55/35/10 event weights, cap five, authored trajectory families, launch rhythm, D3 schedule and all gameplay/difficulty values. Bounded candidate-pool group planning, analytical conveyor-distance/lifetime calculations and per-physics-frame landed-can geometry caching reduced the same stress profile\'s mean event planning from 56.959 ms to 8.664 ms and maximum from 210.635 ms to 53.696 ms versus VM-0.6.8; steps over 33.33 ms fell from 59 to 12 across three seeds. Natural runs improved full doubles from 14/39 (35.9 percent) to 23/44 (52.3 percent) and full triples from 1/11 (9.1 percent) to 1/7 (14.3 percent), delivering 41/38/39 coins. All six D3 warnings remained on the frozen schedule. Web export/load succeeded; VM-0.6.6, VM-0.6.8 and VM-0.6.9 all reproduce the same WebGL buffer warnings in automated Chromium, so the warnings are not ballistic-specific and the founder\'s normal itch browser remains unverified. Human preference, sustained normal-browser/mobile performance and subjective multi-event readability remain unverified. See docs/vm069-ballistic-integrity.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1890,7 +1914,11 @@
     vm068BallisticAbundanceEvidence,
     vm068BallisticAbundanceHypothesis,
     vm068BallisticAbundanceDecision,
-    vm068BallisticAbundanceResult
+    vm068BallisticAbundanceResult,
+    vm069BallisticIntegrityEvidence,
+    vm069BallisticIntegrityHypothesis,
+    vm069BallisticIntegrityDecision,
+    vm069BallisticIntegrityResult
   ];
 
   const defaultFindings = [
@@ -1902,7 +1930,7 @@
   ];
 
   const defaultState = {
-    version: 45,
+    version: 46,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

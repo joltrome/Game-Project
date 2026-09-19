@@ -18,6 +18,7 @@ const VOLUME_SLIDER := preload("res://scripts/presentation/c2_volume_slider.gd")
 @export var audio_settings_path: String = "user://standard_audio.cfg"
 @export var ballistic_coins_enabled: bool = false
 @export var ballistic_abundance_enabled: bool = false
+@export var ballistic_integrity_enabled: bool = false
 
 var state: State = State.MENU
 var game: MotionExperimentShell
@@ -152,7 +153,9 @@ func start_game() -> void:
 	game.clean_tester_presentation = true
 	game.clean_control_hint_duration = 0.0
 	game.local_instrumentation_enabled = false
-	if ballistic_abundance_enabled:
+	if ballistic_integrity_enabled:
+		game.build_id_override = "VM-0.6.9-BALLISTIC-INTEGRITY"
+	elif ballistic_abundance_enabled:
 		game.build_id_override = "VM-0.6.8-BALLISTIC-ABUNDANCE"
 	elif ballistic_coins_enabled:
 		game.build_id_override = "VM-0.6.7-BALLISTIC-COINS"
@@ -172,6 +175,7 @@ func start_game() -> void:
 	var collectible_director := game.conveyor.get_node("CollectibleDirector") as CollectibleDirector
 	collectible_director.ballistic_coin_events_enabled = ballistic_coins_enabled
 	collectible_director.ballistic_abundance_enabled = ballistic_abundance_enabled
+	collectible_director.ballistic_integrity_enabled = ballistic_integrity_enabled
 	var round_controller := game.conveyor.get_node("RoundController") as FixedRoundController
 	# Death can originate inside a physics collision callback. Finish that callback
 	# before disabling the complete run and its collision objects.
