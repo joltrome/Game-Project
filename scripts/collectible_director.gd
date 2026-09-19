@@ -185,6 +185,16 @@ const REJECTION_UNKNOWN := "unknown"
 @export var ballistic_can_side_upward_speed: float = 180.0
 @export var ballistic_can_horizontal_deflection: float = 70.0
 
+@export_category("Ballistic Integrity Prototype")
+@export var ballistic_integrity_enabled: bool = false
+@export var ballistic_group_candidate_pool_size: int = 4
+@export var ballistic_group_member_placement_attempts: int = 12
+@export var ballistic_group_combination_checks: int = 64
+@export var ballistic_single_placement_attempts: int = 48
+
+@export_category("Performance Diagnostics")
+@export var performance_profiling_enabled: bool = false
+
 @export_category("Route Validation")
 @export var trajectory_simulation_step: float = 1.0 / 120.0
 @export var recent_route_history_size: int = 2
@@ -269,6 +279,20 @@ var _ballistic_exited_left_count: int = 0
 var _ballistic_total_ricochet_count: int = 0
 var _ballistic_collection_time_total: float = 0.0
 var _ballistic_collection_time_samples: int = 0
+var _ballistic_full_double_count: int = 0
+var _ballistic_full_triple_count: int = 0
+var _ballistic_degraded_double_count: int = 0
+var _ballistic_degraded_triple_count: int = 0
+var _ballistic_group_degradation_reasons: Dictionary = {}
+var _performance_event_log: Array[Dictionary] = []
+var _performance_current_event_started_usec: int = 0
+var _performance_current_event_placement_attempts: int = 0
+var _performance_current_event_trajectory_checks: int = 0
+var _performance_landed_can_query_count: int = 0
+var _performance_landed_can_rect_count: int = 0
+var _performance_landed_can_cache_rebuild_count: int = 0
+var _landed_can_collision_cache: Array[Dictionary] = []
+var _landed_can_collision_cache_frame: int = -1
 
 @onready var _conveyor: ConveyorPrototype = get_parent() as ConveyorPrototype
 @onready var _score_label: Label = _conveyor.get_node("HUD/ScoreGroup/CollectibleScore")
@@ -509,7 +533,7 @@ func ballistic_run_summary() -> Dictionary:
 		+ int(collections.get("BOUNCING", 0))
 		+ int(collections.get("SETTLED", 0))
 	)
-	return {
+	var result := {
 		"delivered": spawn_count,
 		"collected": collected_total,
 		"airborne": int(collections.get("AIRBORNE", 0)),
@@ -520,6 +544,75 @@ func ballistic_run_summary() -> Dictionary:
 		"landed_can_ricochets": _ballistic_total_ricochet_count,
 		"collection_rate": ballistic_collection_rate(),
 		"average_launch_to_collection_time": ballistic_average_launch_to_collection_time(),
+	}
+	if ballistic_integrity_enabled:
+		result.merge(ballistic_integrity_summary())
+	return result
+
+
+func ballistic_integrity_summary() -> Dictionary:
+	var selected_doubles := int(_coin_event_size_counts[2])
+	var selected_triples := int(_coin_event_size_counts[3])
+	return {
+		"selected_singles": int(_coin_event_size_counts[1]),
+		"selected_doubles": selected_doubles,
+		"selected_triples": selected_triples,
+		"full_doubles": _ballistic_full_double_count,
+		"full_triples": _ballistic_full_triple_count,
+		"degraded_doubles": _ballistic_degraded_double_count,
+		"degraded_triples": _ballistic_degraded_triple_count,
+		"double_integrity_rate": (
+			float(_ballistic_full_double_count) / float(selected_doubles)
+			if selected_doubles > 0
+			else 0.0
+		),
+		"triple_integrity_rate": (
+			float(_ballistic_full_triple_count) / float(selected_triples)
+			if selected_triples > 0
+			else 0.0
+		),
+		"degradation_reasons": _ballistic_group_degradation_reasons.duplicate(true),
+	}
+
+
+func performance_event_log() -> Array[Dictionary]:
+	return _performance_event_log.duplicate(true)
+
+
+func performance_landed_can_query_count() -> int:
+	return _performance_landed_can_query_count
+
+
+func performance_landed_can_rect_count() -> int:
+	return _performance_landed_can_rect_count
+
+
+func performance_profile_summary() -> Dictionary:
+	var durations := PackedFloat32Array()
+	var placement_attempts := 0
+	var trajectory_checks := 0
+	for event in _performance_event_log:
+		durations.append(float(event.get("planning_ms", 0.0)))
+		placement_attempts += int(event.get("placement_attempts", 0))
+		trajectory_checks += int(event.get("trajectory_checks", 0))
+	var duration_total := 0.0
+	var duration_maximum := 0.0
+	for duration in durations:
+		duration_total += duration
+		duration_maximum = maxf(duration_maximum, duration)
+	return {
+		"event_count": durations.size(),
+		"average_planning_ms": (
+			duration_total / float(durations.size())
+			if not durations.is_empty()
+			else 0.0
+		),
+		"maximum_planning_ms": duration_maximum,
+		"placement_attempts": placement_attempts,
+		"trajectory_checks": trajectory_checks,
+		"landed_can_queries": _performance_landed_can_query_count,
+		"landed_can_rects_returned": _performance_landed_can_rect_count,
+		"landed_can_cache_rebuilds": _performance_landed_can_cache_rebuild_count,
 	}
 
 
@@ -698,7 +791,9 @@ func stop_for_round_end() -> void:
 	if _stopped:
 		return
 	_stopped = true
-	if ballistic_coin_events_enabled and ballistic_abundance_enabled:
+	if ballistic_coin_events_enabled and ballistic_integrity_enabled:
+		print("VM069_COIN_SUMMARY ", JSON.stringify(ballistic_run_summary()))
+	elif ballistic_coin_events_enabled and ballistic_abundance_enabled:
 		print("VM068_COIN_SUMMARY ", JSON.stringify(ballistic_run_summary()))
 	set_process(false)
 	_pending_bonus = false
@@ -742,6 +837,7 @@ func _try_spawn_natural_offer() -> bool:
 
 
 func _try_spawn_variable_coin_event() -> bool:
+	_begin_performance_event_profile()
 	var teaching := _natural_offer_count == 0
 	if teaching:
 		var teaching_accepted := _try_spawn_independent_coin(
@@ -762,6 +858,7 @@ func _try_spawn_variable_coin_event() -> bool:
 			_natural_offer_count += 1
 			if not _offer_log.is_empty():
 				_offer_log[-1].next_stream_interval = teaching_interval
+		_end_performance_event_profile(1, 1 if teaching_accepted else 0)
 		return teaching_accepted
 
 	_coin_event_count += 1
@@ -809,26 +906,57 @@ func _try_spawn_variable_coin_event() -> bool:
 	var flight_durations := PackedFloat32Array()
 	var placement_failures := 0
 	var priority_skips_before := _stream_priority_skip_count
-	for coin_index in range(target_count):
-		var requested_lifetime := _stream_random_range(
-			ballistic_post_contact_lifetime_range
-			if ballistic_coin_events_enabled
-			else independent_lifetime_range
+	var integrity_plan: Dictionary = {}
+	var preplanned_samples: Array[Dictionary] = []
+	if ballistic_coin_events_enabled and ballistic_integrity_enabled:
+		for _coin_index in range(target_count):
+			requested_lifetimes.append(_stream_random_range(
+				ballistic_post_contact_lifetime_range
+			))
+		integrity_plan = _plan_ballistic_event_group(
+			target_count,
+			side_plan,
+			archetype_plan,
+			launch_delay_plan,
+			requested_lifetimes
 		)
-		requested_lifetimes.append(requested_lifetime)
+		preplanned_samples.assign(integrity_plan.get("samples", []))
+		target_count = preplanned_samples.size()
+	for coin_index in range(target_count):
+		var requested_lifetime := (
+			float(requested_lifetimes[coin_index])
+			if ballistic_coin_events_enabled and ballistic_integrity_enabled
+			else _stream_random_range(
+				ballistic_post_contact_lifetime_range
+				if ballistic_coin_events_enabled
+				else independent_lifetime_range
+			)
+		)
+		if not (ballistic_coin_events_enabled and ballistic_integrity_enabled):
+			requested_lifetimes.append(requested_lifetime)
+		var preplanned_sample: Dictionary = (
+			preplanned_samples[coin_index]
+			if coin_index < preplanned_samples.size()
+			else {}
+		)
+		var planned_ballistic: Dictionary = preplanned_sample.get(
+			"ballistic_plan",
+			{}
+		)
 		var accepted := _try_spawn_independent_coin(
 			"event",
 			requested_lifetime,
 			false,
-			int(side_plan[coin_index]),
+			int(preplanned_sample.get("preferred_side", side_plan[coin_index])),
 			accepted_positions,
 			event_id,
 			requested_count,
 			coin_index,
 			accepted_sides,
-			int(archetype_plan[coin_index]) if ballistic_coin_events_enabled else -1,
+			int(planned_ballistic.get("archetype", archetype_plan[coin_index])) if ballistic_coin_events_enabled else -1,
 			accepted_trajectories,
-			float(launch_delay_plan[coin_index]) if not launch_delay_plan.is_empty() else 0.0
+			float(planned_ballistic.get("launch_delay", launch_delay_plan[coin_index])) if not launch_delay_plan.is_empty() else 0.0,
+			preplanned_sample
 		)
 		if not accepted:
 			placement_failures += 1
@@ -842,6 +970,16 @@ func _try_spawn_variable_coin_event() -> bool:
 			accepted_archetypes.append(int(_last_ballistic_plan.archetype))
 			flight_durations.append(float(_last_ballistic_plan.flight_duration))
 		_normal_stream_spawn_count += 1
+	if ballistic_coin_events_enabled and ballistic_integrity_enabled:
+		placement_failures = maxi(requested_count - accepted_positions.size(), 0)
+		_coin_event_placement_failure_count += placement_failures
+		_record_ballistic_integrity_result(
+			requested_count,
+			accepted_positions.size(),
+			String(integrity_plan.get("degradation_reason", ""))
+			if cap_truncated_count == 0
+			else REJECTION_ACTIVE_LIMIT
+		)
 
 	var next_interval := _schedule_next_coin_event_attempt()
 	_natural_offer_count += 1
@@ -862,11 +1000,373 @@ func _try_spawn_variable_coin_event() -> bool:
 		"flight_durations": flight_durations,
 		"launch_rhythm": launch_rhythm,
 		"launch_delays": launch_delay_plan,
+		"full_group_success": (
+			ballistic_integrity_enabled
+			and accepted_positions.size() == requested_count
+		),
+		"degraded_fallback": (
+			ballistic_integrity_enabled
+			and accepted_positions.size() < requested_count
+		),
+		"degradation_reason": (
+			String(integrity_plan.get("degradation_reason", ""))
+			if cap_truncated_count == 0
+			else REJECTION_ACTIVE_LIMIT
+		),
+		"group_planning_attempts": int(integrity_plan.get("group_attempts", 0)),
 		"placement_failures": placement_failures,
 		"d3_priority_skips": _stream_priority_skip_count - priority_skips_before,
 		"next_event_interval": next_interval,
 	})
+	_end_performance_event_profile(requested_count, accepted_positions.size())
 	return not accepted_positions.is_empty()
+
+
+func _plan_ballistic_event_group(
+	target_count: int,
+	side_plan: Array[int],
+	archetype_plan: Array[int],
+	launch_delay_plan: PackedFloat32Array,
+	requested_lifetimes: PackedFloat32Array
+) -> Dictionary:
+	if target_count <= 0:
+		return {
+			"samples": [],
+			"group_attempts": 0,
+			"degradation_reason": REJECTION_ACTIVE_LIMIT,
+		}
+	if target_count == 1:
+		var sampled_single := _sample_independent_candidate(
+			float(requested_lifetimes[0]),
+			false,
+			"event",
+			int(side_plan[0]),
+			[],
+			[],
+			int(archetype_plan[0]),
+			[],
+			float(launch_delay_plan[0]) if not launch_delay_plan.is_empty() else 0.0,
+			maxi(ballistic_single_placement_attempts, 1)
+		)
+		if performance_profiling_enabled:
+			_performance_current_event_placement_attempts += int(
+				sampled_single.get("attempts", 0)
+			)
+		var single_candidate: Dictionary = sampled_single.get("candidate", {})
+		var single_plan: Dictionary = sampled_single.get("ballistic_plan", {})
+		if single_candidate.is_empty() or single_plan.is_empty():
+			return {
+				"samples": [],
+				"group_attempts": 1,
+				"degradation_reason": String(sampled_single.get(
+					"reason",
+					REJECTION_SCATTER_EXHAUSTED
+				)),
+			}
+		var committed_single := sampled_single.duplicate(true)
+		committed_single.preferred_side = int(side_plan[0])
+		committed_single.requested_lifetime = float(requested_lifetimes[0])
+		return {
+			"samples": [committed_single],
+			"group_attempts": 1,
+			"degradation_reason": "",
+		}
+	var total_group_attempts := 0
+	var last_reason := REJECTION_SCATTER_EXHAUSTED
+	# Generate several individually valid options for each requested sibling,
+	# then search combinations. VM-0.6.8 and the first VM-0.6.9 draft locked
+	# sibling A before planning B/C, so an unlucky first choice frequently made a
+	# valid complete event look impossible. Pools keep that search bounded while
+	# allowing the complete event to be judged before anything is spawned.
+	var candidate_pools: Array = []
+	for coin_index in range(target_count):
+		var pool: Array[Dictionary] = []
+		var pool_calls := 0
+		var maximum_pool_calls := maxi(ballistic_group_candidate_pool_size, 1) * 2
+		while (
+			pool.size() < maxi(ballistic_group_candidate_pool_size, 1)
+			and pool_calls < maximum_pool_calls
+		):
+			pool_calls += 1
+			var requested_lifetime := float(requested_lifetimes[coin_index])
+			var preferred_side := int(side_plan[coin_index])
+			var archetype := int(archetype_plan[coin_index])
+			var launch_delay := (
+				float(launch_delay_plan[coin_index])
+				if coin_index < launch_delay_plan.size()
+				else 0.0
+			)
+			var sampled := _sample_independent_candidate(
+				requested_lifetime,
+				false,
+				"event",
+				preferred_side,
+				[],
+				[],
+				archetype,
+				[],
+				launch_delay,
+				maxi(ballistic_group_member_placement_attempts, 1)
+			)
+			if performance_profiling_enabled:
+				_performance_current_event_placement_attempts += int(
+					sampled.get("attempts", 0)
+				)
+			var candidate: Dictionary = sampled.get("candidate", {})
+			var plan: Dictionary = sampled.get("ballistic_plan", {})
+			if candidate.is_empty() or plan.is_empty():
+				last_reason = String(sampled.get(
+					"reason",
+					REJECTION_SCATTER_EXHAUSTED
+				))
+				continue
+			var duplicate_option := false
+			for existing_sample in pool:
+				var existing_candidate: Dictionary = existing_sample.candidate
+				if (
+					candidate.position.distance_to(existing_candidate.position)
+					< collectible_size.x * 0.5
+				):
+					duplicate_option = true
+					break
+			if duplicate_option:
+				continue
+			var committed_sample := sampled.duplicate(true)
+			committed_sample.preferred_side = preferred_side
+			committed_sample.requested_lifetime = requested_lifetime
+			pool.append(committed_sample)
+		candidate_pools.append(pool)
+
+	for group_size in range(target_count, 0, -1):
+		var combination_result := _find_ballistic_group_combination(
+			candidate_pools,
+			group_size
+		)
+		total_group_attempts += int(combination_result.get("checks", 0))
+		var samples: Array[Dictionary] = []
+		samples.assign(combination_result.get("samples", []))
+		if not samples.is_empty():
+			return {
+				"samples": samples,
+				"group_attempts": total_group_attempts,
+				"degradation_reason": (
+					"" if group_size == target_count else last_reason
+				),
+			}
+		var combination_reason := String(combination_result.get("reason", ""))
+		if not combination_reason.is_empty():
+			last_reason = combination_reason
+	# A full target pool can be empty under transient constraints. Give the final
+	# single fallback its own bounded search so a failed multi-event does not turn
+	# into an avoidable zero-coin gap.
+	var single_sample := _sample_independent_candidate(
+		float(requested_lifetimes[0]),
+		false,
+		"event",
+		int(side_plan[0]),
+		[],
+		[],
+		int(archetype_plan[0]),
+		[],
+		float(launch_delay_plan[0]) if not launch_delay_plan.is_empty() else 0.0,
+		maxi(ballistic_single_placement_attempts, 1)
+	)
+	if performance_profiling_enabled:
+		_performance_current_event_placement_attempts += int(
+			single_sample.get("attempts", 0)
+		)
+	if (
+		not Dictionary(single_sample.get("candidate", {})).is_empty()
+		and not Dictionary(single_sample.get("ballistic_plan", {})).is_empty()
+	):
+		var committed_single := single_sample.duplicate(true)
+		committed_single.preferred_side = int(side_plan[0])
+		committed_single.requested_lifetime = float(requested_lifetimes[0])
+		return {
+			"samples": [committed_single],
+			"group_attempts": total_group_attempts + 1,
+			"degradation_reason": last_reason,
+		}
+	return {
+		"samples": [],
+		"group_attempts": total_group_attempts,
+		"degradation_reason": last_reason,
+	}
+
+
+func _find_ballistic_group_combination(
+	candidate_pools: Array,
+	group_size: int
+) -> Dictionary:
+	if group_size <= 0 or candidate_pools.size() < group_size:
+		return {"samples": [], "checks": 0, "reason": REJECTION_SCATTER_EXHAUSTED}
+	for index in range(group_size):
+		if Array(candidate_pools[index]).is_empty():
+			return {"samples": [], "checks": 0, "reason": REJECTION_SCATTER_EXHAUSTED}
+	var checks := 0
+	var last_reason := REJECTION_SIBLING
+	var check_limit := maxi(ballistic_group_combination_checks, 1)
+	if group_size == 1:
+		for first in Array(candidate_pools[0]):
+			checks += 1
+			var samples: Array[Dictionary] = [first]
+			var reason := _ballistic_group_combination_rejection_reason(samples)
+			if reason.is_empty():
+				return {"samples": samples, "checks": checks, "reason": ""}
+			last_reason = reason
+			if checks >= check_limit:
+				break
+	elif group_size == 2:
+		for first in Array(candidate_pools[0]):
+			for second in Array(candidate_pools[1]):
+				checks += 1
+				var samples: Array[Dictionary] = [first, second]
+				var reason := _ballistic_group_combination_rejection_reason(samples)
+				if reason.is_empty():
+					return {"samples": samples, "checks": checks, "reason": ""}
+				last_reason = reason
+				if checks >= check_limit:
+					return {"samples": [], "checks": checks, "reason": last_reason}
+	else:
+		for first in Array(candidate_pools[0]):
+			for second in Array(candidate_pools[1]):
+				for third in Array(candidate_pools[2]):
+					checks += 1
+					var samples: Array[Dictionary] = [first, second, third]
+					var reason := _ballistic_group_combination_rejection_reason(samples)
+					if reason.is_empty():
+						return {"samples": samples, "checks": checks, "reason": ""}
+					last_reason = reason
+					if checks >= check_limit:
+						return {"samples": [], "checks": checks, "reason": last_reason}
+	return {"samples": [], "checks": checks, "reason": last_reason}
+
+
+func _ballistic_group_combination_rejection_reason(
+	samples: Array[Dictionary]
+) -> String:
+	var sibling_trajectories: Array[Dictionary] = []
+	for sample in samples:
+		var candidate: Dictionary = sample.get("candidate", {})
+		var plan: Dictionary = sample.get("ballistic_plan", {})
+		if candidate.is_empty() or plan.is_empty():
+			return REJECTION_SCATTER_EXHAUSTED
+		if not _ballistic_trajectory_separation_is_valid(
+			plan,
+			sibling_trajectories
+		):
+			return REJECTION_SIBLING
+		if not _ballistic_post_contact_separation_is_valid(
+			plan,
+			sibling_trajectories
+		):
+			return REJECTION_SIBLING
+		sibling_trajectories.append(plan)
+	if not _ballistic_group_preserves_d3_priority(sibling_trajectories):
+		return REJECTION_D3_PRIORITY
+	return ""
+
+
+func _ballistic_group_preserves_d3_priority(
+	candidate_plans: Array[Dictionary]
+) -> bool:
+	var d3 := _conveyor.get_node_or_null(
+		"BackgroundDropDirector"
+	) as MotionBackgroundDropDirector
+	if (
+		d3 == null
+		or d3.released_event_count() >= d3.maximum_events_per_round
+		or d3.state in [
+			MotionBackgroundDropDirector.VisualState.RELEASED,
+			MotionBackgroundDropDirector.VisualState.STOPPED,
+		]
+	):
+		return true
+	var until_reservation := 0.0
+	var impact_horizon := d3.warning_duration + d3.target_fall_duration
+	if d3.state == MotionBackgroundDropDirector.VisualState.SELECTED:
+		impact_horizon = d3.warning_time_remaining + d3.target_fall_duration
+	elif is_finite(d3.next_reservation_time):
+		until_reservation = (
+			0.0
+			if d3.reservation_pending
+			else maxf(
+				d3.next_reservation_time - _conveyor.survival_time,
+				0.0
+			)
+		)
+	else:
+		return true
+	var clearance := (
+		_conveyor.product_size.x + collectible_size.x
+	) * 0.5
+	for lane_x in d3.candidate_lane_x:
+		var lane_is_clear := true
+		for active_coin in active_collectibles():
+			var remaining := active_coin.total_collectible_time_remaining()
+			if remaining <= until_reservation + 0.0001:
+				continue
+			var active_interval := active_coin.projected_horizontal_interval(
+				until_reservation,
+				minf(impact_horizon, remaining - until_reservation)
+			)
+			if (
+				float(lane_x) >= active_interval.x - clearance
+				and float(lane_x) <= active_interval.y + clearance
+			):
+				lane_is_clear = false
+				break
+		if not lane_is_clear:
+			continue
+		for plan in candidate_plans:
+			var total_lifetime := (
+				float(plan.get("launch_delay", 0.0))
+				+ float(plan.flight_duration)
+				+ float(plan.effective_post_contact_lifetime)
+			)
+			if total_lifetime <= until_reservation + 0.0001:
+				continue
+			var interval := _ballistic_plan_horizontal_interval(
+				plan,
+				until_reservation,
+				minf(impact_horizon, total_lifetime - until_reservation)
+			)
+			if (
+				float(lane_x) >= interval.x - clearance
+				and float(lane_x) <= interval.y + clearance
+			):
+				lane_is_clear = false
+				break
+		if lane_is_clear:
+			return true
+	return false
+
+
+func _record_ballistic_integrity_result(
+	requested_count: int,
+	delivered_count: int,
+	degradation_reason: String
+) -> void:
+	if requested_count == 2:
+		if delivered_count == 2:
+			_ballistic_full_double_count += 1
+		else:
+			_ballistic_degraded_double_count += 1
+	elif requested_count == 3:
+		if delivered_count == 3:
+			_ballistic_full_triple_count += 1
+		else:
+			_ballistic_degraded_triple_count += 1
+	if requested_count <= 1 or delivered_count == requested_count:
+		return
+	var reason := (
+		degradation_reason
+		if not degradation_reason.is_empty()
+		else REJECTION_SCATTER_EXHAUSTED
+	)
+	_ballistic_group_degradation_reasons[reason] = int(
+		_ballistic_group_degradation_reasons.get(reason, 0)
+	) + 1
 
 
 func _select_coin_event_size() -> int:
@@ -1076,7 +1576,8 @@ func _try_spawn_independent_coin(
 	event_sibling_sides: Array[int] = [],
 	ballistic_archetype: int = -1,
 	event_sibling_trajectories: Array[Dictionary] = [],
-	ballistic_launch_delay: float = 0.0
+	ballistic_launch_delay: float = 0.0,
+	preplanned_sample: Dictionary = {}
 ) -> bool:
 	_last_stream_spawn_position = Vector2.ZERO
 	_last_stream_effective_lifetime = 0.0
@@ -1091,20 +1592,26 @@ func _try_spawn_independent_coin(
 		_stream_cap_skip_count += 1
 		_record_stream_rejection(spawn_kind, REJECTION_ACTIVE_LIMIT, lifetime, 0)
 		return false
-	var sampled := _sample_independent_candidate(
-		lifetime,
-		force_ground,
-		spawn_kind,
-		preferred_side,
-		event_sibling_positions,
-		event_sibling_sides,
-		ballistic_archetype,
-		event_sibling_trajectories,
-		ballistic_launch_delay
+	var sampled := (
+		preplanned_sample
+		if not preplanned_sample.is_empty()
+		else _sample_independent_candidate(
+			lifetime,
+			force_ground,
+			spawn_kind,
+			preferred_side,
+			event_sibling_positions,
+			event_sibling_sides,
+			ballistic_archetype,
+			event_sibling_trajectories,
+			ballistic_launch_delay
+		)
 	)
 	var candidate_data: Dictionary = sampled.get("candidate", {})
 	var rejection_reason := String(sampled.get("reason", REJECTION_SCATTER_EXHAUSTED))
 	var placement_attempts := int(sampled.get("attempts", 0))
+	if performance_profiling_enabled and preplanned_sample.is_empty():
+		_performance_current_event_placement_attempts += placement_attempts
 	if candidate_data.is_empty():
 		if rejection_reason == REJECTION_D3_PRIORITY:
 			_stream_priority_skip_count += 1
@@ -1269,7 +1776,8 @@ func _sample_independent_candidate(
 	event_sibling_sides: Array[int] = [],
 	ballistic_archetype: int = -1,
 	event_sibling_trajectories: Array[Dictionary] = [],
-	ballistic_launch_delay: float = 0.0
+	ballistic_launch_delay: float = 0.0,
+	maximum_attempts_override: int = -1
 ) -> Dictionary:
 	var variable_event := variable_coin_events_enabled and spawn_kind == "event"
 	var ballistic_event := (
@@ -1320,7 +1828,12 @@ func _sample_independent_candidate(
 			)
 		if bounds.y <= bounds.x:
 			continue
-		for _attempt in range(maxi(maximum_independent_placement_attempts, 1)):
+		var attempt_limit := (
+			maxi(maximum_independent_placement_attempts, 1)
+			if maximum_attempts_override < 0
+			else maxi(maximum_attempts_override, 1)
+		)
+		for _attempt in range(attempt_limit):
 			total_attempts += 1
 			var candidate := _sample_scatter_candidate(
 				bounds,
@@ -1393,11 +1906,16 @@ func _sample_independent_candidate(
 			):
 				last_reason = REJECTION_UNREACHABLE
 				continue
-			if not _independent_separation_is_valid(
-				candidate.position,
-				spawn_kind,
-				event_sibling_positions
-			):
+			var separation_is_valid := (
+				_ballistic_active_opportunity_separation_is_valid(ballistic_plan)
+				if ballistic_event and ballistic_integrity_enabled
+				else _independent_separation_is_valid(
+					candidate.position,
+					spawn_kind,
+					event_sibling_positions
+				)
+			)
+			if not separation_is_valid:
 				last_reason = REJECTION_SIBLING
 				continue
 			if (
@@ -1902,6 +2420,12 @@ func _ballistic_post_contact_effective_lifetime(
 	)
 	if requested <= 0.0 or available_distance <= 0.0:
 		return 0.0
+	if ballistic_integrity_enabled:
+		return _time_until_conveyor_distance(
+			launch_delay + flight_duration,
+			requested,
+			available_distance
+		)
 	var elapsed := 0.0
 	var travelled := 0.0
 	var step := 1.0 / 120.0
@@ -1929,6 +2453,11 @@ func _ballistic_post_contact_effective_lifetime(
 
 func _conveyor_distance_between(start_delay: float, duration: float) -> float:
 	var bounded_duration := maxf(duration, 0.0)
+	if ballistic_integrity_enabled:
+		return _integrated_conveyor_distance(
+			maxf(start_delay, 0.0),
+			bounded_duration
+		)
 	var elapsed := 0.0
 	var distance := 0.0
 	var step := 1.0 / 120.0
@@ -1943,6 +2472,59 @@ func _conveyor_distance_between(start_delay: float, duration: float) -> float:
 		distance += maxf((start_speed + end_speed) * 0.5 * delta, 0.0)
 		elapsed += delta
 	return distance
+
+
+func _integrated_conveyor_distance(start_delay: float, duration: float) -> float:
+	if duration <= 0.0:
+		return 0.0
+	# Composite Simpson integration is exact for the current cubic smoothstep
+	# speed ramp when it is not clamped, and remains tightly bounded if exported
+	# values introduce a clamp boundary. It replaces hundreds of 120 Hz samples
+	# in candidate planning without changing runtime conveyor physics.
+	var intervals := 8
+	var step := duration / float(intervals)
+	var weighted_speed := 0.0
+	for index in range(intervals + 1):
+		var sample_time := (
+			_conveyor.survival_time
+			+ maxf(start_delay, 0.0)
+			+ step * float(index)
+		)
+		var weight := 1.0
+		if index > 0 and index < intervals:
+			weight = 4.0 if index % 2 == 1 else 2.0
+		weighted_speed += weight * maxf(
+			_conveyor.conveyor_speed_at(sample_time),
+			0.0
+		)
+	return weighted_speed * step / 3.0
+
+
+func _time_until_conveyor_distance(
+	start_delay: float,
+	maximum_duration: float,
+	target_distance: float
+) -> float:
+	var bounded_duration := maxf(maximum_duration, 0.0)
+	if target_distance <= 0.0 or bounded_duration <= 0.0:
+		return 0.0
+	if (
+		_integrated_conveyor_distance(start_delay, bounded_duration)
+		<= target_distance + 0.0001
+	):
+		return bounded_duration
+	var lower := 0.0
+	var upper := bounded_duration
+	for _iteration in range(14):
+		var midpoint := (lower + upper) * 0.5
+		if (
+			_integrated_conveyor_distance(start_delay, midpoint)
+			< target_distance
+		):
+			lower = midpoint
+		else:
+			upper = midpoint
+	return upper
 
 
 func _ballistic_plan_position_at(plan: Dictionary, elapsed: float) -> Vector2:
@@ -2003,6 +2585,8 @@ func _ballistic_trajectory_separation_is_valid(
 		collectible_size.x + 1.0
 	)
 	for sibling_plan in sibling_plans:
+		if performance_profiling_enabled:
+			_performance_current_event_trajectory_checks += 1
 		var candidate_start := float(candidate_plan.get("launch_delay", 0.0))
 		var sibling_start := float(sibling_plan.get("launch_delay", 0.0))
 		var overlap_start := maxf(candidate_start, sibling_start)
@@ -2025,6 +2609,75 @@ func _ballistic_trajectory_separation_is_valid(
 			if candidate_position.distance_to(sibling_position) < minimum_separation:
 				return false
 			elapsed += 1.0 / 60.0
+	return true
+
+
+func _ballistic_post_contact_separation_is_valid(
+	candidate_plan: Dictionary,
+	sibling_plans: Array[Dictionary]
+) -> bool:
+	var minimum_separation := maxf(
+		coin_event_sibling_minimum_separation,
+		collectible_size.x + 1.0
+	)
+	var candidate_contact := (
+		float(candidate_plan.get("launch_delay", 0.0))
+		+ float(candidate_plan.flight_duration)
+	)
+	var candidate_end := (
+		candidate_contact
+		+ float(candidate_plan.effective_post_contact_lifetime)
+	)
+	for sibling_plan in sibling_plans:
+		var sibling_contact := (
+			float(sibling_plan.get("launch_delay", 0.0))
+			+ float(sibling_plan.flight_duration)
+		)
+		var sibling_end := (
+			sibling_contact
+			+ float(sibling_plan.effective_post_contact_lifetime)
+		)
+		var shared_ground_start := maxf(candidate_contact, sibling_contact)
+		if minf(candidate_end, sibling_end) <= shared_ground_start + 0.0001:
+			continue
+		var candidate_position := _ballistic_plan_position_at(
+			candidate_plan,
+			shared_ground_start
+		)
+		var sibling_position := _ballistic_plan_position_at(
+			sibling_plan,
+			shared_ground_start
+		)
+		if (
+			absf(candidate_position.x - sibling_position.x) + 0.001
+			< minimum_separation
+		):
+			return false
+	return true
+
+
+func _ballistic_active_opportunity_separation_is_valid(
+	candidate_plan: Dictionary
+) -> bool:
+	var candidate_contact := (
+		float(candidate_plan.get("launch_delay", 0.0))
+		+ float(candidate_plan.flight_duration)
+	)
+	var candidate_x := Vector2(candidate_plan.landing_position).x
+	var minimum_separation := maxf(
+		coin_event_minimum_separation,
+		collectible_size.x + 1.0
+	)
+	for existing in active_collectibles():
+		if existing.total_collectible_time_remaining() <= candidate_contact + 0.0001:
+			continue
+		var projected := existing.projected_horizontal_interval(
+			candidate_contact,
+			0.0
+		)
+		var existing_x := (projected.x + projected.y) * 0.5
+		if absf(candidate_x - existing_x) + 0.001 < minimum_separation:
+			return false
 	return true
 
 
@@ -3644,6 +4297,25 @@ func _update_active_coin_speeds() -> void:
 
 
 func _landed_can_collision_rects() -> Array[Dictionary]:
+	if not ballistic_integrity_enabled:
+		return _collect_landed_can_collision_rects()
+	var physics_frame := Engine.get_physics_frames()
+	if _landed_can_collision_cache_frame != physics_frame:
+		_landed_can_collision_cache = _collect_landed_can_collision_rects()
+		_landed_can_collision_cache_frame = physics_frame
+		if performance_profiling_enabled:
+			_performance_landed_can_cache_rebuild_count += 1
+	if performance_profiling_enabled:
+		_performance_landed_can_query_count += 1
+		_performance_landed_can_rect_count += _landed_can_collision_cache.size()
+	return _landed_can_collision_cache
+
+
+func invalidate_landed_can_collision_cache_for_test() -> void:
+	_landed_can_collision_cache_frame = -1
+
+
+func _collect_landed_can_collision_rects() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for product in _conveyor.active_landed_products():
 		if not is_instance_valid(product):
@@ -3656,7 +4328,35 @@ func _landed_can_collision_rects() -> Array[Dictionary]:
 			),
 			"size": product.landed_size,
 		})
+	if performance_profiling_enabled and not ballistic_integrity_enabled:
+		_performance_landed_can_query_count += 1
+		_performance_landed_can_rect_count += result.size()
 	return result
+
+
+func _begin_performance_event_profile() -> void:
+	if not performance_profiling_enabled:
+		return
+	_performance_current_event_started_usec = Time.get_ticks_usec()
+	_performance_current_event_placement_attempts = 0
+	_performance_current_event_trajectory_checks = 0
+
+
+func _end_performance_event_profile(requested_count: int, delivered_count: int) -> void:
+	if not performance_profiling_enabled:
+		return
+	var elapsed_usec := maxi(
+		Time.get_ticks_usec() - _performance_current_event_started_usec,
+		0
+	)
+	_performance_event_log.append({
+		"time": _conveyor.survival_time,
+		"requested_count": requested_count,
+		"delivered_count": delivered_count,
+		"planning_ms": float(elapsed_usec) / 1000.0,
+		"placement_attempts": _performance_current_event_placement_attempts,
+		"trajectory_checks": _performance_current_event_trajectory_checks,
+	})
 
 
 func _update_ballistic_player_crossings() -> void:
