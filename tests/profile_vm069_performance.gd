@@ -3,11 +3,13 @@ extends SceneTree
 const MOTION_SCENE := preload("res://scenes/experiments/motion_vis04_pa_ca.tscn")
 const PRODUCT_SCENE := preload("res://scenes/hazards/conveyor_product.tscn")
 const TEST_SEEDS := [401, 1701, 4202]
+const EXTENDED_TEST_SEEDS := [401, 1701, 4202, 7007, 9011]
 const FIXED_STEP := 1.0 / 120.0
 const PROFILE_SECONDS := 60.0
 
 var _stress_enabled := true
 var _mode_filter := ""
+var _extended_seeds := false
 
 
 func _initialize() -> void:
@@ -20,6 +22,8 @@ func _run() -> void:
 			_stress_enabled = false
 		elif argument.begins_with("--mode="):
 			_mode_filter = argument.trim_prefix("--mode=")
+		elif argument == "--five-seeds":
+			_extended_seeds = true
 	var integrity_available := await _director_has_integrity_property()
 	for mode in [
 		{"name": "VM066", "ballistic": false, "abundance": false, "integrity": false, "refund_chute": false},
@@ -27,12 +31,13 @@ func _run() -> void:
 		{"name": "VM069", "ballistic": true, "abundance": true, "integrity": true, "refund_chute": false},
 		{"name": "VM0610", "ballistic": true, "abundance": true, "integrity": true, "refund_chute": true, "refund_system": false},
 		{"name": "VM070", "ballistic": true, "abundance": true, "integrity": true, "refund_chute": true, "refund_system": true},
+		{"name": "VM071", "ballistic": true, "abundance": true, "integrity": true, "refund_chute": true, "refund_system": true, "mobile_budget": true},
 	]:
 		if not _mode_filter.is_empty() and String(mode.name) != _mode_filter:
 			continue
 		if bool(mode.integrity) and not integrity_available:
 			continue
-		for seed in TEST_SEEDS:
+		for seed in EXTENDED_TEST_SEEDS if _extended_seeds else TEST_SEEDS:
 			var result := await _profile_mode(mode, seed)
 			print("VM069_NATIVE_PROFILE ", JSON.stringify(result))
 	quit()
@@ -56,6 +61,8 @@ func _profile_mode(mode: Dictionary, seed: int) -> Dictionary:
 		director.set("refund_system_enabled", bool(mode.get("refund_system", false)))
 	if _has_property(director, &"static_teaching_coin_enabled"):
 		director.set("static_teaching_coin_enabled", bool(mode.get("refund_system", false)))
+	if _has_property(director, &"bounded_optional_planning_enabled"):
+		director.set("bounded_optional_planning_enabled", bool(mode.get("mobile_budget", false)))
 	director.performance_profiling_enabled = true
 	director.placement_seed = seed
 	director._placement_rng_state = seed
@@ -196,6 +203,7 @@ func _frame_summary(samples: PackedFloat32Array) -> Dictionary:
 	var over_16 := 0
 	var over_25 := 0
 	var over_33 := 0
+	var over_50 := 0
 	for value in samples:
 		total += value
 		if value > 16.67:
@@ -204,6 +212,8 @@ func _frame_summary(samples: PackedFloat32Array) -> Dictionary:
 			over_25 += 1
 		if value > 33.33:
 			over_33 += 1
+		if value > 50.0:
+			over_50 += 1
 	var average_ms := total / float(maxi(samples.size(), 1))
 	return {
 		"average_cpu_ms": average_ms,
@@ -214,6 +224,7 @@ func _frame_summary(samples: PackedFloat32Array) -> Dictionary:
 		"steps_over_16_67_ms": over_16,
 		"steps_over_25_ms": over_25,
 		"steps_over_33_33_ms": over_33,
+		"steps_over_50_ms": over_50,
 		"cpu_steps_per_second": 1000.0 / average_ms if average_ms > 0.0 else INF,
 	}
 

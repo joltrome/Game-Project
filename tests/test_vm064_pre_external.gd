@@ -212,7 +212,10 @@ func _test_pause_and_touch() -> void:
 		"Pause clears simultaneous held mobile movement and jump"
 	)
 	check(
-		session.touch.pause_button.position == Vector2(8.0, 8.0)
+		session.touch.pause_button.position == Vector2(
+			session.touch.safe_padding_css * session.touch.logical_per_css,
+			session.touch.safe_padding_css * session.touch.logical_per_css
+		)
 		and session.touch.pause_button.size == Vector2(48.0, 48.0)
 		and right.y > session.touch.pause_button.position.y + session.touch.pause_button.size.y
 		and jump.y > session.touch.pause_button.position.y + session.touch.pause_button.size.y,

@@ -217,6 +217,10 @@ const REJECTION_UNKNOWN := "unknown"
 
 @export_category("Performance Diagnostics")
 @export var performance_profiling_enabled: bool = false
+@export var bounded_optional_planning_enabled: bool = false
+@export var bounded_group_member_attempts: int = 8
+@export var bounded_group_extra_pool_calls: int = 2
+@export var bounded_single_attempts: int = 24
 
 @export_category("Route Validation")
 @export var trajectory_simulation_step: float = 1.0 / 120.0
@@ -319,6 +323,9 @@ var _performance_event_log: Array[Dictionary] = []
 var _performance_current_event_started_usec: int = 0
 var _performance_current_event_placement_attempts: int = 0
 var _performance_current_event_trajectory_checks: int = 0
+var _performance_current_candidate_generation_usec: int = 0
+var _performance_current_combination_search_usec: int = 0
+var _performance_current_fallback_search_usec: int = 0
 var _performance_landed_can_query_count: int = 0
 var _performance_landed_can_rect_count: int = 0
 var _performance_landed_can_cache_rebuild_count: int = 0
@@ -618,6 +625,16 @@ func performance_event_log() -> Array[Dictionary]:
 	return _performance_event_log.duplicate(true)
 
 
+func performance_event_count() -> int:
+	return _performance_event_log.size()
+
+
+func performance_event_at(index: int) -> Dictionary:
+	if index < 0 or index >= _performance_event_log.size():
+		return {}
+	return _performance_event_log[index].duplicate(true)
+
+
 func performance_landed_can_query_count() -> int:
 	return _performance_landed_can_query_count
 
@@ -626,14 +643,37 @@ func performance_landed_can_rect_count() -> int:
 	return _performance_landed_can_rect_count
 
 
+func ballistic_support_entry_count() -> int:
+	return _ballistic_support_entry_count
+
+
 func performance_profile_summary() -> Dictionary:
 	var durations := PackedFloat32Array()
 	var placement_attempts := 0
 	var trajectory_checks := 0
+	var candidate_generation_total := 0.0
+	var candidate_generation_maximum := 0.0
+	var combination_search_total := 0.0
+	var combination_search_maximum := 0.0
+	var fallback_search_total := 0.0
+	var fallback_search_maximum := 0.0
+	var slowest_event: Dictionary = {}
 	for event in _performance_event_log:
-		durations.append(float(event.get("planning_ms", 0.0)))
+		var duration := float(event.get("planning_ms", 0.0))
+		durations.append(duration)
 		placement_attempts += int(event.get("placement_attempts", 0))
 		trajectory_checks += int(event.get("trajectory_checks", 0))
+		var candidate_duration := float(event.get("candidate_generation_ms", 0.0))
+		var combination_duration := float(event.get("combination_search_ms", 0.0))
+		var fallback_duration := float(event.get("fallback_search_ms", 0.0))
+		candidate_generation_total += candidate_duration
+		candidate_generation_maximum = maxf(candidate_generation_maximum, candidate_duration)
+		combination_search_total += combination_duration
+		combination_search_maximum = maxf(combination_search_maximum, combination_duration)
+		fallback_search_total += fallback_duration
+		fallback_search_maximum = maxf(fallback_search_maximum, fallback_duration)
+		if slowest_event.is_empty() or duration > float(slowest_event.get("planning_ms", 0.0)):
+			slowest_event = event.duplicate(true)
 	var duration_total := 0.0
 	var duration_maximum := 0.0
 	for duration in durations:
@@ -649,6 +689,13 @@ func performance_profile_summary() -> Dictionary:
 		"maximum_planning_ms": duration_maximum,
 		"placement_attempts": placement_attempts,
 		"trajectory_checks": trajectory_checks,
+		"candidate_generation_average_ms": candidate_generation_total / float(maxi(durations.size(), 1)),
+		"candidate_generation_maximum_ms": candidate_generation_maximum,
+		"combination_search_average_ms": combination_search_total / float(maxi(durations.size(), 1)),
+		"combination_search_maximum_ms": combination_search_maximum,
+		"fallback_search_average_ms": fallback_search_total / float(maxi(durations.size(), 1)),
+		"fallback_search_maximum_ms": fallback_search_maximum,
+		"slowest_event": slowest_event,
 		"landed_can_queries": _performance_landed_can_query_count,
 		"landed_can_rects_returned": _performance_landed_can_rect_count,
 		"landed_can_cache_rebuilds": _performance_landed_can_cache_rebuild_count,
@@ -1142,6 +1189,7 @@ func _plan_ballistic_event_group_once(
 			"degradation_reason": REJECTION_ACTIVE_LIMIT,
 		}
 	if target_count == 1:
+		var single_started_usec := Time.get_ticks_usec()
 		var sampled_single := _sample_independent_candidate(
 			float(requested_lifetimes[0]),
 			false,
@@ -1152,7 +1200,12 @@ func _plan_ballistic_event_group_once(
 			int(archetype_plan[0]),
 			[],
 			float(launch_delay_plan[0]) if not launch_delay_plan.is_empty() else 0.0,
-			maxi(ballistic_single_placement_attempts, 1),
+			maxi(
+				bounded_single_attempts
+				if bounded_optional_planning_enabled
+				else ballistic_single_placement_attempts,
+				1
+			),
 			_refund_chute_origin_for_member(
 				1,
 				0,
@@ -1161,6 +1214,10 @@ func _plan_ballistic_event_group_once(
 			) if refund_chute_enabled else null
 		)
 		if performance_profiling_enabled:
+			_performance_current_candidate_generation_usec += maxi(
+				Time.get_ticks_usec() - single_started_usec,
+				0
+			)
 			_performance_current_event_placement_attempts += int(
 				sampled_single.get("attempts", 0)
 			)
@@ -1191,6 +1248,7 @@ func _plan_ballistic_event_group_once(
 	# valid complete event look impossible. Pools keep that search bounded while
 	# allowing the complete event to be judged before anything is spawned.
 	var candidate_pools: Array = []
+	var pool_started_usec := Time.get_ticks_usec()
 	for coin_index in range(target_count):
 		var pool: Array[Dictionary] = []
 		var pool_calls := 0
@@ -1200,7 +1258,11 @@ func _plan_ballistic_event_group_once(
 			else ballistic_group_candidate_pool_size,
 			1
 		)
-		var maximum_pool_calls := desired_pool_size * 2
+		var maximum_pool_calls := (
+			desired_pool_size + maxi(bounded_group_extra_pool_calls, 0)
+			if bounded_optional_planning_enabled
+			else desired_pool_size * 2
+		)
 		var launch_override: Variant = (
 			_refund_chute_origin_for_member(
 				target_count,
@@ -1234,7 +1296,12 @@ func _plan_ballistic_event_group_once(
 				archetype,
 				[],
 				launch_delay,
-				maxi(ballistic_group_member_placement_attempts, 1),
+				maxi(
+					bounded_group_member_attempts
+					if bounded_optional_planning_enabled
+					else ballistic_group_member_placement_attempts,
+					1
+				),
 				launch_override
 			)
 			if performance_profiling_enabled:
@@ -1265,12 +1332,23 @@ func _plan_ballistic_event_group_once(
 			committed_sample.requested_lifetime = requested_lifetime
 			pool.append(committed_sample)
 		candidate_pools.append(pool)
+	if performance_profiling_enabled:
+		_performance_current_candidate_generation_usec += maxi(
+			Time.get_ticks_usec() - pool_started_usec,
+			0
+		)
 
+	var combination_started_usec := Time.get_ticks_usec()
 	var combination_result := _find_ballistic_group_combination(
 		candidate_pools,
 		target_count
 	)
 	total_group_attempts += int(combination_result.get("checks", 0))
+	if performance_profiling_enabled:
+		_performance_current_combination_search_usec += maxi(
+			Time.get_ticks_usec() - combination_started_usec,
+			0
+		)
 	var complete_samples: Array[Dictionary] = []
 	complete_samples.assign(combination_result.get("samples", []))
 	if not complete_samples.is_empty():
@@ -1300,12 +1378,18 @@ func _plan_ballistic_event_group_once(
 			PackedFloat32Array([base_delay, base_delay + 0.18, base_delay + 0.36]),
 		]
 	for timing in timing_alternatives:
+		var fallback_started_usec := Time.get_ticks_usec()
 		var retimed_pools := _retime_ballistic_candidate_pools(candidate_pools, timing)
 		var retimed_result := _find_ballistic_group_combination(
 			retimed_pools,
 			target_count
 		)
 		total_group_attempts += int(retimed_result.get("checks", 0))
+		if performance_profiling_enabled:
+			_performance_current_fallback_search_usec += maxi(
+				Time.get_ticks_usec() - fallback_started_usec,
+				0
+			)
 		var retimed_samples: Array[Dictionary] = []
 		retimed_samples.assign(retimed_result.get("samples", []))
 		if not retimed_samples.is_empty():
@@ -1329,11 +1413,17 @@ func _plan_ballistic_event_group_once(
 			last_reason = retimed_reason
 
 	for group_size in range(target_count - 1, 0, -1):
+		var degrade_started_usec := Time.get_ticks_usec()
 		combination_result = _find_ballistic_group_combination(
 			candidate_pools,
 			group_size
 		)
 		total_group_attempts += int(combination_result.get("checks", 0))
+		if performance_profiling_enabled:
+			_performance_current_fallback_search_usec += maxi(
+				Time.get_ticks_usec() - degrade_started_usec,
+				0
+			)
 		var samples: Array[Dictionary] = []
 		samples.assign(combination_result.get("samples", []))
 		if not samples.is_empty():
@@ -1350,6 +1440,7 @@ func _plan_ballistic_event_group_once(
 	# A full target pool can be empty under transient constraints. Give the final
 	# single fallback its own bounded search so a failed multi-event does not turn
 	# into an avoidable zero-coin gap.
+	var final_single_started_usec := Time.get_ticks_usec()
 	var single_sample := _sample_independent_candidate(
 		float(requested_lifetimes[0]),
 		false,
@@ -1360,7 +1451,12 @@ func _plan_ballistic_event_group_once(
 		int(archetype_plan[0]),
 		[],
 		float(launch_delay_plan[0]) if not launch_delay_plan.is_empty() else 0.0,
-		maxi(ballistic_single_placement_attempts, 1),
+		maxi(
+			bounded_single_attempts
+			if bounded_optional_planning_enabled
+			else ballistic_single_placement_attempts,
+			1
+		),
 		_refund_chute_origin_for_member(
 			1,
 			0,
@@ -1369,6 +1465,10 @@ func _plan_ballistic_event_group_once(
 		) if refund_chute_enabled else null
 	)
 	if performance_profiling_enabled:
+		_performance_current_fallback_search_usec += maxi(
+			Time.get_ticks_usec() - final_single_started_usec,
+			0
+		)
 		_performance_current_event_placement_attempts += int(
 			single_sample.get("attempts", 0)
 		)
@@ -2106,7 +2206,19 @@ func _sample_independent_candidate(
 		side_preferences.append(-1)
 	var last_reason := REJECTION_SCATTER_EXHAUSTED
 	var total_attempts := 0
+	var total_attempt_limit := (
+		maxi(maximum_independent_placement_attempts, 1)
+		if maximum_attempts_override < 0
+		else maxi(maximum_attempts_override, 1)
+	)
+	var attempts_per_side := (
+		ceili(float(total_attempt_limit) / float(maxi(side_preferences.size(), 1)))
+		if bounded_optional_planning_enabled
+		else total_attempt_limit
+	)
 	for side_preference in side_preferences:
+		if bounded_optional_planning_enabled and total_attempts >= total_attempt_limit:
+			break
 		var bounds := _scatter_x_bounds(int(side_preference), 1)
 		bounds.y = _conveyor.control_band_right - collectible_size.x * 0.5
 		if ballistic_event:
@@ -2131,12 +2243,9 @@ func _sample_independent_candidate(
 			)
 		if bounds.y <= bounds.x:
 			continue
-		var attempt_limit := (
-			maxi(maximum_independent_placement_attempts, 1)
-			if maximum_attempts_override < 0
-			else maxi(maximum_attempts_override, 1)
-		)
-		for _attempt in range(attempt_limit):
+		for _attempt in range(attempts_per_side):
+			if bounded_optional_planning_enabled and total_attempts >= total_attempt_limit:
+				break
 			total_attempts += 1
 			var candidate := _sample_scatter_candidate(
 				bounds,
@@ -4714,6 +4823,9 @@ func _begin_performance_event_profile() -> void:
 	_performance_current_event_started_usec = Time.get_ticks_usec()
 	_performance_current_event_placement_attempts = 0
 	_performance_current_event_trajectory_checks = 0
+	_performance_current_candidate_generation_usec = 0
+	_performance_current_combination_search_usec = 0
+	_performance_current_fallback_search_usec = 0
 
 
 func _end_performance_event_profile(requested_count: int, delivered_count: int) -> void:
@@ -4730,7 +4842,18 @@ func _end_performance_event_profile(requested_count: int, delivered_count: int) 
 		"planning_ms": float(elapsed_usec) / 1000.0,
 		"placement_attempts": _performance_current_event_placement_attempts,
 		"trajectory_checks": _performance_current_event_trajectory_checks,
+		"candidate_generation_ms": float(_performance_current_candidate_generation_usec) / 1000.0,
+		"combination_search_ms": float(_performance_current_combination_search_usec) / 1000.0,
+		"fallback_search_ms": float(_performance_current_fallback_search_usec) / 1000.0,
+		"d3_state": _current_d3_state_name(),
 	})
+
+
+func _current_d3_state_name() -> String:
+	var d3 := _conveyor.get_node_or_null("BackgroundDropDirector") as MotionBackgroundDropDirector
+	if d3 == null:
+		return "NONE"
+	return MotionBackgroundDropDirector.VisualState.keys()[int(d3.state)]
 
 
 func _update_ballistic_player_crossings() -> void:

@@ -13,6 +13,7 @@ const RED := Color("b93743")
 const TEAL := Color("2ca6a4")
 const GOLD := Color("f2ba45")
 const VOLUME_SLIDER := preload("res://scripts/presentation/c2_volume_slider.gd")
+const FRAME_PACING := preload("res://scripts/presentation/frame_pacing_telemetry.gd")
 
 @export var score_storage_path: String = "user://standard_best.cfg"
 @export var audio_settings_path: String = "user://standard_audio.cfg"
@@ -21,6 +22,7 @@ const VOLUME_SLIDER := preload("res://scripts/presentation/c2_volume_slider.gd")
 @export var ballistic_integrity_enabled: bool = false
 @export var refund_chute_enabled: bool = false
 @export var refund_system_enabled: bool = false
+@export var mobile_playability_enabled: bool = false
 
 var state: State = State.MENU
 var game: MotionExperimentShell
@@ -44,6 +46,7 @@ var _c2: C2Screen
 var touch: StandardTouchControls
 var result_score: C2PixelText
 var best_label: C2PixelText
+var _frame_pacing = FRAME_PACING.new()
 
 @onready var audio: SessionAudio = $Audio
 
@@ -54,6 +57,7 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	process_priority = 100
 	get_window().title = "GET CANNED!"
 	scores.storage_path = score_storage_path
 	scores.load_best()
@@ -75,6 +79,11 @@ func _ready() -> void:
 	get_window().size_changed.connect(_layout)
 	show_menu()
 	_layout()
+
+
+func _process(delta: float) -> void:
+	if state == State.GAME and is_instance_valid(game) and not get_tree().paused:
+		_frame_pacing.record_frame(delta, game)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -141,6 +150,8 @@ func _release_gameplay_actions() -> void:
 
 
 func start_game() -> void:
+	if state == State.GAME and is_instance_valid(game):
+		_frame_pacing.finish_run("restart")
 	audio.stop_all_sfx()
 	audio.request_sfx(&"clock_in_confirm")
 	_dispose_game()
@@ -155,7 +166,9 @@ func start_game() -> void:
 	game.clean_tester_presentation = true
 	game.clean_control_hint_duration = 0.0
 	game.local_instrumentation_enabled = false
-	if refund_system_enabled:
+	if mobile_playability_enabled:
+		game.build_id_override = "VM-0.7.1-MOBILE-PLAYABILITY"
+	elif refund_system_enabled:
 		game.build_id_override = "VM-0.7.0-REFUND-SYSTEM"
 	elif refund_chute_enabled:
 		game.build_id_override = "VM-0.6.10-REFUND-CHUTE"
@@ -186,6 +199,8 @@ func start_game() -> void:
 	collectible_director.refund_chute_enabled = refund_chute_enabled
 	collectible_director.refund_system_enabled = refund_system_enabled
 	collectible_director.static_teaching_coin_enabled = refund_system_enabled
+	collectible_director.performance_profiling_enabled = mobile_playability_enabled
+	collectible_director.bounded_optional_planning_enabled = mobile_playability_enabled
 	var round_controller := game.conveyor.get_node("RoundController") as FixedRoundController
 	# Death can originate inside a physics collision callback. Finish that callback
 	# before disabling the complete run and its collision objects.
@@ -202,6 +217,7 @@ func start_game() -> void:
 	hud.coins=game.conveyor.get_node("CollectibleDirector")
 	_ui.add_child(hud)
 	touch.set_game_active(true)
+	_frame_pacing.begin_run(mobile_playability_enabled)
 	var focused := get_viewport().gui_get_focus_owner()
 	if focused != null:
 		focused.release_focus()
@@ -255,6 +271,7 @@ func _on_death(score: int, _remaining: float, serial: int) -> void:
 	if serial != _run_serial or state != State.GAME:
 		return
 	state = State.DEATH_BEAT
+	_frame_pacing.finish_run("death")
 	last_score = score
 	last_survived = false
 	last_death_cause = game.conveyor.death_cause
@@ -282,6 +299,7 @@ func _finish_death_beat() -> void:
 
 func _on_completion(score: int, serial: int) -> void:
 	if serial == _run_serial and state == State.GAME:
+		_frame_pacing.finish_run("completion")
 		_show_results(score, true)
 
 
@@ -383,14 +401,17 @@ func _layout() -> void:
 	_ui.position = fitted.position
 	_ui.scale = fitted.size / DESIGN_SIZE
 	if touch != null:
-		# The game canvas keeps its logical size under window stretch. Counter-scale
-		# only the touch overlay so its targets remain large on a phone.
-		touch.scale = Vector2.ONE
-		var window_size := Vector2(get_window().size)
-		var pixel_ratio := float(JavaScriptBridge.eval("window.devicePixelRatio || 1", true)) if OS.has_feature("web") else 1.0
-		var display_scale := Vector2.ONE * minf(window_size.x / size.x, window_size.y / size.y) / pixel_ratio
-		touch.scale = Vector2.ONE / display_scale
-		touch.size = size * display_scale
+		var raw_dpr := 1.0
+		var css_size := Vector2(get_window().size)
+		if OS.has_feature("web"):
+			raw_dpr = float(JavaScriptBridge.eval("window.devicePixelRatio || 1", true))
+			var css_width := float(JavaScriptBridge.eval("window.innerWidth || 0", true))
+			var css_height := float(JavaScriptBridge.eval("window.innerHeight || 0", true))
+			if css_width > 1.0 and css_height > 1.0:
+				css_size = Vector2(css_width, css_height)
+		# CSS viewport dimensions determine perceived control size. DPR is clamped
+		# only for the fallback path, avoiding the old unbounded DPR magnification.
+		touch.configure_viewport(size, fitted, css_size, raw_dpr)
 
 
 func _clear_ui() -> void:

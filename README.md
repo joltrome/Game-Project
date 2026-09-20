@@ -1,3 +1,23 @@
+# VM-0.7.1 mobile playability and frame pacing
+
+VM-0.7.1 preserves the complete VM-0.7.0 gameplay baseline while separating
+large touch hit regions from compact low-opacity artwork, moving visible controls
+into wide-phone gutters, clamping high-DPI sizing and bounding optional Refund
+Coin planning work. Run Standard normally with:
+
+```bash
+/Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --path . res://scenes/presentation/standard_session.tscn
+```
+
+Review touch geometry with `res://scenes/tests/touch_layout_review.tscn`; use
+`1`–`4` for aspect ratios and `D` for DPR. Export preset
+`Web GET CANNED VM-0.7.1 Mobile Playability` to
+`builds/VM-0.7.1-MOBILE-PLAYABILITY/index.html`. Full measurements and phone
+instructions are in
+[`docs/vm071-mobile-playability.md`](docs/vm071-mobile-playability.md).
+
+---
+
 # VM-0.7.0 Refund System consolidation
 
 VM-0.7.0 consolidates the selected ballistic Refund Coin direction for external

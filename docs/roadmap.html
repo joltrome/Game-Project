@@ -198,7 +198,7 @@
       <div class="eyebrow">Game 1 · Core-loop validation</div>
       <h1>Vending Machine Survival</h1>
       <p class="pitch">A tiny person is trapped inside a malfunctioning vending machine. Dodge falling products and increasingly absurd machine failures for as long as possible.</p>
-      <p class="tiny">Roadmap schema version 43 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
+      <p class="tiny">Roadmap schema version 49 · Created July 26, 2026 · Data saves only in this browser unless exported.</p>
     </div>
     <div class="actions">
       <button class="btn primary" id="copyHandoff">Copy Codex handoff</button>
@@ -1809,6 +1809,30 @@
     text: 'VM-0.7.0 adds deterministic SUPPORTED_ON_CAN after a readable first bounce/low-energy return, one-coin-per-can claims, clean support loss, a 32×32 coin/can world footprint while preserving the 24×24 pickup, and one four-second static REFUND COIN +1 teaching opportunity per run before normal ballistic events. The bounded planner tries simultaneous/60 ms/120 ms doubles and complete/alternative triple staggers before degrading. Five deterministic runs retained 38/73 doubles (52.1 percent) and 1/16 triples (6.3 percent), with a 53.784 ms maximum planning event; the discarded first draft\'s 132.09 ms spike and 30.6 percent double integrity were not shipped. Three natural profiles delivered 112 of 170 requested coins, retained 22/43 doubles and 1/10 triples, recorded 30 can-support entries, capped at five active coins and preserved all six D3 warnings with no coin-caused delay. Native natural p95/p99 steps were at most 0.048/0.118 ms and maximum planning was 49.145 ms. Human teaching comprehension, natural support readability, short-stagger frequency and physical mobile/itch behavior remain unverified. See docs/vm070-refund-system.md.'
   };
 
+  const vm071MobileEvidence = {
+    id: 'evidence-vm-0.7.1-mobile-playability',
+    type: 'Evidence', date: '2026-09-20', source: 'Founder and second-player physical-phone review plus deterministic profiling',
+    text: 'The founder and a second player independently reported that VM-0.7.0 mobile touch controls obscured the player, conveyor, landed cans, supported coins and approaching hazards, and that the itch Web build sometimes visibly hitched. Code inspection confirmed that complete 72×72 movement and 96×72 jump hit regions were also rendered as filled artwork, pressed fill reached 72 percent, and unbounded DPR counter-scaling could inflate the overlay. Fresh profiling isolated the synchronous tail to optional candidate generation: failed multi-event plans reached 722–1,008 placement attempts and candidate generation consumed 33–40 ms of 35–48 ms events, while combination search stayed at or below about 1.2 ms.'
+  };
+
+  const vm071MobileHypothesis = {
+    id: 'hypothesis-vm-0.7.1-mobile-playability',
+    type: 'Hypothesis', date: '2026-09-20', source: 'Startup Lab VM-0.7.1 mobile-playability brief',
+    text: 'Decoupling large touch hit areas from compact low-opacity visuals, placing visible controls in wide-phone gutters, sizing from CSS viewport dimensions with bounded fallback scaling, and bounding optional candidate work may remove mobile readability and frame-tail contamination without changing gameplay.'
+  };
+
+  const vm071MobileDecision = {
+    id: 'decision-vm-0.7.1-mobile-playability',
+    type: 'Decision', date: '2026-09-20', source: 'Startup Lab VM-0.7.1 mobile-playability brief',
+    text: 'Freeze Standard difficulty, D3, player/conveyor/hazard behavior and the complete VM-0.7.0 Refund system. Keep arcade LEFT/RIGHT plus dedicated JUMP and reliable multitouch. Apply a deterministic operation budget only to optional VM-0.7.1 coin planning; optional rewards may degrade or skip before delaying authoritative hazards. Do not upload, merge, tune difficulty or add gameplay.'
+  };
+
+  const vm071MobileResult = {
+    id: 'result-vm-0.7.1-mobile-playability',
+    type: 'Result', date: '2026-09-20', source: 'VM-0.7.1 implementation and deterministic technical QA',
+    text: 'VM-0.7.1 retains 68×78 LEFT/RIGHT and 86×92 JUMP CSS-target hit regions while reducing visible artwork to 38×38 and 50×50, with 12/32 percent idle/pressed fill. A 48 CSS px gutter threshold moves all artwork outside the 16:9 playfield on a simulated 19.5:9 phone; 16:9 uses compact outer-edge artwork. CSS viewport sizing replaces unbounded DPR magnification, with logical scale clamped to 0.70–1.80 and DPR fallback clamped to 1–3. Frame telemetry now prints median/p95/p99/worst, >16.67/>25/>33.33/>50 counts and event correlation once per run. A total operation budget reduced the five-seed natural maximum planning event from a freshly reproduced 48.298 ms VM-0.7.0 control to approximately 12.1 ms, with zero >16.67, >25, >33.33 or >50 ms simulated steps. VM-0.7.1 delivered 185/275 requested coins, retained 36/61 doubles (59.0 percent) and 1/18 triples (5.6 percent), and preserved all six natural D3 warnings. Physical-phone control comfort, browser/compositor pacing, safe areas and five-run thermal behavior remain unverified pending founder retest. See docs/vm071-mobile-playability.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1974,7 +1998,11 @@
     vm070RefundSystemEvidence,
     vm070RefundSystemHypothesis,
     vm070RefundSystemDecision,
-    vm070RefundSystemResult
+    vm070RefundSystemResult,
+    vm071MobileEvidence,
+    vm071MobileHypothesis,
+    vm071MobileDecision,
+    vm071MobileResult
   ];
 
   const defaultFindings = [
@@ -1986,7 +2014,7 @@
   ];
 
   const defaultState = {
-    version: 48,
+    version: 49,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []
