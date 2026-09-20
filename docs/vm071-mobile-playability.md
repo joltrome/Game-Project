@@ -1,6 +1,6 @@
 # VM-0.7.1 Mobile Playability and Frame Pacing
 
-Date: 2026-09-20  
+Date: 2026-09-20
 Branch: `release/vm-0.7.1-mobile-playability`
 
 ## Evidence, hypothesis, and decision
