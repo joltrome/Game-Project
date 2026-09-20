@@ -205,6 +205,16 @@ const REJECTION_UNKNOWN := "unknown"
 @export var refund_chute_launch_grace_duration: float = 0.10
 @export var refund_chute_launch_grace_distance: float = 50.0
 
+@export_category("Refund System Consolidation")
+@export var refund_system_enabled: bool = false
+@export var static_teaching_coin_enabled: bool = false
+@export var teaching_coin_lifetime: float = 4.0
+@export var ballistic_world_physics_size := Vector2(32.0, 32.0)
+@export var ballistic_can_support_maximum_vertical_speed: float = 260.0
+@export var ballistic_short_stagger_delay_range := Vector2(0.06, 0.12)
+@export var refund_group_candidate_pool_size: int = 6
+@export var refund_group_combination_checks: int = 96
+
 @export_category("Performance Diagnostics")
 @export var performance_profiling_enabled: bool = false
 
@@ -285,6 +295,7 @@ var _ballistic_staggered_multi_event_count: int = 0
 var _ballistic_collection_counts := {
 	"AIRBORNE": 0,
 	"BOUNCING": 0,
+	"SUPPORTED_ON_CAN": 0,
 	"SETTLED": 0,
 }
 var _ballistic_expired_count: int = 0
@@ -297,6 +308,13 @@ var _ballistic_full_triple_count: int = 0
 var _ballistic_degraded_double_count: int = 0
 var _ballistic_degraded_triple_count: int = 0
 var _ballistic_group_degradation_reasons: Dictionary = {}
+var _ballistic_short_stagger_double_count: int = 0
+var _ballistic_alternative_triple_count: int = 0
+var _ballistic_support_entry_count: int = 0
+var _ballistic_supported_collection_count: int = 0
+var _ballistic_support_loss_count: int = 0
+var _ballistic_depenetration_correction_count: int = 0
+var _supported_can_claims: Dictionary = {}
 var _performance_event_log: Array[Dictionary] = []
 var _performance_current_event_started_usec: int = 0
 var _performance_current_event_placement_attempts: int = 0
@@ -544,6 +562,7 @@ func ballistic_run_summary() -> Dictionary:
 	var collected_total := (
 		int(collections.get("AIRBORNE", 0))
 		+ int(collections.get("BOUNCING", 0))
+		+ int(collections.get("SUPPORTED_ON_CAN", 0))
 		+ int(collections.get("SETTLED", 0))
 	)
 	var result := {
@@ -551,10 +570,15 @@ func ballistic_run_summary() -> Dictionary:
 		"collected": collected_total,
 		"airborne": int(collections.get("AIRBORNE", 0)),
 		"bouncing": int(collections.get("BOUNCING", 0)),
+		"supported_on_can": int(collections.get("SUPPORTED_ON_CAN", 0)),
 		"settled": int(collections.get("SETTLED", 0)),
 		"expired": _ballistic_expired_count,
 		"exited_left": _ballistic_exited_left_count,
 		"landed_can_ricochets": _ballistic_total_ricochet_count,
+		"support_entries": _ballistic_support_entry_count,
+		"supported_collections": _ballistic_supported_collection_count,
+		"support_losses": _ballistic_support_loss_count,
+		"depenetration_corrections": _ballistic_depenetration_correction_count,
 		"collection_rate": ballistic_collection_rate(),
 		"average_launch_to_collection_time": ballistic_average_launch_to_collection_time(),
 	}
@@ -574,6 +598,8 @@ func ballistic_integrity_summary() -> Dictionary:
 		"full_triples": _ballistic_full_triple_count,
 		"degraded_doubles": _ballistic_degraded_double_count,
 		"degraded_triples": _ballistic_degraded_triple_count,
+		"short_stagger_double_fallbacks": _ballistic_short_stagger_double_count,
+		"alternative_triple_timing_successes": _ballistic_alternative_triple_count,
 		"double_integrity_rate": (
 			float(_ballistic_full_double_count) / float(selected_doubles)
 			if selected_doubles > 0
@@ -806,7 +832,9 @@ func stop_for_round_end() -> void:
 	_stopped = true
 	if refund_chute_enabled:
 		refund_chute_sequence_reset.emit()
-	if refund_chute_enabled and ballistic_coin_events_enabled and ballistic_integrity_enabled:
+	if refund_system_enabled and ballistic_coin_events_enabled and ballistic_integrity_enabled:
+		print("VM070_COIN_SUMMARY ", JSON.stringify(ballistic_run_summary()))
+	elif refund_chute_enabled and ballistic_coin_events_enabled and ballistic_integrity_enabled:
 		print("VM0610_COIN_SUMMARY ", JSON.stringify(ballistic_run_summary()))
 	elif ballistic_coin_events_enabled and ballistic_integrity_enabled:
 		print("VM069_COIN_SUMMARY ", JSON.stringify(ballistic_run_summary()))
@@ -821,6 +849,7 @@ func stop_for_round_end() -> void:
 	for child in get_children():
 		if child is ConveyorCollectible:
 			child.stop()
+	_supported_can_claims.clear()
 
 
 func _try_spawn_natural_offer() -> bool:
@@ -857,9 +886,10 @@ func _try_spawn_variable_coin_event() -> bool:
 	_begin_performance_event_profile()
 	var teaching := _natural_offer_count == 0
 	if teaching:
+		var use_static_teaching := refund_system_enabled and static_teaching_coin_enabled
 		var teaching_accepted := _try_spawn_independent_coin(
 			"teaching",
-			collectible_lifetime,
+			teaching_coin_lifetime if use_static_teaching else collectible_lifetime,
 			true,
 			-1,
 			[],
@@ -867,16 +897,32 @@ func _try_spawn_variable_coin_event() -> bool:
 			1,
 			0,
 			[],
-			BallisticArchetype.MEDIUM if ballistic_coin_events_enabled else -1,
+			(
+				-1
+				if use_static_teaching
+				else BallisticArchetype.MEDIUM if ballistic_coin_events_enabled else -1
+			),
 			[],
-			refund_chute_pre_eject_duration if refund_chute_enabled else 0.0,
+			(
+				0.0
+				if use_static_teaching
+				else refund_chute_pre_eject_duration if refund_chute_enabled else 0.0
+			),
 			{},
-			refund_chute_nominal_launch_position if refund_chute_enabled else null
+			(
+				null
+				if use_static_teaching
+				else refund_chute_nominal_launch_position if refund_chute_enabled else null
+			)
 		)
 		var teaching_interval := _schedule_next_coin_event_attempt()
 		if teaching_accepted:
 			_natural_offer_count += 1
-			if refund_chute_enabled and ballistic_coin_events_enabled:
+			if (
+				refund_chute_enabled
+				and ballistic_coin_events_enabled
+				and not use_static_teaching
+			):
 				_cue_refund_chute_from_plans([_last_ballistic_plan])
 			if not _offer_log.is_empty():
 				_offer_log[-1].next_stream_interval = teaching_interval
@@ -952,6 +998,13 @@ func _try_spawn_variable_coin_event() -> bool:
 			requested_lifetimes
 		)
 		preplanned_samples.assign(integrity_plan.get("samples", []))
+		if bool(integrity_plan.get("used_short_stagger", false)):
+			_ballistic_simultaneous_multi_event_count = maxi(
+				_ballistic_simultaneous_multi_event_count - 1,
+				0
+			)
+			_ballistic_staggered_multi_event_count += 1
+			launch_rhythm = "SHORT_STAGGER_FALLBACK"
 		target_count = preplanned_samples.size()
 	for coin_index in range(target_count):
 		var requested_lifetime := (
@@ -1016,6 +1069,9 @@ func _try_spawn_variable_coin_event() -> bool:
 
 	var next_interval := _schedule_next_coin_event_attempt()
 	_natural_offer_count += 1
+	var actual_launch_delays := PackedFloat32Array()
+	for accepted_trajectory in accepted_trajectories:
+		actual_launch_delays.append(float(accepted_trajectory.get("launch_delay", 0.0)))
 	_coin_event_log.append({
 		"event_id": event_id,
 		"time": _conveyor.survival_time,
@@ -1032,7 +1088,8 @@ func _try_spawn_variable_coin_event() -> bool:
 		"trajectory_archetypes": accepted_archetypes,
 		"flight_durations": flight_durations,
 		"launch_rhythm": launch_rhythm,
-		"launch_delays": launch_delay_plan,
+		"launch_delays": actual_launch_delays,
+		"integrity_fallback": String(integrity_plan.get("fallback_mode", "")),
 		"full_group_success": (
 			ballistic_integrity_enabled
 			and accepted_positions.size() == requested_count
@@ -1056,6 +1113,22 @@ func _try_spawn_variable_coin_event() -> bool:
 
 
 func _plan_ballistic_event_group(
+	target_count: int,
+	side_plan: Array[int],
+	archetype_plan: Array[int],
+	launch_delay_plan: PackedFloat32Array,
+	requested_lifetimes: PackedFloat32Array
+) -> Dictionary:
+	return _plan_ballistic_event_group_once(
+		target_count,
+		side_plan,
+		archetype_plan,
+		launch_delay_plan,
+		requested_lifetimes
+	)
+
+
+func _plan_ballistic_event_group_once(
 	target_count: int,
 	side_plan: Array[int],
 	archetype_plan: Array[int],
@@ -1121,7 +1194,13 @@ func _plan_ballistic_event_group(
 	for coin_index in range(target_count):
 		var pool: Array[Dictionary] = []
 		var pool_calls := 0
-		var maximum_pool_calls := maxi(ballistic_group_candidate_pool_size, 1) * 2
+		var desired_pool_size := maxi(
+			refund_group_candidate_pool_size
+			if refund_system_enabled
+			else ballistic_group_candidate_pool_size,
+			1
+		)
+		var maximum_pool_calls := desired_pool_size * 2
 		var launch_override: Variant = (
 			_refund_chute_origin_for_member(
 				target_count,
@@ -1133,7 +1212,7 @@ func _plan_ballistic_event_group(
 			else null
 		)
 		while (
-			pool.size() < maxi(ballistic_group_candidate_pool_size, 1)
+			pool.size() < desired_pool_size
 			and pool_calls < maximum_pool_calls
 		):
 			pool_calls += 1
@@ -1187,8 +1266,70 @@ func _plan_ballistic_event_group(
 			pool.append(committed_sample)
 		candidate_pools.append(pool)
 
-	for group_size in range(target_count, 0, -1):
-		var combination_result := _find_ballistic_group_combination(
+	var combination_result := _find_ballistic_group_combination(
+		candidate_pools,
+		target_count
+	)
+	total_group_attempts += int(combination_result.get("checks", 0))
+	var complete_samples: Array[Dictionary] = []
+	complete_samples.assign(combination_result.get("samples", []))
+	if not complete_samples.is_empty():
+		return {
+			"samples": complete_samples,
+			"group_attempts": total_group_attempts,
+			"degradation_reason": "",
+			"fallback_mode": "ORIGINAL",
+			"used_short_stagger": false,
+		}
+	var combination_reason := String(combination_result.get("reason", ""))
+	if not combination_reason.is_empty():
+		last_reason = combination_reason
+	# Re-time the already-bounded candidate pools instead of rebuilding them.
+	# This preserves placement choices, avoids the VM-0.7.0 draft's p95/p99
+	# spikes, and evaluates each allowed fallback deterministically.
+	var timing_alternatives: Array[PackedFloat32Array] = []
+	var base_delay := float(launch_delay_plan[0]) if not launch_delay_plan.is_empty() else 0.0
+	if refund_system_enabled and target_count == 2:
+		timing_alternatives = [
+			PackedFloat32Array([base_delay, base_delay + ballistic_short_stagger_delay_range.x]),
+			PackedFloat32Array([base_delay, base_delay + ballistic_short_stagger_delay_range.y]),
+		]
+	elif refund_system_enabled and target_count == 3:
+		timing_alternatives = [
+			PackedFloat32Array([base_delay, base_delay + 0.11, base_delay + 0.22]),
+			PackedFloat32Array([base_delay, base_delay + 0.18, base_delay + 0.36]),
+		]
+	for timing in timing_alternatives:
+		var retimed_pools := _retime_ballistic_candidate_pools(candidate_pools, timing)
+		var retimed_result := _find_ballistic_group_combination(
+			retimed_pools,
+			target_count
+		)
+		total_group_attempts += int(retimed_result.get("checks", 0))
+		var retimed_samples: Array[Dictionary] = []
+		retimed_samples.assign(retimed_result.get("samples", []))
+		if not retimed_samples.is_empty():
+			if target_count == 2:
+				_ballistic_short_stagger_double_count += 1
+			else:
+				_ballistic_alternative_triple_count += 1
+			return {
+				"samples": retimed_samples,
+				"group_attempts": total_group_attempts,
+				"degradation_reason": "",
+				"fallback_mode": (
+					"SHORT_STAGGER"
+					if target_count == 2
+					else "ALTERNATIVE_TRIPLE_TIMING"
+				),
+				"used_short_stagger": target_count == 2,
+			}
+		var retimed_reason := String(retimed_result.get("reason", ""))
+		if not retimed_reason.is_empty():
+			last_reason = retimed_reason
+
+	for group_size in range(target_count - 1, 0, -1):
+		combination_result = _find_ballistic_group_combination(
 			candidate_pools,
 			group_size
 		)
@@ -1199,11 +1340,11 @@ func _plan_ballistic_event_group(
 			return {
 				"samples": samples,
 				"group_attempts": total_group_attempts,
-				"degradation_reason": (
-					"" if group_size == target_count else last_reason
-				),
+				"degradation_reason": last_reason,
+				"fallback_mode": "DEGRADED",
+				"used_short_stagger": false,
 			}
-		var combination_reason := String(combination_result.get("reason", ""))
+		combination_reason = String(combination_result.get("reason", ""))
 		if not combination_reason.is_empty():
 			last_reason = combination_reason
 	# A full target pool can be empty under transient constraints. Give the final
@@ -1250,6 +1391,24 @@ func _plan_ballistic_event_group(
 	}
 
 
+func _retime_ballistic_candidate_pools(
+	candidate_pools: Array,
+	launch_delays: PackedFloat32Array
+) -> Array:
+	var result: Array = []
+	for pool_index in range(candidate_pools.size()):
+		var retimed_pool: Array[Dictionary] = []
+		for source_sample in Array(candidate_pools[pool_index]):
+			var sample: Dictionary = Dictionary(source_sample).duplicate(true)
+			var plan: Dictionary = Dictionary(sample.get("ballistic_plan", {})).duplicate(true)
+			if pool_index < launch_delays.size():
+				plan.launch_delay = float(launch_delays[pool_index])
+			sample.ballistic_plan = plan
+			retimed_pool.append(sample)
+		result.append(retimed_pool)
+	return result
+
+
 func _find_ballistic_group_combination(
 	candidate_pools: Array,
 	group_size: int
@@ -1261,7 +1420,12 @@ func _find_ballistic_group_combination(
 			return {"samples": [], "checks": 0, "reason": REJECTION_SCATTER_EXHAUSTED}
 	var checks := 0
 	var last_reason := REJECTION_SIBLING
-	var check_limit := maxi(ballistic_group_combination_checks, 1)
+	var check_limit := maxi(
+		refund_group_combination_checks
+		if refund_system_enabled
+		else ballistic_group_combination_checks,
+		1
+	)
 	if group_size == 1:
 		for first in Array(candidate_pools[0]):
 			checks += 1
@@ -1497,6 +1661,13 @@ func _ballistic_launch_delay_plan(requested_count: int) -> PackedFloat32Array:
 	for _index in range(maxi(requested_count, 0)):
 		delays.append(0.0)
 	if not ballistic_abundance_enabled or requested_count <= 1:
+		return delays
+	if refund_system_enabled:
+		# Consolidated ordering: doubles begin simultaneous; triples begin as a
+		# complete short stagger. Planner fallbacks are applied only if invalid.
+		if requested_count == 3:
+			delays[1] = 0.10
+			delays[2] = 0.20
 		return delays
 	if requested_count == 2:
 		if _stream_probability_roll(ballistic_double_stagger_probability):
@@ -2791,7 +2962,11 @@ func _ballistic_post_contact_separation_is_valid(
 	sibling_plans: Array[Dictionary]
 ) -> bool:
 	var minimum_separation := maxf(
-		coin_event_sibling_minimum_separation,
+		(
+			ballistic_minimum_trajectory_separation
+			if refund_system_enabled
+			else coin_event_sibling_minimum_separation
+		),
 		collectible_size.x + 1.0
 	)
 	var candidate_contact := (
@@ -3181,9 +3356,16 @@ func _spawn_offer_coin(
 				ballistic_can_top_restitution,
 				ballistic_can_side_horizontal_restitution,
 				ballistic_can_side_upward_speed,
-				ballistic_can_horizontal_deflection
+				ballistic_can_horizontal_deflection,
+				ballistic_world_physics_size,
+				ballistic_can_support_maximum_vertical_speed,
+				Callable(self, "_claim_landed_can_support"),
+				Callable(self, "_release_landed_can_support")
 			)
 			coin.landed_can_ricochet.connect(_on_ballistic_landed_can_ricochet)
+			coin.supported_on_can.connect(_on_ballistic_supported_on_can)
+			coin.support_lost.connect(_on_ballistic_support_lost)
+			coin.world_overlap_corrected.connect(_on_ballistic_overlap_corrected)
 	coin.set_meta("offer_id", offer_id)
 	coin.collected.connect(_on_collectible_collected.bind(offer_id))
 	coin.expired.connect(_on_collectible_expired.bind(offer_id))
@@ -4508,6 +4690,24 @@ func _collect_landed_can_collision_rects() -> Array[Dictionary]:
 	return result
 
 
+func _claim_landed_can_support(can_id: int, coin: ConveyorCollectible) -> bool:
+	if can_id < 0 or not is_instance_valid(coin):
+		return false
+	var existing: Variant = _supported_can_claims.get(can_id, null)
+	if existing is ConveyorCollectible and is_instance_valid(existing):
+		return existing == coin
+	_supported_can_claims[can_id] = coin
+	return true
+
+
+func _release_landed_can_support(can_id: int, coin: ConveyorCollectible) -> void:
+	if can_id < 0:
+		return
+	var existing: Variant = _supported_can_claims.get(can_id, null)
+	if existing == coin or not is_instance_valid(existing):
+		_supported_can_claims.erase(can_id)
+
+
 func _begin_performance_event_profile() -> void:
 	if not performance_profiling_enabled:
 		return
@@ -4639,6 +4839,8 @@ func _on_collectible_collected(collectible: ConveyorCollectible, offer_id: int) 
 		_ballistic_collection_counts[phase] = int(
 			_ballistic_collection_counts.get(phase, 0)
 		) + 1
+		if phase == "SUPPORTED_ON_CAN":
+			_ballistic_supported_collection_count += 1
 		var collection_time := collectible.collection_time_from_launch()
 		if collection_time >= 0.0:
 			_ballistic_collection_time_total += collection_time
@@ -4661,6 +4863,28 @@ func _on_ballistic_landed_can_ricochet(
 	_contact_kind: String
 ) -> void:
 	_ballistic_total_ricochet_count += 1
+
+
+func _on_ballistic_supported_on_can(
+	_collectible: ConveyorCollectible,
+	_can_id: int
+) -> void:
+	_ballistic_support_entry_count += 1
+
+
+func _on_ballistic_support_lost(
+	_collectible: ConveyorCollectible,
+	_can_id: int,
+	_resolution: String
+) -> void:
+	_ballistic_support_loss_count += 1
+
+
+func _on_ballistic_overlap_corrected(
+	_collectible: ConveyorCollectible,
+	_reason: String
+) -> void:
+	_ballistic_depenetration_correction_count += 1
 
 
 func _on_ballistic_first_contact(collectible: ConveyorCollectible) -> void:

@@ -1,9 +1,10 @@
-# VM-0.6.10 Refund Chute integration prototype
+# VM-0.7.0 Refund System consolidation
 
-VM-0.6.10 is an isolated Concept C visual/mechanical-source test built on the
-VM-0.6.9 ballistic direction. It gives all ballistic Refund Coins one compact
-physical emitter without changing Standard difficulty. It is awaiting Startup
-Lab motion review and is not merged into the stable gameplay baseline.
+VM-0.7.0 consolidates the selected ballistic Refund Coin direction for external
+review. It preserves Concept C and Standard difficulty, adds one static teaching
+coin per run, lets a post-bounce low-energy coin rest on one landed can, separates
+the 24×24 pickup from a 32×32 can-contact footprint, and restores bounded
+multi-event integrity.
 
 Run the normal candidate:
 
@@ -11,18 +12,19 @@ Run the normal candidate:
 /Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --path . res://scenes/presentation/standard_session.tscn
 ```
 
-Run the deterministic trajectory gallery and press `1`–`6` for SHALLOW,
-MEDIUM, HIGH, simultaneous double, staggered double and staggered triple:
+Run the deterministic review gallery and press `1`–`9` for SHALLOW, MEDIUM,
+HIGH, simultaneous double, staggered double, staggered triple, short-stagger
+double, can support and support-loss cases:
 
 ```bash
 /Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --path . res://scenes/tests/refund_chute_trajectory_review.tscn
 ```
 
-Export with preset `Web GET CANNED VM-0.6.10 Refund Chute` to
-`builds/VM-0.6.10-REFUND-CHUTE/index.html`. See
-[`docs/vm0610-refund-chute.md`](docs/vm0610-refund-chute.md) for the exact
-visual contract, measured integrity/performance results, known risk and local
-review instructions.
+Export with preset `Web GET CANNED VM-0.7.0 Refund System` to
+`builds/VM-0.7.0-REFUND-SYSTEM/index.html`. See
+[`docs/vm070-refund-system.md`](docs/vm070-refund-system.md) for the exact
+state model, measured integrity/performance results, known risks, desktop review
+steps and local-network phone instructions.
 
 ---
 

@@ -25,7 +25,8 @@ func _run() -> void:
 		{"name": "VM066", "ballistic": false, "abundance": false, "integrity": false, "refund_chute": false},
 		{"name": "VM068", "ballistic": true, "abundance": true, "integrity": false, "refund_chute": false},
 		{"name": "VM069", "ballistic": true, "abundance": true, "integrity": true, "refund_chute": false},
-		{"name": "VM0610", "ballistic": true, "abundance": true, "integrity": true, "refund_chute": true},
+		{"name": "VM0610", "ballistic": true, "abundance": true, "integrity": true, "refund_chute": true, "refund_system": false},
+		{"name": "VM070", "ballistic": true, "abundance": true, "integrity": true, "refund_chute": true, "refund_system": true},
 	]:
 		if not _mode_filter.is_empty() and String(mode.name) != _mode_filter:
 			continue
@@ -51,6 +52,10 @@ func _profile_mode(mode: Dictionary, seed: int) -> Dictionary:
 		director.set("ballistic_integrity_enabled", bool(mode.integrity))
 	if _has_property(director, &"refund_chute_enabled"):
 		director.set("refund_chute_enabled", bool(mode.refund_chute))
+	if _has_property(director, &"refund_system_enabled"):
+		director.set("refund_system_enabled", bool(mode.get("refund_system", false)))
+	if _has_property(director, &"static_teaching_coin_enabled"):
+		director.set("static_teaching_coin_enabled", bool(mode.get("refund_system", false)))
 	director.performance_profiling_enabled = true
 	director.placement_seed = seed
 	director._placement_rng_state = seed
@@ -142,8 +147,16 @@ func _profile_mode(mode: Dictionary, seed: int) -> Dictionary:
 	result.planning = director.performance_profile_summary()
 	result.delivered = director.spawn_count
 	result.event_count = director.coin_event_count()
+	result.placement_rejections = director.rejection_counts()
 	result.observed_integrity = _event_integrity_from_log(
 		director.coin_event_log()
+	)
+	result.ballistic_run = director.ballistic_run_summary()
+	var integrity_summary: Dictionary = result.ballistic_run
+	result.requested = (
+		int(integrity_summary.get("selected_singles", 0))
+		+ int(integrity_summary.get("selected_doubles", 0)) * 2
+		+ int(integrity_summary.get("selected_triples", 0)) * 3
 	)
 	result.d3_warning_times = d3.successful_warning_times()
 	result.d3_longest_gap = d3.longest_successful_warning_gap()

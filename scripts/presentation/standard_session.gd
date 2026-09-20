@@ -20,6 +20,7 @@ const VOLUME_SLIDER := preload("res://scripts/presentation/c2_volume_slider.gd")
 @export var ballistic_abundance_enabled: bool = false
 @export var ballistic_integrity_enabled: bool = false
 @export var refund_chute_enabled: bool = false
+@export var refund_system_enabled: bool = false
 
 var state: State = State.MENU
 var game: MotionExperimentShell
@@ -154,7 +155,9 @@ func start_game() -> void:
 	game.clean_tester_presentation = true
 	game.clean_control_hint_duration = 0.0
 	game.local_instrumentation_enabled = false
-	if refund_chute_enabled:
+	if refund_system_enabled:
+		game.build_id_override = "VM-0.7.0-REFUND-SYSTEM"
+	elif refund_chute_enabled:
 		game.build_id_override = "VM-0.6.10-REFUND-CHUTE"
 	elif ballistic_integrity_enabled:
 		game.build_id_override = "VM-0.6.9-BALLISTIC-INTEGRITY"
@@ -181,6 +184,8 @@ func start_game() -> void:
 	collectible_director.ballistic_abundance_enabled = ballistic_abundance_enabled
 	collectible_director.ballistic_integrity_enabled = ballistic_integrity_enabled
 	collectible_director.refund_chute_enabled = refund_chute_enabled
+	collectible_director.refund_system_enabled = refund_system_enabled
+	collectible_director.static_teaching_coin_enabled = refund_system_enabled
 	var round_controller := game.conveyor.get_node("RoundController") as FixedRoundController
 	# Death can originate inside a physics collision callback. Finish that callback
 	# before disabling the complete run and its collision objects.

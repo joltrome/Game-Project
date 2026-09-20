@@ -23,6 +23,7 @@ ballistic_coins_enabled = true
 ballistic_abundance_enabled = true
 ballistic_integrity_enabled = true
 refund_chute_enabled = true
+refund_system_enabled = true
 
 [node name="Audio" type="Node" parent="."]
 script = ExtResource("2")

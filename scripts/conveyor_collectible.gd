@@ -12,6 +12,9 @@ signal landed_can_ricochet(
 	ricochet_count: int,
 	contact_kind: String
 )
+signal supported_on_can(collectible: ConveyorCollectible, can_id: int)
+signal support_lost(collectible: ConveyorCollectible, can_id: int, resolution: String)
+signal world_overlap_corrected(collectible: ConveyorCollectible, reason: String)
 
 enum MotionState {
 	CONVEYOR,
@@ -19,6 +22,7 @@ enum MotionState {
 	AIRBORNE,
 	BOUNCING,
 	RICOCHETING,
+	SUPPORTED_ON_CAN,
 	SETTLED,
 }
 
@@ -57,6 +61,8 @@ enum MotionState {
 @export_category("Ballistic Prototype")
 @export var ballistic_gravity: float = 1250.0
 @export var bounce_restitutions := Vector2(0.38, 0.16)
+@export var world_physics_size := Vector2(32.0, 32.0)
+@export var can_support_maximum_vertical_speed: float = 260.0
 
 var time_remaining: float = 0.0
 var _resolved: bool = false
@@ -106,6 +112,11 @@ var _can_side_horizontal_restitution: float = 0.35
 var _can_side_upward_speed: float = 180.0
 var _can_horizontal_deflection: float = 70.0
 var _escape_x_bounds := Vector2(-INF, INF)
+var _support_claim := Callable()
+var _support_release := Callable()
+var _supported_can_id: int = -1
+var _supported_can_offset_x: float = 0.0
+var _support_loss_fall: bool = false
 
 @onready var _collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var _visual_root: Node2D = $VisualRoot
@@ -234,6 +245,8 @@ func configure_ballistic(
 	_ricochet_velocity = Vector2.ZERO
 	_ricochet_contact_cooldown = 0.0
 	_last_ricochet_can_id = -1
+	_release_supported_can()
+	_support_loss_fall = false
 	position = launch_position
 	_resolved = false
 	monitoring = _launch_delay_remaining <= 0.0
@@ -250,7 +263,11 @@ func configure_landed_can_collision(
 	top_restitution: float = 0.34,
 	side_horizontal_restitution: float = 0.35,
 	side_upward_speed: float = 180.0,
-	horizontal_deflection: float = 70.0
+	horizontal_deflection: float = 70.0,
+	physical_size: Vector2 = Vector2(32.0, 32.0),
+	support_maximum_vertical_speed: float = 260.0,
+	support_claim: Callable = Callable(),
+	support_release: Callable = Callable()
 ) -> void:
 	_landed_can_query = query
 	_escape_x_bounds = escape_x_bounds
@@ -263,6 +280,13 @@ func configure_landed_can_collision(
 	)
 	_can_side_upward_speed = maxf(side_upward_speed, 0.0)
 	_can_horizontal_deflection = maxf(horizontal_deflection, 0.0)
+	world_physics_size = Vector2(
+		maxf(physical_size.x, collectible_size.x),
+		maxf(physical_size.y, collectible_size.y)
+	)
+	can_support_maximum_vertical_speed = maxf(support_maximum_vertical_speed, 0.0)
+	_support_claim = support_claim
+	_support_release = support_release
 
 
 func show_teaching_cue(duration: float = -1.0) -> void:
@@ -281,6 +305,7 @@ func hide_teaching_cue() -> void:
 
 
 func stop() -> void:
+	_release_supported_can()
 	set_deferred("monitoring", false)
 	set_physics_process(false)
 	set_process(false)
@@ -312,6 +337,8 @@ func motion_state_name() -> String:
 			return "BOUNCING"
 		MotionState.RICOCHETING:
 			return "RICOCHETING"
+		MotionState.SUPPORTED_ON_CAN:
+			return "SUPPORTED_ON_CAN"
 		MotionState.SETTLED:
 			return "SETTLED"
 	return "CONVEYOR"
@@ -379,6 +406,18 @@ func resolution_reason() -> String:
 
 func is_inside_landed_can() -> bool:
 	return not _overlapping_landed_can().is_empty()
+
+
+func world_collision_size() -> Vector2:
+	return world_physics_size
+
+
+func supported_can_id() -> int:
+	return _supported_can_id
+
+
+func is_supported_on_can() -> bool:
+	return _motion_state == MotionState.SUPPORTED_ON_CAN and _supported_can_id >= 0
 
 
 func launch_velocity() -> Vector2:
@@ -589,7 +628,13 @@ func _update_looping_visuals(delta: float) -> void:
 	var pop_scale := _spawn_pop_scale()
 	_normal_visual_scale = Vector2(spin_width * pop_scale, pop_scale)
 	_visual_root.scale = _normal_visual_scale
-	_visual_root.position.y = sin(cycle_progress * TAU) * bob_amplitude
+	var visual_bob := sin(cycle_progress * TAU) * bob_amplitude
+	# A supported coin may visually rise from its support, but never bob down into it.
+	_visual_root.position.y = (
+		minf(visual_bob, 0.0)
+		if _motion_state == MotionState.SUPPORTED_ON_CAN
+		else visual_bob
+	)
 	_glint_remaining = maxf(_glint_remaining - delta, 0.0)
 	if _animation_elapsed + 0.0001 >= _next_glint_time:
 		_glint_remaining = glint_duration
@@ -699,6 +744,8 @@ func _update_ballistic_motion(delta: float) -> void:
 				remaining = _step_bounce(remaining)
 			MotionState.RICOCHETING:
 				remaining = _step_ricochet(remaining)
+			MotionState.SUPPORTED_ON_CAN:
+				remaining = _step_supported_on_can(remaining)
 			MotionState.SETTLED:
 				_step_post_contact_lifetime(remaining)
 				if _resolved:
@@ -745,7 +792,7 @@ func _step_airborne(delta: float) -> float:
 	)
 	if not can_contact.is_empty():
 		position = can_contact.position
-		_begin_can_ricochet(current_velocity, can_contact)
+		_handle_landed_can_contact(current_velocity, can_contact)
 		return maxf(delta - step, 0.0)
 	position = next_position
 	if _flight_elapsed + 0.000001 < _flight_duration:
@@ -799,7 +846,7 @@ func _step_bounce(delta: float) -> float:
 	)
 	if not can_contact.is_empty():
 		position = can_contact.position
-		_begin_can_ricochet(current_velocity, can_contact)
+		_handle_landed_can_contact(current_velocity, can_contact)
 		return maxf(delta - step, 0.0)
 	position = next_position
 	if _bounce_elapsed + 0.000001 < _bounce_duration:
@@ -830,6 +877,50 @@ func _settle() -> void:
 	_motion_state = MotionState.SETTLED
 	_settled_count += 1
 	settled.emit(self)
+
+
+func _handle_landed_can_contact(
+	incoming_velocity: Vector2,
+	contact: Dictionary
+) -> void:
+	var normal := contact.get("normal", Vector2.UP) as Vector2
+	var is_later_low_energy_top := (
+		normal.y < -0.5
+		and (_landed_can_ricochet_count > 0 or _bounce_number > 0)
+		and absf(incoming_velocity.y) <= can_support_maximum_vertical_speed
+	)
+	if is_later_low_energy_top and _begin_can_support(contact):
+		return
+	_begin_can_ricochet(incoming_velocity, contact)
+
+
+func _begin_can_support(contact: Dictionary) -> bool:
+	var can_id := int(contact.get("id", -1))
+	if can_id < 0:
+		return false
+	if _support_claim.is_valid() and not bool(_support_claim.call(can_id, self)):
+		return false
+	var center := contact.get("center", position) as Vector2
+	var size := contact.get("size", Vector2.ZERO) as Vector2
+	_supported_can_id = can_id
+	_supported_can_offset_x = position.x - center.x
+	position.y = center.y - size.y * 0.5 - world_physics_size.y * 0.5
+	_motion_state = MotionState.SUPPORTED_ON_CAN
+	_ricochet_velocity = Vector2.ZERO
+	_support_loss_fall = false
+	if not _first_contact_occurred:
+		_register_first_conveyor_contact(0.0)
+	supported_on_can.emit(self, can_id)
+	return true
+
+
+func _release_supported_can() -> int:
+	var released_id := _supported_can_id
+	if released_id >= 0 and _support_release.is_valid():
+		_support_release.call(released_id, self)
+	_supported_can_id = -1
+	_supported_can_offset_x = 0.0
+	return released_id
 
 
 func _begin_can_ricochet(incoming_velocity: Vector2, contact: Dictionary) -> void:
@@ -873,6 +964,7 @@ func _begin_can_ricochet(incoming_velocity: Vector2, contact: Dictionary) -> voi
 
 
 func _force_clear_settle() -> void:
+	_release_supported_can()
 	var clear_x := _nearest_clear_conveyor_x(position.x)
 	position = Vector2(clear_x, _landing_position.y)
 	if not _overlapping_landed_can().is_empty():
@@ -892,7 +984,7 @@ func _landed_can_contact(
 ) -> Dictionary:
 	if not _landed_can_query.is_valid():
 		return {}
-	var coin_half := collectible_size * 0.5
+	var coin_half := world_physics_size * 0.5
 	for can_data in _landed_can_query.call():
 		var can_id := int(can_data.get("id", -1))
 		if can_id == _last_ricochet_can_id and _ricochet_contact_cooldown > 0.0:
@@ -920,8 +1012,36 @@ func _landed_can_contact(
 				return {
 					"id": can_id,
 					"center": center,
+					"size": size,
 					"position": Vector2(contact_x, top),
 					"normal": Vector2.UP,
+				}
+		var crossed_side := false
+		var side_x := 0.0
+		var side_normal_x := 0.0
+		if velocity.x > 0.0 and previous_position.x <= left and next_position.x >= left:
+			crossed_side = true
+			side_x = left
+			side_normal_x = -1.0
+		elif velocity.x < 0.0 and previous_position.x >= right and next_position.x <= right:
+			crossed_side = true
+			side_x = right
+			side_normal_x = 1.0
+		if crossed_side:
+			var denominator := next_position.x - previous_position.x
+			var ratio := (
+				clampf((side_x - previous_position.x) / denominator, 0.0, 1.0)
+				if not is_zero_approx(denominator)
+				else 0.0
+			)
+			var contact_y := lerpf(previous_position.y, next_position.y, ratio)
+			if contact_y >= top and contact_y <= bottom:
+				return {
+					"id": can_id,
+					"center": center,
+					"size": size,
+					"position": Vector2(side_x, contact_y),
+					"normal": Vector2(side_normal_x, 0.0),
 				}
 		if (
 			next_position.x >= left
@@ -933,6 +1053,7 @@ func _landed_can_contact(
 			return {
 				"id": can_id,
 				"center": center,
+				"size": size,
 				"position": Vector2(
 					left if normal_x < 0.0 else right,
 					clampf(next_position.y, top, bottom)
@@ -946,7 +1067,7 @@ func _overlapping_landed_can(at_position: Vector2 = Vector2.INF) -> Dictionary:
 	if not _landed_can_query.is_valid():
 		return {}
 	var candidate := position if at_position == Vector2.INF else at_position
-	var coin_half := collectible_size * 0.5
+	var coin_half := world_physics_size * 0.5
 	for can_data in _landed_can_query.call():
 		var center := can_data.get("center", Vector2.ZERO) as Vector2
 		var size := can_data.get("size", Vector2.ZERO) as Vector2
@@ -965,7 +1086,7 @@ func _nearest_clear_conveyor_x(preferred_x: float) -> float:
 	var clamped := clampf(preferred_x, minimum_x, maximum_x)
 	if not _landed_can_query.is_valid():
 		return clamped
-	var coin_half := collectible_size.x * 0.5
+	var coin_half := world_physics_size.x * 0.5
 	var candidates := PackedFloat32Array([clamped])
 	for can_data in _landed_can_query.call():
 		var center := can_data.get("center", Vector2.ZERO) as Vector2
@@ -1008,12 +1129,16 @@ func _step_ricochet(delta: float) -> float:
 	)
 	if not can_contact.is_empty():
 		position = can_contact.position
-		_begin_can_ricochet(_ricochet_velocity, can_contact)
+		_handle_landed_can_contact(_ricochet_velocity, can_contact)
 		return maxf(delta - step, 0.0)
 	position = next_position
 	if position.y + 0.0001 < _landing_position.y:
 		return maxf(delta - step, 0.0)
 	position.y = _landing_position.y
+	if _support_loss_fall:
+		_support_loss_fall = false
+		_settle()
+		return maxf(delta - step, 0.0)
 	if not _overlapping_landed_can().is_empty():
 		_force_clear_settle()
 		return maxf(delta - step, 0.0)
@@ -1025,6 +1150,50 @@ func _step_ricochet(delta: float) -> float:
 	else:
 		_settle()
 	return maxf(delta - step, 0.0)
+
+
+func _step_supported_on_can(delta: float) -> float:
+	var step := minf(delta, 1.0 / 120.0)
+	_step_post_contact_lifetime(step)
+	if _resolved:
+		return 0.0
+	_launch_age += step
+	var support := _landed_can_data(_supported_can_id)
+	if support.is_empty():
+		var lost_id := _release_supported_can()
+		var clear_x := _nearest_clear_conveyor_x(position.x)
+		var clear_position := Vector2(clear_x, _landing_position.y)
+		if not _overlapping_landed_can(clear_position).is_empty():
+			support_lost.emit(self, lost_id, "EXPIRED_NO_CLEAR_FALL")
+			_resolve(false, "EXPIRED_NO_CLEAR_FALL")
+			return 0.0
+		position.x = clear_x
+		_ricochet_velocity = Vector2(-scroll_speed, 0.0)
+		_motion_state = MotionState.RICOCHETING
+		_support_loss_fall = true
+		support_lost.emit(self, lost_id, "FALL_TO_CONVEYOR")
+		return maxf(delta - step, 0.0)
+	var center := support.get("center", position) as Vector2
+	var size := support.get("size", Vector2.ZERO) as Vector2
+	position = Vector2(
+		center.x + _supported_can_offset_x,
+		center.y - size.y * 0.5 - world_physics_size.y * 0.5
+	)
+	var overlap := _overlapping_landed_can()
+	if not overlap.is_empty() and int(overlap.get("id", -1)) != _supported_can_id:
+		var corrected_x := _nearest_clear_conveyor_x(position.x)
+		position.x = corrected_x
+		world_overlap_corrected.emit(self, "SUPPORTED_SIBLING_DEPENETRATION")
+	return maxf(delta - step, 0.0)
+
+
+func _landed_can_data(can_id: int) -> Dictionary:
+	if can_id < 0 or not _landed_can_query.is_valid():
+		return {}
+	for can_data in _landed_can_query.call():
+		if int(can_data.get("id", -1)) == can_id:
+			return can_data
+	return {}
 
 
 func _step_post_contact_lifetime(delta: float) -> void:
@@ -1046,7 +1215,12 @@ func _projected_x_after(seconds: float) -> float:
 		if future > _flight_duration:
 			projected_pending -= scroll_speed * (future - _flight_duration)
 		return projected_pending
-	if not _ballistic_enabled or _motion_state in [MotionState.CONVEYOR, MotionState.SETTLED, MotionState.BOUNCING]:
+	if not _ballistic_enabled or _motion_state in [
+		MotionState.CONVEYOR,
+		MotionState.SETTLED,
+		MotionState.BOUNCING,
+		MotionState.SUPPORTED_ON_CAN,
+	]:
 		return position.x - scroll_speed * future
 	if _motion_state == MotionState.RICOCHETING:
 		return position.x + _ricochet_velocity.x * future
@@ -1067,6 +1241,7 @@ func _resolve(was_collected: bool, reason: String = "") -> void:
 		_resolution_reason = "COLLECTED"
 	else:
 		_resolution_reason = "EXPIRED" if reason.is_empty() else reason
+	_release_supported_can()
 	_resolved = true
 	set_deferred("monitoring", false)
 	set_physics_process(false)
@@ -1092,6 +1267,8 @@ func _telemetry_motion_phase() -> String:
 			return "AIRBORNE"
 		MotionState.BOUNCING, MotionState.RICOCHETING:
 			return "BOUNCING"
+		MotionState.SUPPORTED_ON_CAN:
+			return "SUPPORTED_ON_CAN"
 		MotionState.SETTLED:
 			return "SETTLED"
 	return "AIRBORNE"
@@ -1104,7 +1281,7 @@ func _check_left_exit() -> void:
 		or _motion_state == MotionState.PENDING_LAUNCH
 	):
 		return
-	if position.x + collectible_size.x * 0.5 < _left_exit_x:
+	if position.x + world_physics_size.x * 0.5 < _left_exit_x:
 		_resolve(false, "EXITED_LEFT")
 
 

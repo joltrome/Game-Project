@@ -1785,6 +1785,30 @@
     text: 'Concept C is integrated at 84×66 px and (692,338), with a diagonal mouth segment from (714,380) to (746,368), 150 ms PRE-EJECT and OPEN through the last sibling plus 150 ms. Controlled SHALLOW/MEDIUM/HIGH, simultaneous-double, staggered-double and staggered-triple cases all begin at the mouth and retain distinct deterministic trajectories. The global 44 px separation is unchanged; only chute launches receive at most 100 ms/50 px of mouth grace. Three natural runs delivered 38/41/34 coins, preserved cap five and all six frozen D3 events. However, complete natural multi-event integrity fell to 16/46 doubles (34.8 percent) and 0/10 triples, versus VM-0.6.9\'s recorded 23/44 and 1/7. Current-code stress profiling found no meaningful CPU regression: mean planning was 7.535 ms versus 7.377 ms and maximum was 44.207 ms versus 44.586 ms. Whether HIGH and rapid multi-ejection look physically plausible remains a subjective Startup Lab review question. See docs/vm0610-refund-chute.md.'
   };
 
+  const vm070RefundSystemEvidence = {
+    id: 'evidence-vm-0.7.0-refund-system',
+    type: 'Evidence', date: '2026-09-20', source: 'Founder/second-player preference plus VM-0.6.10 technical review',
+    text: 'The founder prefers ballistic Refund Coins and a second player independently preferred VM-0.6.9 to static VM-0.6.6. Concept C works as one physical source, but VM-0.6.10 could not support a coin on a landed can, allowed a 32 px visual to use only a 24 px can-contact footprint, presented the first scoring opportunity ballistically, and retained only 16/46 complete doubles and 0/10 complete triples versus VM-0.6.9\'s 23/44 and 1/7. These are physical-coherence, onboarding and event-integrity issues; they are not evidence for changing Standard difficulty.'
+  };
+
+  const vm070RefundSystemHypothesis = {
+    id: 'hypothesis-vm-0.7.0-refund-system',
+    type: 'Hypothesis', date: '2026-09-20', source: 'Startup Lab VM-0.7.0 consolidation brief',
+    text: 'Deterministic supported-on-can behavior, a separate visual-scale world-contact footprint, one static teaching opportunity per run and bounded group-retiming fallbacks may make the selected ballistic scoring system coherent enough for fresh-player external testing without changing Standard difficulty or D3.'
+  };
+
+  const vm070RefundSystemDecision = {
+    id: 'decision-vm-0.7.0-refund-system',
+    type: 'Decision', date: '2026-09-20', source: 'Startup Lab VM-0.7.0 consolidation brief',
+    text: 'Freeze Concept C and use ballistic Refund Coins as the provisional Standard scoring direction. Repeat the static teaching coin every run rather than adding persistence. Preserve the 1.10–2.10-second cadence, 55/35/10 weights, five-coin cap, global 44 px separation, D3 authority and all difficulty values. Do not begin UI polish, difficulty tuning, Overload Mode or Hazard-Earned Refund Coins before fresh external evidence.'
+  };
+
+  const vm070RefundSystemResult = {
+    id: 'result-vm-0.7.0-refund-system',
+    type: 'Result', date: '2026-09-20', source: 'VM-0.7.0 deterministic implementation and technical QA',
+    text: 'VM-0.7.0 adds deterministic SUPPORTED_ON_CAN after a readable first bounce/low-energy return, one-coin-per-can claims, clean support loss, a 32×32 coin/can world footprint while preserving the 24×24 pickup, and one four-second static REFUND COIN +1 teaching opportunity per run before normal ballistic events. The bounded planner tries simultaneous/60 ms/120 ms doubles and complete/alternative triple staggers before degrading. Five deterministic runs retained 38/73 doubles (52.1 percent) and 1/16 triples (6.3 percent), with a 53.784 ms maximum planning event; the discarded first draft\'s 132.09 ms spike and 30.6 percent double integrity were not shipped. Three natural profiles delivered 112 of 170 requested coins, retained 22/43 doubles and 1/10 triples, recorded 30 can-support entries, capped at five active coins and preserved all six D3 warnings with no coin-caused delay. Native natural p95/p99 steps were at most 0.048/0.118 ms and maximum planning was 49.145 ms. Human teaching comprehension, natural support readability, short-stagger frequency and physical mobile/itch behavior remain unverified. See docs/vm070-refund-system.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -1946,7 +1970,11 @@
     vm0610RefundChuteEvidence,
     vm0610RefundChuteHypothesis,
     vm0610RefundChuteDecision,
-    vm0610RefundChuteResult
+    vm0610RefundChuteResult,
+    vm070RefundSystemEvidence,
+    vm070RefundSystemHypothesis,
+    vm070RefundSystemDecision,
+    vm070RefundSystemResult
   ];
 
   const defaultFindings = [
@@ -1958,7 +1986,7 @@
   ];
 
   const defaultState = {
-    version: 47,
+    version: 48,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []
