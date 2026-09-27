@@ -199,9 +199,13 @@ func _test_pause_and_touch() -> void:
 	session.touch.touch_available = true
 	session.touch.size = Vector2(1152.0, 648.0)
 	session.touch.set_game_active(true)
+	session._layout()
 	await process_frame
 	var right := session.touch.rectangles[1].get_center()
 	var jump := session.touch.rectangles[2].get_center()
+	var mobile_pause_position := session.touch.pause_button.position
+	var mobile_pause_hit := session.touch.pause_hit_rect
+	var mobile_deck := session.touch.deck_surface_rect
 	Input.action_press(&"move_right")
 	Input.action_press(&"jump")
 	session.touch.pause_button.pressed.emit()
@@ -212,14 +216,12 @@ func _test_pause_and_touch() -> void:
 		"Pause clears simultaneous held mobile movement and jump"
 	)
 	check(
-		session.touch.pause_button.position == Vector2(
-			session.touch.safe_padding_css * session.touch.logical_per_css,
-			session.touch.safe_padding_css * session.touch.logical_per_css
-		)
+		not mobile_pause_hit.intersects(mobile_deck)
+		and mobile_pause_position == mobile_pause_hit.position
 		and session.touch.pause_button.size == Vector2(48.0, 48.0)
 		and right.y > session.touch.pause_button.position.y + session.touch.pause_button.size.y
 		and jump.y > session.touch.pause_button.position.y + session.touch.pause_button.size.y,
-		"Pause is a 48x48 upper-left target separated from bottom touch controls"
+		"Pause is a 48x48 bezel target separated from the bottom control deck"
 	)
 	session.resume_game()
 	session.audio.set_user_volume_percent(&"Music", 100.0)

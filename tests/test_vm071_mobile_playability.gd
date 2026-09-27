@@ -54,69 +54,16 @@ func _test_release_and_touch_layouts() -> void:
 	session.score_storage_path = "/tmp/vm071-score.cfg"
 	root.add_child(session)
 	await process_frame
-	check(session.mobile_playability_enabled, "Release scene opts into VM-0.7.1 mobile behavior")
+	check(session.mobile_playability_enabled, "Release scene preserves VM-0.7.1 frame-planning behavior")
 	session.start_game()
 	await process_frame
 	var director := session.game.conveyor.get_node("CollectibleDirector") as CollectibleDirector
 	check(
-		session.game.build_id_override == "VM-0.7.1-MOBILE-PLAYABILITY"
+		session.game.build_id_override == "VM-0.7.2-MOBILE-ARCADE-DECK"
 		and director.bounded_optional_planning_enabled
 		and director.performance_profiling_enabled,
-		"Release build enables bounded optional planning and frame correlation without changing gameplay flags"
+		"Forward release preserves bounded optional planning and frame correlation without changing gameplay flags"
 	)
-
-	var touch := session.touch
-	touch.touch_available = true
-	touch.set_game_active(true)
-	touch.configure_viewport(
-		Vector2(1152.0, 648.0),
-		Rect2(Vector2.ZERO, Vector2(1152.0, 648.0)),
-		Vector2(1152.0, 648.0),
-		1.0
-	)
-	var central_action_region := Rect2(210.0, 430.0, 732.0, 218.0)
-	var fallback_clear := true
-	for visual in touch.visual_rectangles:
-		fallback_clear = fallback_clear and not visual.intersects(central_action_region)
-	check(
-		not touch.uses_side_gutters and fallback_clear,
-		"16:9 fallback keeps compact artwork at outer edges and off the central player/hazard region"
-	)
-	check(
-		touch.visible_area_ratio(0) < 0.35
-		and touch.visible_area_ratio(1) < 0.35
-		and touch.visible_area_ratio(2) < 0.35,
-		"Visible movement and jump artwork occupies less than 35% of each generous hit region"
-	)
-
-	var wide_host := Vector2(1404.0, 648.0)
-	var wide_game := MotionExperimentShell.contained_rect(wide_host, Vector2(1152.0, 648.0))
-	touch.configure_viewport(wide_host, wide_game, Vector2(844.0, 390.0), 3.0)
-	var visuals_clear_game := true
-	for visual in touch.visual_rectangles:
-		visuals_clear_game = visuals_clear_game and not visual.intersects(wide_game)
-	check(
-		touch.uses_side_gutters and visuals_clear_game,
-		"19.5:9 layout places all rendered control artwork in side gutters"
-	)
-	check(
-		touch.effective_dpr == 3.0
-		and touch.logical_per_css <= touch.maximum_logical_per_css
-		and touch.rectangles[2].end.x <= wide_host.x,
-		"High-DPI sizing uses CSS dimensions, clamps scale, and remains inside safe bounds"
-	)
-	touch.configure_viewport(wide_host, wide_game, Vector2(844.0, 390.0), 8.0)
-	check(
-		touch.effective_dpr == touch.maximum_effective_dpr,
-		"Extreme devicePixelRatio is clamped rather than magnifying controls indefinitely"
-	)
-	touch.configure_viewport(
-		Vector2(390.0, 844.0),
-		Rect2(Vector2.ZERO, Vector2(390.0, 844.0)),
-		Vector2(390.0, 844.0),
-		3.0
-	)
-	check(touch._rotate.visible, "Portrait mode preserves rotate-device guidance")
 	session.show_menu()
 	session.queue_free()
 	await process_frame

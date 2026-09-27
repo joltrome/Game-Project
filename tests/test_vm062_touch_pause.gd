@@ -18,12 +18,13 @@ func run() -> void:
 	s.start_game()
 	s.touch.touch_available=true
 	s.touch.set_game_active(true)
+	s._layout()
 	await process_frame
 	var transform:=s.touch.get_global_transform_with_canvas()
 	var right:=transform*s.touch.rectangles[1].get_center()
 	var jump:=transform*s.touch.rectangles[2].get_center()
 	var pause_at:=transform*s.touch.pause_button.get_rect().get_center()
-	check(s.touch.pause_button.size==Vector2(48,48),"48 CSS-pixel overlay target")
+	check(s.touch.pause_button.size==Vector2(48,48),"48 CSS-pixel Pause target")
 	finger(0,right,true);finger(1,jump,true)
 	check(Input.is_action_pressed("move_right") and Input.is_action_pressed("jump"),"Held movement and jump before third touch")
 	finger(2,pause_at,true)

@@ -3,19 +3,47 @@ extends Control
 
 signal pause_requested
 
-const PAUSE_ART := "res://assets/ui/get_canned_rc2/hud/mobile-pause-%s.png"
+const DESIGN_SIZE := Vector2(1152.0, 648.0)
 const ACTIONS: Array[StringName] = [&"move_left", &"move_right", &"jump"]
-const LABELS := ["L", "R", "JUMP"]
+const IDLE := 0
+const PRESSED := 1
+const FOCUS := 2
+const CONTROL_ART: Array = [
+	[
+		preload("res://assets/ui/vm072_mobile_deck/controls/left-idle.png"),
+		preload("res://assets/ui/vm072_mobile_deck/controls/left-pressed.png"),
+		preload("res://assets/ui/vm072_mobile_deck/controls/left-focus.png"),
+	],
+	[
+		preload("res://assets/ui/vm072_mobile_deck/controls/right-idle.png"),
+		preload("res://assets/ui/vm072_mobile_deck/controls/right-pressed.png"),
+		preload("res://assets/ui/vm072_mobile_deck/controls/right-focus.png"),
+	],
+	[
+		preload("res://assets/ui/vm072_mobile_deck/controls/action-idle.png"),
+		preload("res://assets/ui/vm072_mobile_deck/controls/action-pressed.png"),
+		preload("res://assets/ui/vm072_mobile_deck/controls/action-focus.png"),
+	],
+]
+const PAUSE_ART: Array[Texture2D] = [
+	preload("res://assets/ui/vm072_mobile_deck/controls/pause-idle.png"),
+	preload("res://assets/ui/vm072_mobile_deck/controls/pause-pressed.png"),
+	preload("res://assets/ui/vm072_mobile_deck/controls/pause-focus.png"),
+]
 
-@export var safe_padding_css: float = 14.0
-@export var movement_hit_size_css := Vector2(68.0, 78.0)
-@export var jump_hit_size_css := Vector2(86.0, 92.0)
-@export var movement_visual_size_css := Vector2(38.0, 38.0)
-@export var jump_visual_size_css := Vector2(50.0, 50.0)
-@export var meaningful_gutter_css: float = 48.0
+const INK := Color("0d1424")
+const CAP := Color("37505a")
+const DECK := Color("7f2634")
+const SEAM := Color("1b2a40")
+const CREAM := Color("f2e7c9")
+
+@export var deck_height_css: float = 96.0
+@export var movement_hit_size_css := Vector2(72.0, 88.0)
+@export var action_hit_size_css := Vector2(96.0, 96.0)
+@export var movement_visual_size_css := Vector2(64.0, 64.0)
+@export var action_visual_size_css := Vector2(80.0, 80.0)
 @export_range(1.0, 4.0, 0.1) var maximum_effective_dpr: float = 3.0
-@export_range(0.5, 2.5, 0.05) var minimum_logical_per_css: float = 0.70
-@export_range(0.5, 2.5, 0.05) var maximum_logical_per_css: float = 1.80
+@export var debug_overlay_enabled: bool = false
 
 var pause_button: Button
 var touch_available: bool = false
@@ -23,13 +51,21 @@ var game_active: bool = false
 var buttons: Array[TouchScreenButton] = []
 var rectangles: Array[Rect2] = []
 var visual_rectangles: Array[Rect2] = []
-var gameplay_bounds := Rect2(Vector2.ZERO, Vector2(1152.0, 648.0))
-var uses_side_gutters: bool = false
+var gameplay_bounds := Rect2(Vector2.ZERO, DESIGN_SIZE)
+var deck_surface_rect := Rect2()
+var deck_control_rect := Rect2()
+var pause_hit_rect := Rect2(Vector2(8.0, 8.0), Vector2(48.0, 48.0))
+var safe_host_rect := Rect2(Vector2.ZERO, DESIGN_SIZE)
 var effective_dpr: float = 1.0
 var logical_per_css: float = 1.0
-var _css_viewport_size := Vector2(1152.0, 648.0)
-var _labels: Array[C2PixelText] = []
+var is_landscape: bool = true
+var _css_viewport_size := DESIGN_SIZE
+var _host_per_css := Vector2.ONE
+var _art: Array[TextureRect] = []
+var _pause_art: TextureRect
 var _rotate: C2PixelText
+var _hovered_control := -1
+var _last_layout_signature := ""
 
 
 func _ready() -> void:
@@ -45,24 +81,29 @@ func _ready() -> void:
 		button.action = ACTIONS[i]
 		button.passby_press = true
 		button.shape = RectangleShape2D.new()
-		button.pressed.connect(queue_redraw)
-		button.released.connect(queue_redraw)
+		button.z_index = 2
+		button.pressed.connect(_refresh_control_art.bind(i))
+		button.released.connect(_refresh_control_art.bind(i))
 		add_child(button)
 		buttons.append(button)
-		var label := C2PixelText.new()
-		label.family = "small"
-		label.text = LABELS[i]
-		label.glyph_scale = 2
-		label.color = Color("f2e7c9")
-		add_child(label)
-		_labels.append(label)
+
+		var art := TextureRect.new()
+		art.name = "%sArtwork" % String(ACTIONS[i]).to_pascal_case()
+		art.mouse_filter = MOUSE_FILTER_IGNORE
+		art.texture_filter = TEXTURE_FILTER_NEAREST
+		art.z_index = 3
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		add_child(art)
+		_art.append(art)
+
 	_build_pause_button()
 	_rotate = C2PixelText.new()
 	_rotate.name = "RotateGuidance"
 	_rotate.family = "small"
 	_rotate.text = "ROTATE DEVICE"
 	_rotate.glyph_scale = 3
-	_rotate.color = Color("f2e7c9")
+	_rotate.color = CREAM
 	add_child(_rotate)
 	resized.connect(_layout)
 	_layout()
@@ -72,18 +113,19 @@ func _build_pause_button() -> void:
 	pause_button = Button.new()
 	pause_button.name = "PauseButton"
 	pause_button.focus_mode = Control.FOCUS_NONE
+	pause_button.z_index = 4
 	pause_button.size = Vector2(48.0, 48.0)
 	for state in ["normal", "hover", "pressed", "focus", "hover_pressed"]:
 		pause_button.add_theme_stylebox_override(state, StyleBoxEmpty.new())
-	var art := TextureRect.new()
-	art.name = "Artwork"
-	art.mouse_filter = MOUSE_FILTER_IGNORE
-	art.texture_filter = TEXTURE_FILTER_NEAREST
-	art.position = Vector2(8.0, 8.0)
-	art.size = Vector2(32.0, 32.0)
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	pause_button.add_child(art)
+	_pause_art = TextureRect.new()
+	_pause_art.name = "Artwork"
+	_pause_art.mouse_filter = MOUSE_FILTER_IGNORE
+	_pause_art.texture_filter = TEXTURE_FILTER_NEAREST
+	_pause_art.position = Vector2(8.0, 8.0)
+	_pause_art.size = Vector2(32.0, 32.0)
+	_pause_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_pause_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	pause_button.add_child(_pause_art)
 	for event in [
 		pause_button.mouse_entered,
 		pause_button.mouse_exited,
@@ -97,31 +139,130 @@ func _build_pause_button() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch and event.pressed and not touch_available:
-		touch_available = true
-		_layout()
+	if event is InputEventScreenTouch:
+		_hovered_control = -1
+		if event.pressed and not touch_available:
+			touch_available = true
+			_layout()
+	elif event is InputEventMouseMotion and touch_available and game_active:
+		var next_hover := -1
+		for i in rectangles.size():
+			if rectangles[i].has_point(event.position):
+				next_hover = i
+				break
+		if next_hover != _hovered_control:
+			var previous := _hovered_control
+			_hovered_control = next_hover
+			if previous >= 0:
+				_refresh_control_art(previous)
+			if next_hover >= 0:
+				_refresh_control_art(next_hover)
 
 
 func configure_viewport(
 	host_size: Vector2,
-	game_rect: Rect2,
+	legacy_game_rect: Rect2,
 	css_viewport_size: Vector2,
-	raw_device_pixel_ratio: float
+	raw_device_pixel_ratio: float,
+	safe_insets_override := Vector4(-1.0, -1.0, -1.0, -1.0)
 ) -> void:
 	position = Vector2.ZERO
 	scale = Vector2.ONE
 	size = host_size
-	gameplay_bounds = game_rect
 	_css_viewport_size = css_viewport_size
+	if _css_viewport_size.x <= 1.0 or _css_viewport_size.y <= 1.0:
+		_css_viewport_size = host_size
+	_host_per_css = host_size / _css_viewport_size
+	logical_per_css = minf(_host_per_css.x, _host_per_css.y)
 	effective_dpr = clampf(raw_device_pixel_ratio, 1.0, maximum_effective_dpr)
-	var usable_css := css_viewport_size
-	if usable_css.x <= 1.0 or usable_css.y <= 1.0:
-		usable_css = host_size / effective_dpr
-	logical_per_css = clampf(
-		minf(host_size.x / usable_css.x, host_size.y / usable_css.y),
-		minimum_logical_per_css,
-		maximum_logical_per_css
+	is_landscape = _css_viewport_size.x >= _css_viewport_size.y
+
+	var signature := "%s|%s|%s" % [host_size, _css_viewport_size, is_landscape]
+	if signature != _last_layout_signature and _last_layout_signature != "":
+		release_all()
+	_last_layout_signature = signature
+
+	if not is_landscape:
+		gameplay_bounds = legacy_game_rect
+		deck_surface_rect = Rect2()
+		deck_control_rect = Rect2()
+		pause_hit_rect = Rect2(
+			Vector2(maxf(host_size.x - 56.0, 8.0), 8.0),
+			Vector2(48.0, 48.0)
+		)
+		_layout()
+		return
+
+	var insets := (
+		_default_safe_insets(_css_viewport_size)
+		if safe_insets_override.x < 0.0
+		else safe_insets_override
 	)
+	var safe_css := Rect2(
+		Vector2(insets.x, insets.y),
+		Vector2(
+			maxf(_css_viewport_size.x - insets.x - insets.z, 1.0),
+			maxf(_css_viewport_size.y - insets.y - insets.w, 1.0)
+		)
+	)
+	var safe_right := safe_css.end.x
+	var safe_bottom := safe_css.end.y
+	var monitor_height := minf(
+		safe_css.size.y - deck_height_css - 8.0,
+		safe_css.size.x * 9.0 / 16.0
+	)
+	monitor_height = maxf(monitor_height, 1.0)
+	var monitor_size := Vector2(monitor_height * 16.0 / 9.0, monitor_height)
+	var monitor_css := Rect2(
+		Vector2(
+			safe_css.position.x + (safe_css.size.x - monitor_size.x) * 0.5,
+			safe_css.position.y
+		),
+		monitor_size
+	)
+	var deck_css := Rect2(
+		Vector2(8.0, safe_bottom - deck_height_css),
+		Vector2(maxf(_css_viewport_size.x - 16.0, 1.0), deck_height_css)
+	)
+	var control_deck_css := Rect2(
+		Vector2(safe_css.position.x, safe_bottom - deck_height_css),
+		Vector2(safe_css.size.x, deck_height_css)
+	)
+	var hit_css: Array[Rect2] = [
+		Rect2(
+			Vector2(safe_css.position.x + 8.0, safe_bottom - 92.0),
+			movement_hit_size_css
+		),
+		Rect2(
+			Vector2(safe_css.position.x + 88.0, safe_bottom - 92.0),
+			movement_hit_size_css
+		),
+		Rect2(
+			Vector2(safe_right - 104.0, safe_bottom - deck_height_css),
+			action_hit_size_css
+		),
+	]
+	var visual_css: Array[Rect2] = [
+		Rect2(hit_css[0].position + Vector2(4.0, 12.0), movement_visual_size_css),
+		Rect2(hit_css[1].position + Vector2(4.0, 12.0), movement_visual_size_css),
+		Rect2(hit_css[2].position + Vector2(8.0, 8.0), action_visual_size_css),
+	]
+	var pause_css := Rect2(
+		Vector2(monitor_css.end.x + 12.0, safe_css.position.y + 4.0),
+		Vector2(48.0, 48.0)
+	)
+
+	safe_host_rect = _css_to_host(safe_css)
+	gameplay_bounds = _css_to_host(monitor_css)
+	deck_surface_rect = _css_to_host(deck_css)
+	deck_control_rect = _css_to_host(control_deck_css)
+	pause_hit_rect = _css_to_host(pause_css)
+	rectangles.clear()
+	visual_rectangles.clear()
+	for rect in hit_css:
+		rectangles.append(_css_to_host(rect))
+	for rect in visual_css:
+		visual_rectangles.append(_css_to_host(rect))
 	_layout()
 
 
@@ -132,11 +273,23 @@ func set_game_active(active: bool) -> void:
 		_layout()
 
 
+func arcade_layout_active() -> bool:
+	return touch_available and game_active and is_landscape
+
+
+func arcade_layout_supported() -> bool:
+	return touch_available and is_landscape
+
+
 func release_all() -> void:
-	# Native TouchScreenButton owns each finger/action and releases when hidden.
-	# Never release keyboard actions merely because a run is replaced.
+	# Hiding each TouchScreenButton releases only its owning touch/action. This
+	# preserves keyboard state while preventing stuck movement after reflow,
+	# interruption, death, Pause, or Retry.
 	for button in buttons:
 		button.hide()
+	for art in _art:
+		art.hide()
+	_hovered_control = -1
 	if pause_button != null:
 		pause_button.hide()
 	queue_redraw()
@@ -152,101 +305,62 @@ func _notification(what: int) -> void:
 func _layout() -> void:
 	if not is_node_ready():
 		return
-	var unit := logical_per_css
-	var safe := safe_padding_css * unit
-	var move_hit := movement_hit_size_css * unit
-	var jump_hit := jump_hit_size_css * unit
-	var move_visual := movement_visual_size_css * unit
-	var jump_visual := jump_visual_size_css * unit
-	var left_gutter := maxf(gameplay_bounds.position.x, 0.0)
-	var right_gutter := maxf(size.x - gameplay_bounds.end.x, 0.0)
-	uses_side_gutters = (
-		left_gutter >= meaningful_gutter_css * unit
-		and right_gutter >= meaningful_gutter_css * unit
-	)
-
-	# Hit zones stay generous and occupy the thumb edges. Their artwork is a
-	# separate compact rectangle, so pressing never paints over gameplay.
-	var hit_bottom := size.y - safe
-	var movement_cluster_width := move_hit.x * 2.0
-	var movement_left := safe
-	var jump_left := size.x - safe - jump_hit.x
-	if uses_side_gutters:
-		movement_left = maxf(
-			safe,
-			gameplay_bounds.position.x - movement_cluster_width + move_hit.x * 0.35
-		)
-		jump_left = minf(
-			size.x - safe - jump_hit.x,
-			gameplay_bounds.end.x - jump_hit.x * 0.35
-		)
-	var movement_y := hit_bottom - move_hit.y
-	var jump_y := hit_bottom - jump_hit.y
-	rectangles.assign([
-		Rect2(Vector2(movement_left, movement_y), move_hit),
-		Rect2(Vector2(movement_left + move_hit.x, movement_y), move_hit),
-		Rect2(Vector2(jump_left, jump_y), jump_hit),
-	])
-
-	visual_rectangles.clear()
-	for i in rectangles.size():
-		var visual_size := jump_visual if i == 2 else move_visual
-		var visual_center := rectangles[i].get_center()
-		if uses_side_gutters:
-			if i < 2:
-				visual_center.x = (
-					gameplay_bounds.position.x
-					- visual_size.x * (1.5 - float(i))
-				)
-			else:
-				visual_center.x = maxf(
-					visual_center.x,
-					gameplay_bounds.end.x + visual_size.x * 0.50
-				)
-		visual_center.x = clampf(
-			visual_center.x,
-			safe + visual_size.x * 0.5,
-			size.x - safe - visual_size.x * 0.5
-		)
-		visual_rectangles.append(Rect2(visual_center - visual_size * 0.5, visual_size))
-
+	var show_arcade := arcade_layout_active()
 	for i in buttons.size():
-		var hit_rect := rectangles[i]
+		var hit_rect := rectangles[i] if i < rectangles.size() else Rect2()
+		var art_rect := visual_rectangles[i] if i < visual_rectangles.size() else Rect2()
 		(buttons[i].shape as RectangleShape2D).size = hit_rect.size
 		buttons[i].position = hit_rect.get_center()
-		buttons[i].visible = touch_available and game_active
-		_labels[i].visible = touch_available and game_active
-		var glyph_scale := 2
-		_labels[i].glyph_scale = glyph_scale
-		_labels[i].position = visual_rectangles[i].get_center() - Vector2(
-			floorf(_labels[i].ink_width(LABELS[i], glyph_scale) * 0.5),
-			7.0
-		)
+		buttons[i].visible = show_arcade
+		_art[i].position = art_rect.position
+		_art[i].size = art_rect.size
+		_art[i].visible = show_arcade
+		_refresh_control_art(i)
 
-	# The 48 px pause hit target remains shared by desktop and touch, while its
-	# artwork is only 32 px. Safe padding keeps it away from browser cut-outs.
-	var pause_safe := safe if touch_available else 8.0
-	pause_button.position = Vector2(pause_safe, pause_safe)
+	if touch_available and game_active and is_landscape:
+		pause_button.position = pause_hit_rect.position
+	elif touch_available and game_active:
+		pause_button.position = Vector2(maxf(size.x - 56.0, 8.0), 8.0)
+	else:
+		pause_button.position = Vector2(8.0, 8.0)
+	pause_button.size = pause_hit_rect.size if touch_available else Vector2(48.0, 48.0)
+	_pause_art.position = Vector2(8.0, 8.0) * _host_per_css if touch_available else Vector2(8.0, 8.0)
+	_pause_art.size = Vector2(32.0, 32.0) * _host_per_css if touch_available else Vector2(32.0, 32.0)
 	pause_button.visible = game_active
+	_refresh_pause_art()
+
 	_rotate.position = Vector2(
 		floorf((size.x - _rotate.ink_width(_rotate.text, _rotate.glyph_scale)) * 0.5),
-		maxf(safe, 12.0)
+		floorf((size.y - 24.0) * 0.5)
 	)
-	_rotate.visible = touch_available and (
-		size.y > size.x or _css_viewport_size.y > _css_viewport_size.x
-	)
+	_rotate.visible = touch_available and game_active and not is_landscape
 	queue_redraw()
 
 
 func _draw() -> void:
 	if not touch_available or not game_active:
 		return
-	for i in visual_rectangles.size():
-		var pressed := buttons[i].is_pressed()
-		var fill := Color(0.05, 0.08, 0.14, 0.32 if pressed else 0.12)
-		var outline := Color(0.95, 0.73, 0.27, 0.90 if pressed else 0.55)
-		draw_rect(visual_rectangles[i], fill)
-		draw_rect(visual_rectangles[i], outline, false, 2.0)
+	if not is_landscape:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(INK, 0.96))
+		return
+	# Deck and bezel are host-space presentation only. The monitor content itself
+	# remains the unchanged 16:9 Standard scene rendered inside gameplay_bounds.
+	draw_rect(deck_surface_rect, DECK)
+	var seam_height := maxf(2.0 * _host_per_css.y, 1.0)
+	draw_rect(Rect2(deck_surface_rect.position, Vector2(deck_surface_rect.size.x, seam_height)), SEAM)
+	var outer := gameplay_bounds.grow(3.0 * logical_per_css)
+	var inner := gameplay_bounds.grow(2.0 * logical_per_css)
+	draw_rect(outer, CAP, false, maxf(logical_per_css, 1.0))
+	draw_rect(inner, INK, false, maxf(2.0 * logical_per_css, 1.0))
+	if debug_overlay_enabled:
+		draw_rect(gameplay_bounds, Color(0.20, 0.85, 0.92, 0.85), false, 2.0)
+		draw_rect(deck_surface_rect, Color(0.95, 0.73, 0.27, 0.85), false, 2.0)
+		for rect in rectangles:
+			draw_rect(rect, Color(0.20, 0.85, 0.92, 0.12))
+			draw_rect(rect, Color(0.20, 0.85, 0.92, 0.90), false, 1.0)
+		for rect in visual_rectangles:
+			draw_rect(rect, Color(0.95, 0.73, 0.27, 0.95), false, 1.0)
+		draw_rect(pause_hit_rect, Color(0.95, 0.35, 0.70, 0.90), false, 1.0)
 
 
 func visible_area_ratio(index: int) -> float:
@@ -257,14 +371,32 @@ func visible_area_ratio(index: int) -> float:
 	return visual_area / hit_area if hit_area > 0.0 else 1.0
 
 
-func _refresh_pause_art() -> void:
-	if pause_button == null:
+func _refresh_control_art(index: int) -> void:
+	if index < 0 or index >= _art.size() or index >= buttons.size():
 		return
-	var state := (
-		"pressed"
-		if pause_button.is_pressed()
-		else "focus" if pause_button.is_hovered() else "idle"
+	var state := PRESSED if buttons[index].is_pressed() else FOCUS if index == _hovered_control else IDLE
+	_art[index].texture = CONTROL_ART[index][state]
+	queue_redraw()
+
+
+func _refresh_pause_art() -> void:
+	if pause_button == null or _pause_art == null:
+		return
+	var state := PRESSED if pause_button.is_pressed() else FOCUS if pause_button.is_hovered() else IDLE
+	_pause_art.texture = PAUSE_ART[state]
+
+
+func _css_to_host(rect: Rect2) -> Rect2:
+	return Rect2(rect.position * _host_per_css, rect.size * _host_per_css)
+
+
+static func _default_safe_insets(css_size: Vector2) -> Vector4:
+	var aspect := css_size.x / maxf(css_size.y, 1.0)
+	var blend := clampf(
+		(aspect - 16.0 / 9.0) / (19.5 / 9.0 - 16.0 / 9.0),
+		0.0,
+		1.0
 	)
-	var art := pause_button.get_node("Artwork") as TextureRect
-	art.texture = load(PAUSE_ART % state)
-	art.modulate.a = 0.90 if pause_button.is_pressed() else 0.62
+	var horizontal := lerpf(16.0, 24.0, blend)
+	var bottom := lerpf(12.0, 16.0, blend)
+	return Vector4(horizontal, 8.0, horizontal, bottom)

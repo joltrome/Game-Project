@@ -45,6 +45,7 @@ func run() -> void:
 	touch.touch_available=true
 	touch.set_game_active(true)
 	await process_frame
+	touch.configure_viewport(Vector2(1152,648),Rect2(0,0,1152,648),Vector2(1152,648),1.0)
 	var left := touch.rectangles[0].get_center()
 	var right := touch.rectangles[1].get_center()
 	var jump := touch.rectangles[2].get_center()
@@ -70,9 +71,9 @@ func run() -> void:
 		check(not Input.is_action_pressed("move_left") and not Input.is_action_pressed("jump"), "No held touch after " + boundary)
 		finger(0,left,false); finger(1,jump,false)
 		touch.set_game_active(true)
-	touch.size=Vector2(390,844)
+	touch.configure_viewport(Vector2(390,844),Rect2(0,0,390,844),Vector2(390,844),3.0)
 	check(touch._rotate.visible, "Portrait rotation guidance")
-	touch.size=Vector2(844,390)
+	touch.configure_viewport(Vector2(844,390),Rect2(0,0,844,390),Vector2(844,390),3.0)
 	check(not touch._rotate.visible and touch.rectangles[2].end.x <= 844, "Landscape target remains on screen")
 	touch.queue_free()
 	await process_frame

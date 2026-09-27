@@ -23,6 +23,7 @@ const FRAME_PACING := preload("res://scripts/presentation/frame_pacing_telemetry
 @export var refund_chute_enabled: bool = false
 @export var refund_system_enabled: bool = false
 @export var mobile_playability_enabled: bool = false
+@export var mobile_arcade_deck_enabled: bool = false
 
 var state: State = State.MENU
 var game: MotionExperimentShell
@@ -125,6 +126,7 @@ func pause_game() -> void:
 	_add_volume_sliders(panel, Vector2(694.0, 494.0))
 	panel.wire_focus()
 	resume.grab_focus()
+	_layout()
 
 
 func resume_game() -> void:
@@ -142,6 +144,7 @@ func resume_game() -> void:
 	audio.resume_run_music()
 	get_tree().paused=false
 	touch.set_game_active(true)
+	_layout()
 
 
 func _release_gameplay_actions() -> void:
@@ -166,7 +169,9 @@ func start_game() -> void:
 	game.clean_tester_presentation = true
 	game.clean_control_hint_duration = 0.0
 	game.local_instrumentation_enabled = false
-	if mobile_playability_enabled:
+	if mobile_arcade_deck_enabled:
+		game.build_id_override = "VM-0.7.2-MOBILE-ARCADE-DECK"
+	elif mobile_playability_enabled:
 		game.build_id_override = "VM-0.7.1-MOBILE-PLAYABILITY"
 	elif refund_system_enabled:
 		game.build_id_override = "VM-0.7.0-REFUND-SYSTEM"
@@ -218,6 +223,7 @@ func start_game() -> void:
 	_ui.add_child(hud)
 	touch.set_game_active(true)
 	_frame_pacing.begin_run(mobile_playability_enabled)
+	_layout()
 	var focused := get_viewport().gui_get_focus_owner()
 	if focused != null:
 		focused.release_focus()
@@ -242,6 +248,7 @@ func show_menu() -> void:
 	_add_volume_sliders(_c2, Vector2(790.0, 538.0))
 	_c2.wire_focus()
 	play.grab_focus()
+	_layout()
 
 
 func show_credits() -> void:
@@ -276,6 +283,7 @@ func _on_death(score: int, _remaining: float, serial: int) -> void:
 	last_survived = false
 	last_death_cause = game.conveyor.death_cause
 	touch.set_game_active(false)
+	_layout()
 	game.conveyor.get_node("HUD/DeathMessage").hide()
 	game.process_mode = Node.PROCESS_MODE_DISABLED
 	audio.set_gameplay_sfx_enabled(false)
@@ -352,6 +360,7 @@ func _show_results(score: int, survived: bool) -> void:
 	_add_volume_sliders(_c2, Vector2(790.0, 538.0))
 	_c2.wire_focus()
 	retry.grab_focus()
+	_layout()
 
 
 static func death_uses_impact_sound(cause: ConveyorPrototype.DeathCause) -> bool:
@@ -398,11 +407,9 @@ func _apply_hud_style() -> void:
 
 func _layout() -> void:
 	var fitted := MotionExperimentShell.contained_rect(size, DESIGN_SIZE)
-	_ui.position = fitted.position
-	_ui.scale = fitted.size / DESIGN_SIZE
+	var css_size := Vector2(get_window().size)
+	var raw_dpr := 1.0
 	if touch != null:
-		var raw_dpr := 1.0
-		var css_size := Vector2(get_window().size)
 		if OS.has_feature("web"):
 			raw_dpr = float(JavaScriptBridge.eval("window.devicePixelRatio || 1", true))
 			var css_width := float(JavaScriptBridge.eval("window.innerWidth || 0", true))
@@ -412,6 +419,28 @@ func _layout() -> void:
 		# CSS viewport dimensions determine perceived control size. DPR is clamped
 		# only for the fallback path, avoiding the old unbounded DPR magnification.
 		touch.configure_viewport(size, fitted, css_size, raw_dpr)
+
+	var use_mobile_monitor := (
+		mobile_arcade_deck_enabled
+		and touch != null
+		and touch.arcade_layout_supported()
+		and state in [State.GAME, State.PAUSED, State.DEATH_BEAT]
+	)
+	var ui_rect := (
+		touch.gameplay_bounds
+		if use_mobile_monitor and state in [State.GAME, State.DEATH_BEAT]
+		else fitted
+	)
+	_ui.position = ui_rect.position
+	_ui.scale = ui_rect.size / DESIGN_SIZE
+
+	if is_instance_valid(game):
+		if use_mobile_monitor:
+			game.set_anchors_preset(Control.PRESET_TOP_LEFT)
+			game.position = touch.gameplay_bounds.position
+			game.size = touch.gameplay_bounds.size
+		else:
+			game.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 func _clear_ui() -> void:

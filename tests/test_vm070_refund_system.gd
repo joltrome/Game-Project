@@ -323,13 +323,13 @@ func _test_touch_control_layout_regression() -> void:
 	touch.size = Vector2(1152.0, 648.0)
 	touch.set_game_active(true)
 	await process_frame
+	touch.configure_viewport(Vector2(1152,648),Rect2(0,0,1152,648),Vector2(1152,648),1.0)
 	var landscape_distinct := (
 		touch.buttons.size() == 3
 		and touch.buttons.all(func(button: TouchScreenButton) -> bool: return button.visible)
 		and not touch._rotate.visible
 	)
-	touch.size = Vector2(648.0, 1152.0)
-	touch._layout()
+	touch.configure_viewport(Vector2(648,1152),Rect2(0,0,648,1152),Vector2(648,1152),3.0)
 	var portrait_guidance := touch._rotate.visible
 	touch.set_game_active(false)
 	var released := touch.buttons.all(
