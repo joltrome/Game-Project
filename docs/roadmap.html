@@ -1833,6 +1833,30 @@
     text: 'VM-0.7.1 retains 68×78 LEFT/RIGHT and 86×92 JUMP CSS-target hit regions while reducing visible artwork to 38×38 and 50×50, with 12/32 percent idle/pressed fill. A 48 CSS px gutter threshold moves all artwork outside the 16:9 playfield on a simulated 19.5:9 phone; 16:9 uses compact outer-edge artwork. CSS viewport sizing replaces unbounded DPR magnification, with logical scale clamped to 0.70–1.80 and DPR fallback clamped to 1–3. Frame telemetry now prints median/p95/p99/worst, >16.67/>25/>33.33/>50 counts and event correlation once per run. A total operation budget reduced the five-seed natural maximum planning event from a freshly reproduced 48.298 ms VM-0.7.0 control to approximately 12.1 ms, with zero >16.67, >25, >33.33 or >50 ms simulated steps. VM-0.7.1 delivered 185/275 requested coins, retained 36/61 doubles (59.0 percent) and 1/18 triples (5.6 percent), and preserved all six natural D3 warnings. Physical-phone control comfort, browser/compositor pacing, safe areas and five-run thermal behavior remain unverified pending founder retest. See docs/vm071-mobile-playability.md.'
   };
 
+  const vm072MobileDeckEvidence = {
+    id: 'evidence-vm-0.7.2-mobile-arcade-deck',
+    type: 'Evidence', date: '2026-09-27', source: 'Founder mobile feedback and approved Work layout study',
+    text: 'Early mobile overlay controls were large enough to obscure the player, landed cans, Refund Coins and incoming hazards. The later reduced-overlay treatment was reported too small or uncomfortable. This indicates that button-size tuning alone does not resolve the underlying competition between gameplay and thumb controls. The approved Work study therefore separates the proportional gameplay monitor from a dedicated bottom control deck, and the founder selected its dark burgundy, hefty arcade-button treatment for implementation.'
+  };
+
+  const vm072MobileDeckHypothesis = {
+    id: 'hypothesis-vm-0.7.2-mobile-arcade-deck',
+    type: 'Hypothesis', date: '2026-09-27', source: 'Startup Lab VM-0.7.2 brief',
+    text: 'Moving all LEFT, RIGHT and JUMP artwork and hit regions completely outside the gameplay monitor may remove thumb obstruction while retaining physically comfortable targets and reliable directional multitouch.'
+  };
+
+  const vm072MobileDeckDecision = {
+    id: 'decision-vm-0.7.2-mobile-arcade-deck',
+    type: 'Decision', date: '2026-09-27', source: 'Startup Lab VM-0.7.2 brief',
+    text: 'Use the approved dark burgundy bottom physical deck with separate LEFT/RIGHT arrow buttons and a larger gold up-arrow action button. Keep Pause outside the deck beside the upper-right monitor bezel, preserve portrait ROTATE DEVICE guidance and leave desktop presentation unchanged. Defer side wings, chute-camping changes, coin targeting, Standard difficulty and Endless/Overload.'
+  };
+
+  const vm072MobileDeckResult = {
+    id: 'result-vm-0.7.2-mobile-arcade-deck',
+    type: 'Result', date: '2026-09-27', source: 'VM-0.7.2 implementation and deterministic technical QA',
+    text: 'VM-0.7.2 integrates the 12 approved Work control-state PNGs with nearest-neighbor filtering and exact 16:9/19.5:9 responsive geometry. Touch landscape now presents a proportional 16:9 gameplay monitor above a 96 CSS px dark burgundy deck; LEFT/RIGHT use independent 72×88 hit regions around 64×64 art, action uses a 96×96 hit region around 80×80 art, and Pause uses an independent 48×48 bezel hit region around 32×32 art. Automated geometry, input-lifecycle and desktop regressions pass; physical-phone technician readability, thumb comfort, browser safe-area behavior and sustained device pacing remain unverified pending founder review. See docs/vm072-mobile-arcade-deck.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -2002,7 +2026,11 @@
     vm071MobileEvidence,
     vm071MobileHypothesis,
     vm071MobileDecision,
-    vm071MobileResult
+    vm071MobileResult,
+    vm072MobileDeckEvidence,
+    vm072MobileDeckHypothesis,
+    vm072MobileDeckDecision,
+    vm072MobileDeckResult
   ];
 
   const defaultFindings = [
@@ -2014,7 +2042,7 @@
   ];
 
   const defaultState = {
-    version: 49,
+    version: 50,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

@@ -1,3 +1,26 @@
+# VM-0.7.2 mobile arcade deck
+
+VM-0.7.2 preserves the complete VM-0.7.1 gameplay and frame-pacing baseline
+while moving mobile LEFT, RIGHT and action controls onto a dedicated dark
+burgundy arcade deck below the proportional 16:9 gameplay monitor. Pause stays
+separate beside the monitor's upper-right bezel. Desktop play remains full-size
+and unchanged.
+
+Run Standard normally with:
+
+```bash
+/Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --path . res://scenes/presentation/standard_session.tscn
+```
+
+Review the mobile geometry with `res://scenes/tests/touch_layout_review.tscn`;
+use `1`–`4` for 16:9, 18:9, 19.5:9 and 20:9, and `D` for DPR. Export preset
+`Web GET CANNED VM-0.7.2 Mobile Arcade Deck` writes to
+`builds/VM-0.7.2-MOBILE-ARCADE-DECK/index.html`. See
+[`docs/vm072-mobile-arcade-deck.md`](docs/vm072-mobile-arcade-deck.md) for the
+exact geometry, validation and physical-phone review protocol.
+
+---
+
 # VM-0.7.1 mobile playability and frame pacing
 
 VM-0.7.1 preserves the complete VM-0.7.0 gameplay baseline while separating
