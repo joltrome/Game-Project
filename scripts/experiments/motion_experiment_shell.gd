@@ -34,12 +34,20 @@ var _clean_control_hint_remaining: float = 0.0
 
 
 func _ready() -> void:
-	# Each variant scene owns its SubViewport size. Keeping stretch enabled lets
-	# the outer container scale it without mutating any project-wide setting.
+	# Each variant scene owns its SubViewport size. Keep container stretching off;
+	# presentation uses a uniform Control transform so the logical render surface
+	# remains exactly the authored size.
 	if _internal_viewport.size != internal_size:
 		push_error("Motion experiment SubViewport size does not match its profile")
+	_viewport_frame.stretch = false
+	_internal_viewport.size = internal_size
 	_internal_viewport.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
 	_viewport_frame.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	# Rendering regression rule: changing this Control's outer rect does not
+	# prove that its nested SubViewport display surface reflowed. Mobile shells
+	# resize StandardRun without resizing the root Window, so listen to our own
+	# Control lifecycle as the authoritative display-size signal.
+	resized.connect(_update_contained_viewport)
 	get_viewport().size_changed.connect(_update_contained_viewport)
 	_update_contained_viewport()
 	_build_variant()
@@ -72,7 +80,11 @@ static func contained_rect(host_size: Vector2, content_size: Vector2) -> Rect2:
 
 
 func displayed_viewport_rect() -> Rect2:
-	return Rect2(_viewport_frame.position, _viewport_frame.size)
+	return Rect2(_viewport_frame.position, _viewport_frame.size * _viewport_frame.scale)
+
+
+func reflow_display() -> void:
+	_update_contained_viewport()
 
 
 func internal_aspect_ratio() -> float:
@@ -106,7 +118,14 @@ func _update_contained_viewport() -> void:
 		return
 	var rect := contained_rect(size, Vector2(internal_size))
 	_viewport_frame.position = rect.position
-	_viewport_frame.size = rect.size
+	# Preserve the gameplay render at its authored logical resolution. The
+	# SubViewportContainer itself remains the same size as InternalViewport and
+	# receives one uniform display transform; resizing the container would make
+	# `stretch` mutate the child SubViewport resolution.
+	_viewport_frame.size = Vector2(internal_size)
+	var uniform_scale := rect.size.x / maxf(float(internal_size.x), 1.0)
+	_viewport_frame.scale = Vector2(uniform_scale, uniform_scale)
+	_internal_viewport.size = internal_size
 
 
 func _build_variant() -> void:

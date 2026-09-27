@@ -1,3 +1,20 @@
+# VM-0.7.2.1 mobile monitor rendering hotfix
+
+VM-0.7.2.1 preserves the approved VM-0.7.2 deck and all gameplay while making
+the real 1152×648 Standard SubViewport reflow deterministically inside the
+mobile 16:9 monitor. The renderer now uses one Godot coordinate system and a
+uniform display transform; the logical gameplay surface never changes size.
+
+Review the real game—not a placeholder—with
+`res://scenes/tests/mobile_standard_monitor_review.tscn` and keys `1`–`3`.
+Export preset `Web GET CANNED VM-0.7.2.1 Mobile Monitor Hotfix` writes to
+`builds/VM-0.7.2.1-MOBILE-MONITOR-HOTFIX/index.html`. See
+[`docs/vm0721-mobile-monitor-hotfix.md`](docs/vm0721-mobile-monitor-hotfix.md)
+for the root cause, exact geometry, browser-pixel evidence and physical-device
+review boundary.
+
+---
+
 # VM-0.7.2 mobile arcade deck
 
 VM-0.7.2 preserves the complete VM-0.7.1 gameplay and frame-pacing baseline

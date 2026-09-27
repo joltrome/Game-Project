@@ -125,6 +125,18 @@ For paid API development sessions, record available provider/model, request ID, 
 - Products and failures originate from visible vending-machine mechanisms.
 - The conveyor has a legible physical source of motion.
 
+### Rendering regression rule
+
+For any change involving layout, responsive presentation, scaling, viewport sizing, camera framing, `SubViewport`/`SubViewportContainer` behavior, canvas resizing, mobile presentation, or display composition, geometry assertions alone are insufficient.
+
+A change is not validated unless the actual gameplay render is verified inside the intended final viewport after entering the real Standard gameplay scene. Tests must distinguish:
+
+1. The intended outer rectangle.
+2. The actual internal render surface.
+3. The actual rendered gameplay pixels.
+
+A correctly positioned empty rectangle is a failure. For mobile presentation changes, automated/browser validation may qualify the build for physical review, but final mobile acceptance requires founder verification on a physical device.
+
 ## Initial behavioral gate
 
 For approximately ten useful moderated tests, the provisional continuation gate is:

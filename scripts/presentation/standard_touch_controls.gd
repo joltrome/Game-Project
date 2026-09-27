@@ -76,6 +76,13 @@ func _ready() -> void:
 			"navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches",
 			true
 		))
+		# Explicit local QA override. Production phones still use capability
+		# detection; this query only lets the real Web release be reviewed in a
+		# desktop mobile-sized browser without creating a second gameplay scene.
+		touch_available = touch_available or bool(JavaScriptBridge.eval(
+			"new URLSearchParams(location.search).has('mobile_touch_review')",
+			true
+		))
 	for i in ACTIONS.size():
 		var button := TouchScreenButton.new()
 		button.action = ACTIONS[i]
@@ -400,3 +407,14 @@ static func _default_safe_insets(css_size: Vector2) -> Vector4:
 	var horizontal := lerpf(16.0, 24.0, blend)
 	var bottom := lerpf(12.0, 16.0, blend)
 	return Vector4(horizontal, 8.0, horizontal, bottom)
+
+
+static func layout_reference_size(host_size: Vector2) -> Vector2:
+	# One authoritative coordinate system: layout comes from the actual Godot
+	# host Control. A same-aspect reference height retains Work's physical target
+	# proportions without treating browser-window CSS as the game render surface.
+	if host_size.x <= 1.0 or host_size.y <= 1.0:
+		return host_size
+	var aspect := host_size.x / host_size.y
+	var reference_height := 360.0 if aspect <= 16.0 / 9.0 + 0.001 else 390.0
+	return Vector2(reference_height * aspect, reference_height)

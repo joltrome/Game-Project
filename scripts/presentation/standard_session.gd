@@ -170,7 +170,7 @@ func start_game() -> void:
 	game.clean_control_hint_duration = 0.0
 	game.local_instrumentation_enabled = false
 	if mobile_arcade_deck_enabled:
-		game.build_id_override = "VM-0.7.2-MOBILE-ARCADE-DECK"
+		game.build_id_override = "VM-0.7.2.1-MOBILE-MONITOR-HOTFIX"
 	elif mobile_playability_enabled:
 		game.build_id_override = "VM-0.7.1-MOBILE-PLAYABILITY"
 	elif refund_system_enabled:
@@ -407,18 +407,9 @@ func _apply_hud_style() -> void:
 
 func _layout() -> void:
 	var fitted := MotionExperimentShell.contained_rect(size, DESIGN_SIZE)
-	var css_size := Vector2(get_window().size)
-	var raw_dpr := 1.0
 	if touch != null:
-		if OS.has_feature("web"):
-			raw_dpr = float(JavaScriptBridge.eval("window.devicePixelRatio || 1", true))
-			var css_width := float(JavaScriptBridge.eval("window.innerWidth || 0", true))
-			var css_height := float(JavaScriptBridge.eval("window.innerHeight || 0", true))
-			if css_width > 1.0 and css_height > 1.0:
-				css_size = Vector2(css_width, css_height)
-		# CSS viewport dimensions determine perceived control size. DPR is clamped
-		# only for the fallback path, avoiding the old unbounded DPR magnification.
-		touch.configure_viewport(size, fitted, css_size, raw_dpr)
+		var layout_reference := StandardTouchControls.layout_reference_size(size)
+		touch.configure_viewport(size, fitted, layout_reference, 1.0)
 
 	var use_mobile_monitor := (
 		mobile_arcade_deck_enabled
@@ -439,8 +430,10 @@ func _layout() -> void:
 			game.set_anchors_preset(Control.PRESET_TOP_LEFT)
 			game.position = touch.gameplay_bounds.position
 			game.size = touch.gameplay_bounds.size
+			game.reflow_display()
 		else:
 			game.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			game.reflow_display()
 
 
 func _clear_ui() -> void:

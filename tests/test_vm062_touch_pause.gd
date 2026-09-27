@@ -24,7 +24,12 @@ func run() -> void:
 	var right:=transform*s.touch.rectangles[1].get_center()
 	var jump:=transform*s.touch.rectangles[2].get_center()
 	var pause_at:=transform*s.touch.pause_button.get_rect().get_center()
-	check(s.touch.pause_button.size==Vector2(48,48),"48 CSS-pixel Pause target")
+	check(
+		s.touch.pause_button.size.is_equal_approx(
+			Vector2(48.0, 48.0) * s.touch.logical_per_css
+		),
+		"48 reference-pixel Pause target maps uniformly into Godot host coordinates"
+	)
 	finger(0,right,true);finger(1,jump,true)
 	check(Input.is_action_pressed("move_right") and Input.is_action_pressed("jump"),"Held movement and jump before third touch")
 	finger(2,pause_at,true)

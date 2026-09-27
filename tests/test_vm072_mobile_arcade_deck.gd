@@ -244,8 +244,8 @@ func _test_session_monitor_and_desktop_behavior() -> void:
 	)
 	session._layout()
 	check(
-		session.game.build_id_override == "VM-0.7.2-MOBILE-ARCADE-DECK",
-		"Release build ID identifies VM-0.7.2"
+		session.game.build_id_override == "VM-0.7.2.1-MOBILE-MONITOR-HOTFIX",
+		"Release build ID identifies VM-0.7.2.1"
 	)
 	check(
 		session.game.position.distance_to(session.touch.gameplay_bounds.position) <= EPSILON

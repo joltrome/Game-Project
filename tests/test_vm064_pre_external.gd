@@ -218,10 +218,12 @@ func _test_pause_and_touch() -> void:
 	check(
 		not mobile_pause_hit.intersects(mobile_deck)
 		and mobile_pause_position == mobile_pause_hit.position
-		and session.touch.pause_button.size == Vector2(48.0, 48.0)
+		and session.touch.pause_button.size.is_equal_approx(
+			Vector2(48.0, 48.0) * session.touch.logical_per_css
+		)
 		and right.y > session.touch.pause_button.position.y + session.touch.pause_button.size.y
 		and jump.y > session.touch.pause_button.position.y + session.touch.pause_button.size.y,
-		"Pause is a 48x48 bezel target separated from the bottom control deck"
+		"Pause retains a 48 reference-pixel bezel target separated from the bottom control deck"
 	)
 	session.resume_game()
 	session.audio.set_user_volume_percent(&"Music", 100.0)

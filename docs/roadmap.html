@@ -1857,6 +1857,30 @@
     text: 'VM-0.7.2 integrates the 12 approved Work control-state PNGs with nearest-neighbor filtering and exact 16:9/19.5:9 responsive geometry. Touch landscape now presents a proportional 16:9 gameplay monitor above a 96 CSS px dark burgundy deck; LEFT/RIGHT use independent 72×88 hit regions around 64×64 art, action uses a 96×96 hit region around 80×80 art, and Pause uses an independent 48×48 bezel hit region around 32×32 art. Automated geometry, input-lifecycle and desktop regressions pass; physical-phone technician readability, thumb comfort, browser safe-area behavior and sustained device pacing remain unverified pending founder review. See docs/vm072-mobile-arcade-deck.md.'
   };
 
+  const vm0721MonitorFailureEvidence = {
+    id: 'evidence-vm-0.7.2.1-mobile-monitor-failure',
+    type: 'Evidence', date: '2026-09-27', source: 'Founder Samsung Galaxy S25 and iPhone 14 Pro recordings',
+    text: 'VM-0.7.2 passed geometry, input, desktop and browser-start checks but failed on both physical phones after CLOCK IN: the approved burgundy deck, controls and Pause remained visible while the real gameplay monitor was absent, clipped or displaced. Runtime inspection showed that tests had asserted the intended outer rectangle without asserting the nested SubViewport display surface or actual gameplay pixels.'
+  };
+
+  const vm0721MonitorDecision = {
+    id: 'decision-vm-0.7.2.1-mobile-monitor-hotfix',
+    type: 'Decision', date: '2026-09-28', source: 'Startup Lab VM-0.7.2.1 hotfix brief',
+    text: 'Preserve the approved VM-0.7.2 deck and all gameplay. Keep Standard gameplay permanently 1152×648 and 16:9, derive layout from one Godot host coordinate system, explicitly reflow the real nested render surface, and require actual-game-pixel evidence for future viewport or responsive-presentation changes. Browser automation may qualify a build for physical review; final mobile acceptance requires founder verification on a device.'
+  };
+
+  const vm0721MonitorHypothesis = {
+    id: 'hypothesis-vm-0.7.2.1-mobile-monitor-hotfix',
+    type: 'Hypothesis', date: '2026-09-28', source: 'Verified render-surface diagnosis',
+    text: 'Listening to MotionExperimentShell resize, explicitly reflowing after mobile layout, retaining a fixed 1152×648 InternalViewport and uniformly scaling its display surface should keep the real Standard game visible inside the approved monitor across wide-phone resize and lifecycle transitions without changing gameplay.'
+  };
+
+  const vm0721MonitorResult = {
+    id: 'result-vm-0.7.2.1-mobile-monitor-hotfix',
+    type: 'Result', date: '2026-09-28', source: 'VM-0.7.2.1 deterministic, browser-pixel and performance validation',
+    text: 'The real Standard session now keeps StandardRun and its displayed ViewportFrame aligned at 16:9 after CLOCK IN, Pause/Resume, portrait-to-landscape and Retry for 16:9, 19.5:9 and 20:9 hosts, while the raw SubViewportContainer and InternalViewport remain exactly 1152×648. Exported touch-enabled Web captures at the two founder-recording resolutions (848×384 and 1024×464) visibly contain the technician, vending-machine environment and conveyor above the deck; broad pixel checks reported 53 quantized color bins, more than 86 percent non-near-black content and no browser console/page errors. Five-seed performance retained zero steps above 16.67 ms, with 12.718 ms worst step and 12.689 ms maximum planning. Physical Samsung/iPhone acceptance remains unverified. See docs/vm0721-mobile-monitor-hotfix.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -2030,7 +2054,11 @@
     vm072MobileDeckEvidence,
     vm072MobileDeckHypothesis,
     vm072MobileDeckDecision,
-    vm072MobileDeckResult
+    vm072MobileDeckResult,
+    vm0721MonitorFailureEvidence,
+    vm0721MonitorDecision,
+    vm0721MonitorHypothesis,
+    vm0721MonitorResult
   ];
 
   const defaultFindings = [
@@ -2042,7 +2070,7 @@
   ];
 
   const defaultState = {
-    version: 50,
+    version: 51,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []
