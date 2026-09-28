@@ -24,6 +24,7 @@ const FRAME_PACING := preload("res://scripts/presentation/frame_pacing_telemetry
 @export var refund_system_enabled: bool = false
 @export var mobile_playability_enabled: bool = false
 @export var mobile_arcade_deck_enabled: bool = false
+@export var coin_pressure_enabled: bool = false
 
 var state: State = State.MENU
 var game: MotionExperimentShell
@@ -169,7 +170,9 @@ func start_game() -> void:
 	game.clean_tester_presentation = true
 	game.clean_control_hint_duration = 0.0
 	game.local_instrumentation_enabled = false
-	if mobile_arcade_deck_enabled:
+	if coin_pressure_enabled:
+		game.build_id_override = "VM-0.7.3-COIN-PRESSURE"
+	elif mobile_arcade_deck_enabled:
 		game.build_id_override = "VM-0.7.2.1-MOBILE-MONITOR-HOTFIX"
 	elif mobile_playability_enabled:
 		game.build_id_override = "VM-0.7.1-MOBILE-PLAYABILITY"
@@ -204,6 +207,7 @@ func start_game() -> void:
 	collectible_director.refund_chute_enabled = refund_chute_enabled
 	collectible_director.refund_system_enabled = refund_system_enabled
 	collectible_director.static_teaching_coin_enabled = refund_system_enabled
+	collectible_director.coin_pressure_enabled = coin_pressure_enabled
 	collectible_director.performance_profiling_enabled = mobile_playability_enabled
 	collectible_director.bounded_optional_planning_enabled = mobile_playability_enabled
 	var round_controller := game.conveyor.get_node("RoundController") as FixedRoundController

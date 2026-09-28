@@ -59,9 +59,10 @@ func _test_release_and_touch_layouts() -> void:
 	await process_frame
 	var director := session.game.conveyor.get_node("CollectibleDirector") as CollectibleDirector
 	check(
-		session.game.build_id_override == "VM-0.7.2.1-MOBILE-MONITOR-HOTFIX"
+		session.game.build_id_override == "VM-0.7.3-COIN-PRESSURE"
 		and director.bounded_optional_planning_enabled
-		and director.performance_profiling_enabled,
+		and director.performance_profiling_enabled
+		and director.coin_pressure_enabled,
 		"Forward release preserves bounded optional planning and frame correlation without changing gameplay flags"
 	)
 	session.show_menu()

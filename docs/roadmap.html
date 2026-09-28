@@ -1881,6 +1881,30 @@
     text: 'The real Standard session now keeps StandardRun and its displayed ViewportFrame aligned at 16:9 after CLOCK IN, Pause/Resume, portrait-to-landscape and Retry for 16:9, 19.5:9 and 20:9 hosts, while the raw SubViewportContainer and InternalViewport remain exactly 1152×648. Exported touch-enabled Web captures at the two founder-recording resolutions (848×384 and 1024×464) visibly contain the technician, vending-machine environment and conveyor above the deck; broad pixel checks reported 53 quantized color bins, more than 86 percent non-near-black content and no browser console/page errors. Five-seed performance retained zero steps above 16.67 ms, with 12.718 ms worst step and 12.689 ms maximum planning. Physical Samsung/iPhone acceptance remains unverified. See docs/vm0721-mobile-monitor-hotfix.md.'
   };
 
+  const vm073ChuteCampingEvidence = {
+    id: 'evidence-vm-0.7.3-chute-camping',
+    type: 'Evidence', date: '2026-09-28', source: 'Tester Neptune observation and founder reproduction',
+    text: 'A tester independently found and the founder reproduced a stable scoring routine: wait beneath the single Refund Chute, chase an emitted coin only when required, then return beneath the chute. This is evidence that the reward topology creates a predictable home base; it is not evidence that Standard hazard speed or frequency should increase.'
+  };
+
+  const vm073CoinPressureDecision = {
+    id: 'decision-vm-0.7.3-coin-pressure',
+    type: 'Decision', date: '2026-09-28', source: 'Startup Lab VM-0.7.3 experiment brief plus bounded-planner profiling',
+    text: 'Keep one Concept C chute and isolate the experiment to player-relative landing preferences. Preserve all Standard gameplay, cadence, physics and difficulty. Apply pressure to the configured 55 percent single-event stream; deterministic profiling showed that constraining every member of doubles/triples reduced complete-group integrity, so accepted multi-event group planning remains unchanged. Retain VM-0.7.2.1 as the independently playable control.'
+  };
+
+  const vm073CoinPressureHypothesis = {
+    id: 'hypothesis-vm-0.7.3-coin-pressure',
+    type: 'Hypothesis', date: '2026-09-28', source: 'Startup Lab VM-0.7.3 experiment brief',
+    text: 'Keeping one understandable Refund Chute while choosing more spatially varied, player-relative destinations may force meaningful repositioning and remove the dominant chute-camping strategy without changing Standard hazard difficulty. This remains unverified pending founder A/B play.'
+  };
+
+  const vm073CoinPressureResult = {
+    id: 'result-vm-0.7.3-coin-pressure',
+    type: 'Result', date: '2026-09-28', source: 'VM-0.7.3 deterministic implementation, performance and browser QA',
+    text: 'VM-0.7.3 adds four safe destination zones derived separately from each ballistic arc\'s reachable landing interval, a 75 percent committed single-event preference, bounded two-zone repetition penalties, an 85 percent preferred-attempt share and safe full-envelope fallback. A fixed-campsite comparison increased median displacement across delivered event coins from 48 px to 72 px while retaining approximately the same event volume. Five natural seeds produced 66 pressure singles across zones 28/8/14/16, 89.45 px weighted mean displacement, 38/66 complete doubles and 1/18 complete triples; maximum planning was 8.985 ms, maximum p95/p99 were 0.048/0.104 ms, and no simulated step exceeded 16.67 ms. All six D3 warnings remained present. Automated distribution does not prove that a human dominant strategy is removed. See docs/vm073-coin-pressure.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -2058,7 +2082,11 @@
     vm0721MonitorFailureEvidence,
     vm0721MonitorDecision,
     vm0721MonitorHypothesis,
-    vm0721MonitorResult
+    vm0721MonitorResult,
+    vm073ChuteCampingEvidence,
+    vm073CoinPressureDecision,
+    vm073CoinPressureHypothesis,
+    vm073CoinPressureResult
   ];
 
   const defaultFindings = [

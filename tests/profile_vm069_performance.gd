@@ -32,6 +32,7 @@ func _run() -> void:
 		{"name": "VM0610", "ballistic": true, "abundance": true, "integrity": true, "refund_chute": true, "refund_system": false},
 		{"name": "VM070", "ballistic": true, "abundance": true, "integrity": true, "refund_chute": true, "refund_system": true},
 		{"name": "VM071", "ballistic": true, "abundance": true, "integrity": true, "refund_chute": true, "refund_system": true, "mobile_budget": true},
+		{"name": "VM073", "ballistic": true, "abundance": true, "integrity": true, "refund_chute": true, "refund_system": true, "mobile_budget": true, "coin_pressure": true},
 	]:
 		if not _mode_filter.is_empty() and String(mode.name) != _mode_filter:
 			continue
@@ -63,6 +64,8 @@ func _profile_mode(mode: Dictionary, seed: int) -> Dictionary:
 		director.set("static_teaching_coin_enabled", bool(mode.get("refund_system", false)))
 	if _has_property(director, &"bounded_optional_planning_enabled"):
 		director.set("bounded_optional_planning_enabled", bool(mode.get("mobile_budget", false)))
+	if _has_property(director, &"coin_pressure_enabled"):
+		director.set("coin_pressure_enabled", bool(mode.get("coin_pressure", false)))
 	director.performance_profiling_enabled = true
 	director.placement_seed = seed
 	director._placement_rng_state = seed
@@ -159,6 +162,7 @@ func _profile_mode(mode: Dictionary, seed: int) -> Dictionary:
 		director.coin_event_log()
 	)
 	result.ballistic_run = director.ballistic_run_summary()
+	result.coin_pressure = director.coin_pressure_summary()
 	var integrity_summary: Dictionary = result.ballistic_run
 	result.requested = (
 		int(integrity_summary.get("selected_singles", 0))

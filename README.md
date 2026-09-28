@@ -1,3 +1,24 @@
+# VM-0.7.3 Coin Pressure experiment
+
+VM-0.7.3 is an isolated anti-camping A/B candidate built on the VM-0.7.2.1
+mobile-monitor hotfix. It keeps one Refund Chute and all Standard gameplay
+values, but lets eligible single ballistic events prefer four safe,
+player-relative landing zones with a bounded two-zone anti-repeat memory.
+
+Run the experiment with:
+
+```bash
+/Users/jeromenicholaz/Downloads/Godot.app/Contents/MacOS/Godot --path . res://scenes/presentation/standard_session.tscn
+```
+
+Export preset `Web GET CANNED VM-0.7.3 Coin Pressure` writes to
+`builds/VM-0.7.3-COIN-PRESSURE/index.html`. Compare it with the preserved
+`VM-0.7.2.1-MOBILE-MONITOR-HOTFIX` control. See
+[`docs/vm073-coin-pressure.md`](docs/vm073-coin-pressure.md) for targeting,
+telemetry, performance, build evidence and the founder A/B protocol.
+
+---
+
 # VM-0.7.2.1 mobile monitor rendering hotfix
 
 VM-0.7.2.1 preserves the approved VM-0.7.2 deck and all gameplay while making

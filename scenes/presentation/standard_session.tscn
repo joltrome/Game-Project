@@ -26,6 +26,7 @@ refund_chute_enabled = true
 refund_system_enabled = true
 mobile_playability_enabled = true
 mobile_arcade_deck_enabled = true
+coin_pressure_enabled = true
 
 [node name="Audio" type="Node" parent="."]
 script = ExtResource("2")

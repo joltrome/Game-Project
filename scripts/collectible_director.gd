@@ -42,6 +42,13 @@ enum BallisticArchetype {
 	HIGH,
 }
 
+enum DestinationZone {
+	FAR_LEFT,
+	MID_LEFT,
+	MID_RIGHT,
+	FAR_RIGHT,
+}
+
 enum RouteArchetype {
 	LINEAR,
 	STAIR_UP,
@@ -222,6 +229,14 @@ const REJECTION_UNKNOWN := "unknown"
 @export var bounded_group_extra_pool_calls: int = 2
 @export var bounded_single_attempts: int = 24
 
+@export_category("Coin Pressure Experiment")
+@export var coin_pressure_enabled: bool = false
+@export var coin_pressure_minimum_useful_displacement: float = 200.0
+@export_range(0.0, 1.0, 0.05) var coin_pressure_medium_displacement_ratio: float = 0.90
+@export_range(0.0, 1.0, 0.05) var coin_pressure_high_displacement_ratio: float = 0.90
+@export_range(0.0, 1.0, 0.05) var coin_pressure_commitment_probability: float = 0.75
+@export_range(1, 3, 1) var coin_pressure_recent_zone_history_size: int = 2
+
 @export_category("Route Validation")
 @export var trajectory_simulation_step: float = 1.0 / 120.0
 @export var recent_route_history_size: int = 2
@@ -331,6 +346,8 @@ var _performance_landed_can_rect_count: int = 0
 var _performance_landed_can_cache_rebuild_count: int = 0
 var _landed_can_collision_cache: Array[Dictionary] = []
 var _landed_can_collision_cache_frame: int = -1
+var _coin_pressure_recent_zones: Array[int] = []
+var _coin_pressure_log: Array[Dictionary] = []
 
 @onready var _conveyor: ConveyorPrototype = get_parent() as ConveyorPrototype
 @onready var _score_label: Label = _conveyor.get_node("HUD/ScoreGroup/CollectibleScore")
@@ -484,6 +501,22 @@ func coin_event_log() -> Array[Dictionary]:
 	return _coin_event_log.duplicate(true)
 
 
+func coin_pressure_log() -> Array[Dictionary]:
+	return _coin_pressure_log.duplicate(true)
+
+
+func coin_pressure_recent_zones() -> Array[int]:
+	return _coin_pressure_recent_zones.duplicate()
+
+
+func coin_pressure_target_bounds_for_test(archetype: int) -> Vector2:
+	return _coin_pressure_target_bounds(archetype)
+
+
+func coin_pressure_zone_bounds_for_test(archetype: int, zone: int) -> Vector2:
+	return _coin_pressure_zone_bounds(archetype, zone)
+
+
 func ballistic_archetype_counts() -> PackedInt32Array:
 	return _ballistic_archetype_counts.duplicate()
 
@@ -591,7 +624,77 @@ func ballistic_run_summary() -> Dictionary:
 	}
 	if ballistic_integrity_enabled:
 		result.merge(ballistic_integrity_summary())
+	if coin_pressure_enabled:
+		result["coin_pressure"] = coin_pressure_summary()
 	return result
+
+
+func coin_pressure_summary() -> Dictionary:
+	var zone_counts := PackedInt32Array([0, 0, 0, 0])
+	var displacements := PackedFloat32Array()
+	var committed_count := 0
+	var fallback_count := 0
+	var clamped_preference_count := 0
+	var repeat_count := 0
+	var collected_count := 0
+	var displacement_total := 0.0
+	var under_100 := 0
+	var under_150 := 0
+	var under_200 := 0
+	var prior_zone := -1
+	for entry in _coin_pressure_log:
+		var zone := int(entry.get("destination_zone", -1))
+		if zone >= 0 and zone < zone_counts.size():
+			zone_counts[zone] += 1
+			if zone == prior_zone:
+				repeat_count += 1
+			prior_zone = zone
+		var displacement := float(entry.get("spawn_displacement", 0.0))
+		displacements.append(displacement)
+		displacement_total += displacement
+		if displacement < 100.0:
+			under_100 += 1
+		if displacement < 150.0:
+			under_150 += 1
+		if displacement < 200.0:
+			under_200 += 1
+		if bool(entry.get("committed", false)):
+			committed_count += 1
+		if bool(entry.get("used_fallback", false)):
+			fallback_count += 1
+		if bool(entry.get("preference_clamped", false)):
+			clamped_preference_count += 1
+		if bool(entry.get("collected", false)):
+			collected_count += 1
+	var sorted_displacements := Array(displacements)
+	sorted_displacements.sort()
+	var median_displacement := 0.0
+	if not sorted_displacements.is_empty():
+		var middle := sorted_displacements.size() / 2
+		median_displacement = float(sorted_displacements[middle])
+		if sorted_displacements.size() % 2 == 0:
+			median_displacement = (
+				float(sorted_displacements[middle - 1]) + median_displacement
+			) * 0.5
+	return {
+		"enabled": coin_pressure_enabled,
+		"spawned": _coin_pressure_log.size(),
+		"committed": committed_count,
+		"fallbacks": fallback_count,
+		"clamped_preferences": clamped_preference_count,
+		"collected": collected_count,
+		"average_spawn_displacement": (
+			displacement_total / float(_coin_pressure_log.size())
+			if not _coin_pressure_log.is_empty()
+			else 0.0
+		),
+		"median_spawn_displacement": median_displacement,
+		"percent_under_100": float(under_100) / float(maxi(_coin_pressure_log.size(), 1)),
+		"percent_under_150": float(under_150) / float(maxi(_coin_pressure_log.size(), 1)),
+		"percent_under_200": float(under_200) / float(maxi(_coin_pressure_log.size(), 1)),
+		"consecutive_zone_repeats": repeat_count,
+		"zone_counts": zone_counts,
+	}
 
 
 func ballistic_integrity_summary() -> Dictionary:
@@ -877,6 +980,8 @@ func stop_for_round_end() -> void:
 	if _stopped:
 		return
 	_stopped = true
+	if coin_pressure_enabled:
+		print("VM073_COIN_PRESSURE_SUMMARY ", JSON.stringify(coin_pressure_summary()))
 	if refund_chute_enabled:
 		refund_chute_sequence_reset.emit()
 	if refund_system_enabled and ballistic_coin_events_enabled and ballistic_integrity_enabled:
@@ -1002,6 +1107,13 @@ func _try_spawn_variable_coin_event() -> bool:
 	var archetype_plan: Array[int] = []
 	if ballistic_coin_events_enabled:
 		archetype_plan = _ballistic_archetype_plan(requested_count)
+	var pressure_profiles: Array[Dictionary] = []
+	if coin_pressure_enabled and ballistic_coin_events_enabled:
+		pressure_profiles = _coin_pressure_profile_plan(
+			target_count,
+			archetype_plan,
+			event_id
+		)
 	var launch_delay_plan := PackedFloat32Array()
 	var launch_rhythm := "SIMULTANEOUS"
 	if ballistic_coin_events_enabled:
@@ -1042,7 +1154,8 @@ func _try_spawn_variable_coin_event() -> bool:
 			side_plan,
 			archetype_plan,
 			launch_delay_plan,
-			requested_lifetimes
+			requested_lifetimes,
+			pressure_profiles
 		)
 		preplanned_samples.assign(integrity_plan.get("samples", []))
 		if bool(integrity_plan.get("used_short_stagger", false)):
@@ -1087,7 +1200,13 @@ func _try_spawn_variable_coin_event() -> bool:
 			int(planned_ballistic.get("archetype", archetype_plan[coin_index])) if ballistic_coin_events_enabled else -1,
 			accepted_trajectories,
 			float(planned_ballistic.get("launch_delay", launch_delay_plan[coin_index])) if not launch_delay_plan.is_empty() else 0.0,
-			preplanned_sample
+			preplanned_sample,
+			null,
+			(
+				pressure_profiles[coin_index]
+				if coin_index < pressure_profiles.size()
+				else {}
+			)
 		)
 		if not accepted:
 			placement_failures += 1
@@ -1154,6 +1273,8 @@ func _try_spawn_variable_coin_event() -> bool:
 		"placement_failures": placement_failures,
 		"d3_priority_skips": _stream_priority_skip_count - priority_skips_before,
 		"next_event_interval": next_interval,
+		"coin_pressure_enabled": coin_pressure_enabled,
+		"coin_pressure_profiles": pressure_profiles.duplicate(true),
 	})
 	_end_performance_event_profile(requested_count, accepted_positions.size())
 	return not accepted_positions.is_empty()
@@ -1164,14 +1285,16 @@ func _plan_ballistic_event_group(
 	side_plan: Array[int],
 	archetype_plan: Array[int],
 	launch_delay_plan: PackedFloat32Array,
-	requested_lifetimes: PackedFloat32Array
+	requested_lifetimes: PackedFloat32Array,
+	pressure_profiles: Array[Dictionary] = []
 ) -> Dictionary:
 	return _plan_ballistic_event_group_once(
 		target_count,
 		side_plan,
 		archetype_plan,
 		launch_delay_plan,
-		requested_lifetimes
+		requested_lifetimes,
+		pressure_profiles
 	)
 
 
@@ -1180,7 +1303,8 @@ func _plan_ballistic_event_group_once(
 	side_plan: Array[int],
 	archetype_plan: Array[int],
 	launch_delay_plan: PackedFloat32Array,
-	requested_lifetimes: PackedFloat32Array
+	requested_lifetimes: PackedFloat32Array,
+	pressure_profiles: Array[Dictionary] = []
 ) -> Dictionary:
 	if target_count <= 0:
 		return {
@@ -1211,7 +1335,8 @@ func _plan_ballistic_event_group_once(
 				0,
 				launch_delay_plan,
 				side_plan
-			) if refund_chute_enabled else null
+			) if refund_chute_enabled else null,
+			pressure_profiles[0] if not pressure_profiles.is_empty() else {}
 		)
 		if performance_profiling_enabled:
 			_performance_current_candidate_generation_usec += maxi(
@@ -1302,7 +1427,12 @@ func _plan_ballistic_event_group_once(
 					else ballistic_group_member_placement_attempts,
 					1
 				),
-				launch_override
+				launch_override,
+				(
+					pressure_profiles[coin_index]
+					if coin_index < pressure_profiles.size()
+					else {}
+				)
 			)
 			if performance_profiling_enabled:
 				_performance_current_event_placement_attempts += int(
@@ -1462,7 +1592,8 @@ func _plan_ballistic_event_group_once(
 			0,
 			launch_delay_plan,
 			side_plan
-		) if refund_chute_enabled else null
+		) if refund_chute_enabled else null,
+		pressure_profiles[0] if not pressure_profiles.is_empty() else {}
 	)
 	if performance_profiling_enabled:
 		_performance_current_fallback_search_usec += maxi(
@@ -1862,6 +1993,346 @@ func ballistic_archetype_name(archetype: int) -> String:
 	return "MEDIUM"
 
 
+func coin_pressure_zone_name(zone: int) -> String:
+	match zone:
+		DestinationZone.FAR_LEFT:
+			return "FAR_LEFT"
+		DestinationZone.MID_LEFT:
+			return "MID_LEFT"
+		DestinationZone.MID_RIGHT:
+			return "MID_RIGHT"
+		DestinationZone.FAR_RIGHT:
+			return "FAR_RIGHT"
+	return "UNKNOWN"
+
+
+func _coin_pressure_target_bounds(archetype: int) -> Vector2:
+	var half_width := collectible_size.x * 0.5
+	return Vector2(
+		maxf(
+			_conveyor.conveyor_support_left_x + half_width,
+			_minimum_ballistic_landing_x(
+				_ballistic_flight_duration(archetype)
+			)
+		),
+		_conveyor.control_band_right - half_width
+	)
+
+
+func _coin_pressure_zone_bounds(archetype: int, zone: int) -> Vector2:
+	var target_bounds := _coin_pressure_target_bounds(archetype)
+	if target_bounds.y <= target_bounds.x:
+		return Vector2.ZERO
+	var clamped_zone := clampi(
+		zone,
+		DestinationZone.FAR_LEFT,
+		DestinationZone.FAR_RIGHT
+	)
+	var zone_width := (target_bounds.y - target_bounds.x) / 4.0
+	return Vector2(
+		target_bounds.x + zone_width * float(clamped_zone),
+		target_bounds.x + zone_width * float(clamped_zone + 1)
+	)
+
+
+func _coin_pressure_profile_plan(
+	requested_count: int,
+	archetype_plan: Array[int],
+	event_id: int
+) -> Array[Dictionary]:
+	var profiles: Array[Dictionary] = []
+	if requested_count > 1:
+		# Preserve the accepted group-integrity search for doubles/triples in this
+		# narrow experiment. The configured 55% single-event stream is sufficient
+		# to test whether one-chute, player-relative destinations disrupt camping.
+		for _coin_index in range(requested_count):
+			profiles.append({})
+		return profiles
+	var reserved_zones: Array[int] = []
+	for coin_index in range(maxi(requested_count, 0)):
+		# One lead destination defines the event's repositioning question. Sibling
+		# coins retain the accepted group planner so doubles/triples do not lose
+		# integrity merely because every member was independently zone-constrained.
+		if coin_index > 0:
+			profiles.append({})
+			continue
+		var archetype := int(
+			archetype_plan[coin_index]
+			if coin_index < archetype_plan.size()
+			else BallisticArchetype.MEDIUM
+		)
+		var deterministic_state := _next_rng_state(
+			maxi(
+				posmod(
+					placement_seed * 7919 + event_id * 104729 + coin_index * 15485863,
+					0x7fffffff
+				),
+				1
+			)
+		)
+		var committed := (
+			float(posmod(deterministic_state, 10000)) / 10000.0
+			< clampf(coin_pressure_commitment_probability, 0.0, 1.0)
+		)
+		var zone := _select_coin_pressure_zone(
+			archetype,
+			committed,
+			reserved_zones
+		)
+		reserved_zones.append(zone)
+		var displacement_ratio := 1.0
+		if archetype == BallisticArchetype.MEDIUM:
+			displacement_ratio = coin_pressure_medium_displacement_ratio
+		elif archetype == BallisticArchetype.HIGH:
+			displacement_ratio = coin_pressure_high_displacement_ratio
+		profiles.append({
+			"preferred_zone": zone,
+			"preferred_zone_name": coin_pressure_zone_name(zone),
+			"committed": committed,
+			"minimum_displacement": (
+				maxf(coin_pressure_minimum_useful_displacement, 0.0)
+				* clampf(displacement_ratio, 0.0, 1.0)
+				if committed
+				else 0.0
+			),
+			"archetype": archetype,
+			"event_id": event_id,
+			"event_coin_index": coin_index,
+			"preferred_attempt_ratio": 0.85,
+			"recent_zones_before": _coin_pressure_recent_zones.duplicate(),
+		})
+	return profiles
+
+
+func _select_coin_pressure_zone(
+	archetype: int,
+	committed: bool,
+	reserved_zones: Array[int]
+) -> int:
+	var available: Array[int] = [
+		DestinationZone.FAR_LEFT,
+		DestinationZone.MID_LEFT,
+		DestinationZone.MID_RIGHT,
+		DestinationZone.FAR_RIGHT,
+	]
+	# Siblings should remain spatially distinct when possible. Recent history is
+	# a ranking penalty below, not a hard ban: a hard two-zone exclusion can
+	# force a right-side camper back into a nearby right-side destination.
+	var non_repeating: Array[int] = []
+	for zone in available:
+		if zone not in reserved_zones:
+			non_repeating.append(zone)
+	if not non_repeating.is_empty():
+		available = non_repeating
+	var player_x := _conveyor.player.global_position.x
+	var selected := available[0]
+	var selected_distance := absf(_coin_pressure_zone_center(archetype, selected) - player_x)
+	if not committed:
+		var selected_score := selected_distance + _coin_pressure_recent_zone_penalty(selected)
+		for zone in available:
+			var distance := absf(_coin_pressure_zone_center(archetype, zone) - player_x)
+			var score := distance + _coin_pressure_recent_zone_penalty(zone)
+			if score < selected_score:
+				selected = zone
+				selected_distance = distance
+				selected_score = score
+		return selected
+	if archetype == BallisticArchetype.MEDIUM:
+		var desired := maxf(coin_pressure_minimum_useful_displacement, 0.0) * clampf(
+			coin_pressure_medium_displacement_ratio,
+			0.0,
+			1.0
+		)
+		var maximum_distance := selected_distance
+		for zone in available:
+			maximum_distance = maxf(
+				maximum_distance,
+				absf(_coin_pressure_zone_center(archetype, zone) - player_x)
+			)
+		desired = minf(desired, maximum_distance)
+		var selected_delta := (
+			absf(selected_distance - desired)
+			+ _coin_pressure_recent_zone_penalty(selected)
+		)
+		for zone in available:
+			var distance := absf(_coin_pressure_zone_center(archetype, zone) - player_x)
+			var delta := absf(distance - desired) + _coin_pressure_recent_zone_penalty(zone)
+			if delta < selected_delta:
+				selected = zone
+				selected_distance = distance
+				selected_delta = delta
+		return selected
+	# Shallow and high trajectories use the farthest currently non-repeating
+	# destination. Their distinct authored flight profiles remain unchanged.
+	var selected_score := selected_distance - _coin_pressure_recent_zone_penalty(selected)
+	for zone in available:
+		var distance := absf(_coin_pressure_zone_center(archetype, zone) - player_x)
+		var score := distance - _coin_pressure_recent_zone_penalty(zone)
+		if score > selected_score:
+			selected = zone
+			selected_distance = distance
+			selected_score = score
+	return selected
+
+
+func _coin_pressure_zone_center(archetype: int, zone: int) -> float:
+	var bounds := _coin_pressure_zone_bounds(archetype, zone)
+	return (bounds.x + bounds.y) * 0.5
+
+
+func _coin_pressure_recent_zone_penalty(zone: int) -> float:
+	if _coin_pressure_recent_zones.is_empty():
+		return 0.0
+	if zone == _coin_pressure_recent_zones[-1]:
+		return 48.0
+	if _coin_pressure_recent_zones.size() > 1 and zone == _coin_pressure_recent_zones[-2]:
+		return 18.0
+	return 0.0
+
+
+func _coin_pressure_restricted_bounds(
+	base_bounds: Vector2,
+	pressure_profile: Dictionary,
+	archetype: int,
+	enforce_displacement: bool
+) -> Vector2:
+	var zone := int(pressure_profile.get("preferred_zone", -1))
+	if zone < DestinationZone.FAR_LEFT or zone > DestinationZone.FAR_RIGHT:
+		return Vector2.ZERO
+	var zone_bounds := _coin_pressure_zone_bounds(archetype, zone)
+	var result := Vector2(
+		maxf(base_bounds.x, zone_bounds.x),
+		minf(base_bounds.y, zone_bounds.y)
+	)
+	if not enforce_displacement or result.y <= result.x:
+		return result
+	var minimum_displacement := maxf(
+		float(pressure_profile.get("minimum_displacement", 0.0)),
+		0.0
+	)
+	if minimum_displacement <= 0.0:
+		return result
+	var player_x := _conveyor.player.global_position.x
+	if _coin_pressure_zone_center(archetype, zone) < player_x:
+		minimum_displacement = minf(
+			minimum_displacement,
+			maxf(player_x - result.x - maxf(scatter_position_quantum, 0.01), 0.0)
+			* 0.80
+		)
+		result.y = minf(result.y, player_x - minimum_displacement)
+	else:
+		minimum_displacement = minf(
+			minimum_displacement,
+			maxf(result.y - player_x - maxf(scatter_position_quantum, 0.01), 0.0)
+			* 0.80
+		)
+		result.x = maxf(result.x, player_x + minimum_displacement)
+	return result
+
+
+func _coin_pressure_zone_for_x(archetype: int, x: float) -> int:
+	var bounds := _coin_pressure_target_bounds(archetype)
+	if bounds.y <= bounds.x:
+		return -1
+	var ratio := clampf((x - bounds.x) / (bounds.y - bounds.x), 0.0, 0.999999)
+	return clampi(floori(ratio * 4.0), 0, 3)
+
+
+func _coin_pressure_applied_profile(
+	pressure_profile: Dictionary,
+	position: Vector2,
+	archetype: int,
+	used_fallback: bool
+) -> Dictionary:
+	var applied := pressure_profile.duplicate(true)
+	var actual_zone := _coin_pressure_zone_for_x(archetype, position.x)
+	var preferred_bounds := _coin_pressure_zone_bounds(
+		archetype,
+		int(pressure_profile.get("preferred_zone", actual_zone))
+	)
+	var player_x := _conveyor.player.global_position.x
+	var reachable_preference := maxf(
+		maxf(player_x - preferred_bounds.x, preferred_bounds.y - player_x)
+		- maxf(scatter_position_quantum, 0.01),
+		0.0
+	)
+	var effective_minimum := minf(
+		float(pressure_profile.get("minimum_displacement", 0.0)),
+		reachable_preference * 0.80
+	)
+	var preference_clamped := (
+		effective_minimum + 0.001
+		< float(pressure_profile.get("minimum_displacement", 0.0))
+	)
+	var missed_minimum := (
+		bool(pressure_profile.get("committed", false))
+		and absf(position.x - player_x) + 0.001 < effective_minimum
+	)
+	applied["actual_zone"] = actual_zone
+	applied["actual_zone_name"] = coin_pressure_zone_name(actual_zone)
+	applied["effective_minimum_displacement"] = effective_minimum
+	applied["preference_clamped"] = preference_clamped
+	applied["used_fallback"] = (
+		used_fallback
+		or actual_zone != int(pressure_profile.get("preferred_zone", -1))
+		or missed_minimum
+	)
+	return applied
+
+
+func _record_coin_pressure_spawn(
+	coin: ConveyorCollectible,
+	event_id: int,
+	event_coin_index: int,
+	landing_position: Vector2,
+	pressure_profile: Dictionary,
+	ballistic_plan: Dictionary
+) -> void:
+	var player_x := _conveyor.player.global_position.x
+	var archetype := int(ballistic_plan.get(
+		"archetype",
+		pressure_profile.get("archetype", BallisticArchetype.MEDIUM)
+	))
+	var zone := int(pressure_profile.get(
+		"actual_zone",
+		_coin_pressure_zone_for_x(archetype, landing_position.x)
+	))
+	var log_index := _coin_pressure_log.size()
+	_coin_pressure_log.append({
+		"event_id": event_id,
+		"event_coin_index": event_coin_index,
+		"spawn_time": _conveyor.survival_time,
+		"player_x_at_spawn": player_x,
+		"landing_x": landing_position.x,
+		"spawn_displacement": absf(landing_position.x - player_x),
+		"destination_zone": zone,
+		"destination_zone_name": coin_pressure_zone_name(zone),
+		"preferred_zone": int(pressure_profile.get("preferred_zone", -1)),
+		"preferred_zone_name": String(pressure_profile.get("preferred_zone_name", "")),
+		"committed": bool(pressure_profile.get("committed", false)),
+		"minimum_displacement": float(pressure_profile.get("minimum_displacement", 0.0)),
+		"used_fallback": bool(pressure_profile.get("used_fallback", false)),
+		"preference_clamped": bool(pressure_profile.get("preference_clamped", false)),
+		"effective_minimum_displacement": float(pressure_profile.get("effective_minimum_displacement", 0.0)),
+		"recent_zones_before": pressure_profile.get("recent_zones_before", []).duplicate(),
+		"archetype": archetype,
+		"archetype_name": ballistic_archetype_name(archetype),
+		"collected": false,
+		"resolved": false,
+		"resolution_time": -1.0,
+		"collection_x": NAN,
+		"time_to_collection": -1.0,
+	})
+	coin.set_meta("coin_pressure_log_index", log_index)
+	coin.set_meta("coin_pressure_destination_zone", zone)
+	_coin_pressure_recent_zones.append(zone)
+	while _coin_pressure_recent_zones.size() > maxi(
+		coin_pressure_recent_zone_history_size,
+		1
+	):
+		_coin_pressure_recent_zones.pop_front()
+
+
 func _event_side_fallback_preferences(
 	preferred_side: int,
 	already_used_sides: Array[int]
@@ -1977,7 +2448,8 @@ func _try_spawn_independent_coin(
 	event_sibling_trajectories: Array[Dictionary] = [],
 	ballistic_launch_delay: float = 0.0,
 	preplanned_sample: Dictionary = {},
-	ballistic_launch_position_override: Variant = null
+	ballistic_launch_position_override: Variant = null,
+	pressure_profile: Dictionary = {}
 ) -> bool:
 	_last_stream_spawn_position = Vector2.ZERO
 	_last_stream_effective_lifetime = 0.0
@@ -2006,7 +2478,8 @@ func _try_spawn_independent_coin(
 			event_sibling_trajectories,
 			ballistic_launch_delay,
 			-1,
-			ballistic_launch_position_override
+			ballistic_launch_position_override,
+			pressure_profile
 		)
 	)
 	var candidate_data: Dictionary = sampled.get("candidate", {})
@@ -2026,6 +2499,10 @@ func _try_spawn_independent_coin(
 		return false
 	var effective_lifetime := float(sampled.get("effective_lifetime", lifetime))
 	var ballistic_plan: Dictionary = sampled.get("ballistic_plan", {})
+	var applied_pressure_profile: Dictionary = sampled.get(
+		"pressure_profile",
+		pressure_profile
+	)
 	_offer_id_cursor += 1
 	var offer_id := _offer_id_cursor
 	var coin := _spawn_offer_coin(
@@ -2043,6 +2520,15 @@ func _try_spawn_independent_coin(
 	coin.set_meta("stream_effective_lifetime", effective_lifetime)
 	coin.set_meta("coin_event_id", event_id)
 	coin.set_meta("coin_event_index", event_coin_index)
+	if coin_pressure_enabled and spawn_kind == "event" and not applied_pressure_profile.is_empty():
+		_record_coin_pressure_spawn(
+			coin,
+			event_id,
+			event_coin_index,
+			candidate_data.position,
+			applied_pressure_profile,
+			ballistic_plan
+		)
 	if not ballistic_plan.is_empty():
 		coin.set_meta("ballistic_archetype", int(ballistic_plan.archetype))
 		coin.set_meta("ballistic_archetype_name", ballistic_archetype_name(int(ballistic_plan.archetype)))
@@ -2164,6 +2650,7 @@ func _try_spawn_independent_coin(
 		"launch_delay": float(ballistic_plan.get("launch_delay", 0.0)),
 		"launch_position": ballistic_plan.get("launch_position", Vector2.ZERO),
 		"landing_position": ballistic_plan.get("landing_position", candidate_data.position),
+		"coin_pressure_profile": applied_pressure_profile.duplicate(true),
 	})
 	offer_spawned.emit(offer_id, SCATTER_TEMPLATE, 1)
 	return true
@@ -2180,7 +2667,8 @@ func _sample_independent_candidate(
 	event_sibling_trajectories: Array[Dictionary] = [],
 	ballistic_launch_delay: float = 0.0,
 	maximum_attempts_override: int = -1,
-	ballistic_launch_position_override: Variant = null
+	ballistic_launch_position_override: Variant = null,
+	pressure_profile: Dictionary = {}
 ) -> Dictionary:
 	var variable_event := variable_coin_events_enabled and spawn_kind == "event"
 	var ballistic_event := (
@@ -2195,8 +2683,18 @@ func _sample_independent_candidate(
 	var anti_streak_requested := (
 		not force_ground and _should_request_centred_ahead_offer()
 	)
+	var pressure_active := (
+		coin_pressure_enabled
+		and ballistic_event
+		and spawn_kind == "event"
+		and not pressure_profile.is_empty()
+	)
 	var side_preferences: Array[int] = []
-	if variable_event and preferred_side in [OfferSide.BEHIND, OfferSide.CENTRED, OfferSide.AHEAD]:
+	if pressure_active:
+		# VM-0.7.3 owns only destination ranking. Legacy player-relative side
+		# preferences remain recorded but do not constrain the selected zone.
+		side_preferences.append(-1)
+	elif variable_event and preferred_side in [OfferSide.BEHIND, OfferSide.CENTRED, OfferSide.AHEAD]:
 		side_preferences.assign(
 			_event_side_fallback_preferences(preferred_side, event_sibling_sides)
 		)
@@ -2243,12 +2741,47 @@ func _sample_independent_candidate(
 			)
 		if bounds.y <= bounds.x:
 			continue
-		for _attempt in range(attempts_per_side):
+		var preferred_pressure_bounds := bounds
+		var preferred_pressure_valid := false
+		if pressure_active:
+			preferred_pressure_bounds = _coin_pressure_restricted_bounds(
+				bounds,
+				pressure_profile,
+				ballistic_archetype,
+				true
+			)
+			preferred_pressure_valid = (
+				preferred_pressure_bounds.y > preferred_pressure_bounds.x
+			)
+			if not preferred_pressure_valid:
+				preferred_pressure_bounds = _coin_pressure_restricted_bounds(
+					bounds,
+					pressure_profile,
+					ballistic_archetype,
+					false
+				)
+				preferred_pressure_valid = (
+					preferred_pressure_bounds.y > preferred_pressure_bounds.x
+				)
+		var preferred_attempt_count := (
+			maxi(ceili(
+				float(attempts_per_side)
+				* clampf(float(pressure_profile.get("preferred_attempt_ratio", 0.67)), 0.0, 1.0)
+			), 1)
+			if pressure_active and preferred_pressure_valid
+			else 0
+		)
+		for attempt_index in range(attempts_per_side):
 			if bounded_optional_planning_enabled and total_attempts >= total_attempt_limit:
 				break
 			total_attempts += 1
+			var sample_bounds := (
+				preferred_pressure_bounds
+				if attempt_index < preferred_attempt_count
+				else bounds
+			)
 			var candidate := _sample_scatter_candidate(
-				bounds,
+				sample_bounds,
 				PlacementBand.GROUND if force_ground or ballistic_event else -1
 			)
 			if ballistic_event:
@@ -2352,6 +2885,12 @@ func _sample_independent_candidate(
 				"candidate": candidate,
 				"effective_lifetime": effective_lifetime,
 				"ballistic_plan": ballistic_plan,
+				"pressure_profile": _coin_pressure_applied_profile(
+					pressure_profile,
+					candidate.position,
+					ballistic_archetype,
+					attempt_index >= preferred_attempt_count
+				) if pressure_active else {},
 				"reason": "",
 				"attempts": total_attempts,
 			}
@@ -4968,6 +5507,7 @@ func _on_collectible_collected(collectible: ConveyorCollectible, offer_id: int) 
 		if collection_time >= 0.0:
 			_ballistic_collection_time_total += collection_time
 			_ballistic_collection_time_samples += 1
+	_record_coin_pressure_resolution(collectible, true)
 	_resolve_coin(collectible, offer_id, true)
 
 
@@ -4977,7 +5517,30 @@ func _on_collectible_expired(collectible: ConveyorCollectible, offer_id: int) ->
 			_ballistic_exited_left_count += 1
 		else:
 			_ballistic_expired_count += 1
+	_record_coin_pressure_resolution(collectible, false)
 	_resolve_coin(collectible, offer_id, false)
+
+
+func _record_coin_pressure_resolution(
+	collectible: ConveyorCollectible,
+	collected: bool
+) -> void:
+	if not collectible.has_meta("coin_pressure_log_index"):
+		return
+	var log_index := int(collectible.get_meta("coin_pressure_log_index"))
+	if log_index < 0 or log_index >= _coin_pressure_log.size():
+		return
+	_coin_pressure_log[log_index].resolved = true
+	_coin_pressure_log[log_index].collected = collected
+	_coin_pressure_log[log_index].resolution_time = _conveyor.survival_time
+	_coin_pressure_log[log_index].collection_x = (
+		collectible.global_position.x if collected else NAN
+	)
+	_coin_pressure_log[log_index].time_to_collection = (
+		_conveyor.survival_time - float(_coin_pressure_log[log_index].spawn_time)
+		if collected
+		else -1.0
+	)
 
 
 func _on_ballistic_landed_can_ricochet(
