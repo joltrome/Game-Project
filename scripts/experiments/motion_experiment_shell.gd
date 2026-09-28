@@ -22,6 +22,7 @@ const VIS04_BASELINE_COIN_COLLISION_SIZE := Vector2(24.0, 24.0)
 @export var clean_tester_presentation: bool = false
 @export var clean_control_hint_duration: float = 4.0
 @export var local_instrumentation_enabled: bool = true
+@export var overload_mode_enabled: bool = false
 
 var conveyor: ConveyorPrototype
 var background_drop_director: MotionBackgroundDropDirector
@@ -130,6 +131,9 @@ func _update_contained_viewport() -> void:
 
 func _build_variant() -> void:
 	conveyor = CONVEYOR_SCENE.instantiate() as ConveyorPrototype
+	conveyor.overload_mode_enabled = overload_mode_enabled
+	var round_controller := conveyor.get_node("RoundController") as FixedRoundController
+	round_controller.fixed_round_enabled = not overload_mode_enabled
 	if vis02_runtime_art_enabled:
 		conveyor.product_falling_collision_size = vis02_falling_collision_size
 	elif vis03_runtime_art_enabled:
@@ -150,6 +154,7 @@ func _build_variant() -> void:
 	if variant_id == "D3":
 		background_drop_director = MotionBackgroundDropDirector.new()
 		background_drop_director.name = "BackgroundDropDirector"
+		background_drop_director.endless_schedule_enabled = overload_mode_enabled
 		conveyor.add_child(background_drop_director)
 	if (
 		v2_runtime_art_enabled

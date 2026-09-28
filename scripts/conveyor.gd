@@ -137,6 +137,16 @@ var sweeper_altitude: float = 518.0
 @export var speed_ramp_end: float = 40.0
 @export var maximum_hazard_speed_multiplier: float = 1.12
 
+@export_category("Overload Bounded Intensity")
+@export var overload_mode_enabled: bool = false
+@export var overload_starting_equivalent_seconds: float = 28.0
+@export var overload_maximum_intensity_time: float = 120.0
+@export var overload_conveyor_multipliers := PackedFloat32Array([1.12, 1.22, 1.30, 1.36, 1.40])
+@export var overload_sweeper_multipliers := PackedFloat32Array([1.07, 1.13, 1.18, 1.22, 1.25])
+@export var overload_hazard_multipliers := PackedFloat32Array([1.06, 1.10, 1.14, 1.17, 1.20])
+@export var overload_pattern_cooldowns := PackedFloat32Array([0.62, 0.52, 0.46, 0.42, 0.40])
+@export var overload_compound_margins := PackedFloat32Array([0.56, 0.52, 0.48, 0.45, 0.42])
+
 var survival_time: float = 0.0
 var is_dead: bool = false
 var is_round_complete: bool = false
@@ -206,6 +216,7 @@ var _reserved_external_suppression_ids: Array[String] = []
 
 func _ready() -> void:
 	_base_conveyor_speed = conveyor_speed
+	configure_overload_mode(overload_mode_enabled)
 	_refresh_sweeper_geometry()
 	_pattern_cooldown_remaining = initial_warning_delay
 	_pending_fall_duration = target_fall_duration_at(0.0)
@@ -276,6 +287,8 @@ func fall_speed_at(time_seconds: float) -> float:
 
 
 func director_phase_at(time_seconds: float) -> int:
+	if overload_mode_enabled:
+		return 3
 	if time_seconds < teaching_phase_end:
 		return 0
 	if time_seconds < conflict_phase_end:
@@ -297,6 +310,8 @@ func pattern_weights_at(time_seconds: float) -> PackedInt32Array:
 
 
 func pattern_cooldown_at(time_seconds: float) -> float:
+	if overload_mode_enabled:
+		return _overload_curve_value(overload_pattern_cooldowns, time_seconds)
 	if time_seconds <= teaching_phase_end:
 		return _interpolate_between(
 			time_seconds,
@@ -331,6 +346,8 @@ func pattern_cooldown_at(time_seconds: float) -> float:
 
 
 func compound_margin_at(time_seconds: float) -> float:
+	if overload_mode_enabled:
+		return _overload_curve_value(overload_compound_margins, time_seconds)
 	if time_seconds <= teaching_phase_end:
 		return early_compound_margin
 	if time_seconds <= conflict_phase_end:
@@ -359,6 +376,8 @@ func compound_margin_at(time_seconds: float) -> float:
 
 
 func hazard_speed_multiplier_at(time_seconds: float) -> float:
+	if overload_mode_enabled:
+		return _overload_curve_value(overload_hazard_multipliers, time_seconds)
 	return _interpolate_between(
 		time_seconds,
 		speed_ramp_start,
@@ -369,6 +388,8 @@ func hazard_speed_multiplier_at(time_seconds: float) -> float:
 
 
 func sweeper_speed_at(time_seconds: float) -> float:
+	if overload_mode_enabled:
+		return sweeper_speed * _overload_curve_value(overload_sweeper_multipliers, time_seconds)
 	return sweeper_speed * _smooth_multiplier_at(
 		time_seconds,
 		sweeper_speed_ramp_duration,
@@ -377,10 +398,14 @@ func sweeper_speed_at(time_seconds: float) -> float:
 
 
 func conveyor_speed_at(time_seconds: float) -> float:
-	var requested := _base_conveyor_speed * _smooth_multiplier_at(
-		time_seconds,
-		conveyor_speed_ramp_duration,
-		conveyor_speed_end_multiplier
+	var requested := (
+		_base_conveyor_speed * _overload_curve_value(overload_conveyor_multipliers, time_seconds)
+		if overload_mode_enabled
+		else _base_conveyor_speed * _smooth_multiplier_at(
+			time_seconds,
+			conveyor_speed_ramp_duration,
+			conveyor_speed_end_multiplier
+		)
 	)
 	var controllable_limit := (
 		player.maximum_speed * maximum_conveyor_player_speed_ratio
@@ -404,6 +429,53 @@ func _smooth_multiplier_at(
 	var progress := clampf(time_seconds / duration, 0.0, 1.0)
 	var smooth_progress := progress * progress * (3.0 - 2.0 * progress)
 	return lerpf(1.0, end_multiplier, smooth_progress)
+
+
+func configure_overload_mode(enabled: bool) -> void:
+	overload_mode_enabled = enabled
+	if not enabled:
+		return
+	# Overload begins after Standard's teaching sequence. Marking the existing
+	# templates as presented avoids replaying tutorials without weakening any
+	# reservation, reachability, spacing or D3 validation.
+	_teaching_can_presented = true
+	_teaching_sweeper_presented = true
+	_sweeper_then_can_presented = true
+	_can_then_sweeper_presented = true
+
+
+func overload_intensity_snapshot(time_seconds: float) -> Dictionary:
+	return {
+		"run_time": maxf(time_seconds, 0.0),
+		"starting_standard_equivalent_seconds": overload_starting_equivalent_seconds,
+		"intensity_progress": clampf(
+			maxf(time_seconds, 0.0) / maxf(overload_maximum_intensity_time, 0.001),
+			0.0,
+			1.0
+		),
+		"conveyor_multiplier": _overload_curve_value(overload_conveyor_multipliers, time_seconds),
+		"sweeper_multiplier": _overload_curve_value(overload_sweeper_multipliers, time_seconds),
+		"hazard_multiplier": _overload_curve_value(overload_hazard_multipliers, time_seconds),
+		"pattern_cooldown": _overload_curve_value(overload_pattern_cooldowns, time_seconds),
+		"compound_margin": _overload_curve_value(overload_compound_margins, time_seconds),
+		"pattern_weights": Array(phase_four_pattern_weights),
+	}
+
+
+func _overload_curve_value(values: PackedFloat32Array, time_seconds: float) -> float:
+	if values.is_empty():
+		return 0.0
+	if values.size() == 1:
+		return values[0]
+	var capped_time := clampf(time_seconds, 0.0, maxf(overload_maximum_intensity_time, 0.0))
+	var segment_duration := maxf(overload_maximum_intensity_time, 0.001) / float(values.size() - 1)
+	var lower_index := mini(floori(capped_time / segment_duration), values.size() - 1)
+	var upper_index := mini(lower_index + 1, values.size() - 1)
+	if lower_index == upper_index:
+		return values[lower_index]
+	var segment_start := float(lower_index) * segment_duration
+	var weight := clampf((capped_time - segment_start) / segment_duration, 0.0, 1.0)
+	return lerpf(values[lower_index], values[upper_index], weight)
 
 
 func target_fall_duration_at(time_seconds: float) -> float:

@@ -30,6 +30,8 @@ enum VisualState {
 @export var maximum_events_per_round: int = 6
 @export var schedule_seed: int = 5002
 @export var retry_delay: float = 0.12
+@export var endless_schedule_enabled: bool = false
+@export var endless_pre_reservation_lead_time: float = 3.50
 
 @export_category("Warning and Fall")
 @export var warning_duration: float = 1.10
@@ -63,6 +65,7 @@ var _suppressed_ordinary_products: int = 0
 var _background_player_collisions: int = 0
 var _summary_recorded: bool = false
 var _latest_candidate_rejection_details: Dictionary = {}
+var _schedule_rng := RandomNumberGenerator.new()
 
 const CREAM := Color("f2e7c9")
 const NAVY := Color("17243a")
@@ -97,14 +100,35 @@ func _process(delta: float) -> void:
 		_replacement_retry_remaining - delta,
 		0.0
 	)
+	# In endless play, reserve the ordinary-product slot before the authored D3
+	# time. Existing cans continue travelling normally; only new ordinary cans
+	# pause. This keeps the safe D3 validator authoritative without deleting
+	# terrain, changing collisions, or allowing the faster Overload stream to
+	# starve every background lane.
+	if (
+		endless_schedule_enabled
+		and state == VisualState.STORED
+		and not reservation_pending
+		and _conveyor.survival_time + 0.0001
+			>= next_reservation_time - maxf(endless_pre_reservation_lead_time, 0.0)
+	):
+		_conveyor.set_external_product_event_pending(true)
 	if (
 		state == VisualState.STORED
 		and not reservation_pending
-		and _events_released < maximum_events_per_round
+		and (endless_schedule_enabled or _events_released < maximum_events_per_round)
 		and _conveyor.survival_time + 0.0001 >= next_reservation_time
 	):
 		reservation_pending = true
 		_active_schedule_index = _events_released
+		# Endless Overload can otherwise fill every background lane with the
+		# faster ordinary-can stream before D3 gets a valid turn. Reserve the
+		# existing product slot as soon as an endless D3 event is due. This lets
+		# already-landed cans travel away, then the normal D3 validator selects a
+		# safe lane and replaces one ordinary can. Standard keeps its frozen
+		# scheduling path because this is gated to the endless schedule.
+		if endless_schedule_enabled:
+			_conveyor.set_external_product_event_pending(true)
 		_record("reservation", {
 			"schedule_index": _active_schedule_index,
 			"scheduled_at": next_reservation_time,
@@ -218,18 +242,17 @@ func candidate_rejection_counts_by_reason() -> Dictionary:
 
 func _build_nominal_schedule() -> void:
 	_nominal_reservation_times.clear()
+	_schedule_rng.seed = schedule_seed
 	var event_count := maxi(maximum_events_per_round, 0)
 	if event_count == 0:
 		next_reservation_time = INF
 		return
-	var rng := RandomNumberGenerator.new()
-	rng.seed = schedule_seed
 	var scheduled_time := maxf(first_reservation_time, 0.0)
 	_nominal_reservation_times.append(scheduled_time)
 	for _index in range(1, event_count):
 		var minimum_interval := maxf(minimum_repeat_interval, 0.0)
 		var maximum_interval := maxf(maximum_repeat_interval, minimum_interval)
-		scheduled_time += rng.randf_range(minimum_interval, maximum_interval)
+		scheduled_time += _schedule_rng.randf_range(minimum_interval, maximum_interval)
 		_nominal_reservation_times.append(scheduled_time)
 	next_reservation_time = _nominal_reservation_times[0]
 
@@ -516,6 +539,18 @@ func _on_external_product_landed(
 			_nominal_reservation_times[_events_released],
 			_last_successful_warning_time + minimum_successful_warning_gap
 		)
+	elif endless_schedule_enabled:
+		var minimum_interval := maxf(minimum_repeat_interval, 0.0)
+		var maximum_interval := maxf(maximum_repeat_interval, minimum_interval)
+		var scheduled_time := (
+			_nominal_reservation_times[-1]
+			+ _schedule_rng.randf_range(minimum_interval, maximum_interval)
+		)
+		_nominal_reservation_times.append(scheduled_time)
+		next_reservation_time = maxf(
+			scheduled_time,
+			_last_successful_warning_time + minimum_successful_warning_gap
+		)
 	else:
 		next_reservation_time = INF
 	_record("reset", {
@@ -570,6 +605,7 @@ func _cancel_unfinishable_reservation() -> void:
 	reservation_pending = false
 	_active_schedule_index = -1
 	next_reservation_time = INF
+	_conveyor.set_external_product_event_pending(false)
 
 
 func _on_external_product_player_hit(

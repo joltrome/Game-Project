@@ -28,6 +28,7 @@ mobile_playability_enabled = true
 mobile_arcade_deck_enabled = true
 coin_pressure_enabled = true
 responsive_mobile_cabinet_enabled = true
+overload_mode_available = true
 
 [node name="Audio" type="Node" parent="."]
 script = ExtResource("2")

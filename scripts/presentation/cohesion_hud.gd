@@ -3,12 +3,14 @@ extends Control
 
 const COIN := preload("res://assets/ui/get_canned_rc2/hud/refund-coin.png")
 const COLORS := [Color("f2e7c9"),Color("f2ba45"),Color("ff8529"),Color("ff4033")]
+const OVERLOAD_RECORD_STORE := preload("res://scripts/presentation/overload_record_store.gd")
 var round_controller: FixedRoundController
 var coins: CollectibleDirector
 var timer_text: C2PixelText
 var score_text: C2PixelText
 var coin_position := Vector2.ZERO
 var _old_timer: Label
+var overload_mode_enabled: bool = false
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
@@ -26,8 +28,13 @@ func _process(_delta: float) -> void:
 	refresh()
 
 func refresh() -> void:
-	timer_text.text="00:%02d" % ceili(round_controller.round_time_remaining)
-	timer_text.color=COLORS[round_controller.countdown_urgency_state()]
+	if overload_mode_enabled:
+		var conveyor := round_controller.get_parent() as ConveyorPrototype
+		timer_text.text = OVERLOAD_RECORD_STORE.format_survival_time(conveyor.survival_time)
+		timer_text.color = COLORS[0]
+	else:
+		timer_text.text="00:%02d" % ceili(round_controller.round_time_remaining)
+		timer_text.color=COLORS[round_controller.countdown_urgency_state()]
 	var width := timer_text.ink_width(timer_text.text,3)
 	timer_text.position=Vector2(576-width/2,12)
 	timer_text.pivot_offset=Vector2(width/2,13.5)

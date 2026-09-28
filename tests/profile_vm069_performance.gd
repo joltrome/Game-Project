@@ -33,6 +33,7 @@ func _run() -> void:
 		{"name": "VM070", "ballistic": true, "abundance": true, "integrity": true, "refund_chute": true, "refund_system": true},
 		{"name": "VM071", "ballistic": true, "abundance": true, "integrity": true, "refund_chute": true, "refund_system": true, "mobile_budget": true},
 		{"name": "VM073", "ballistic": true, "abundance": true, "integrity": true, "refund_chute": true, "refund_system": true, "mobile_budget": true, "coin_pressure": true},
+		{"name": "VM080", "ballistic": true, "abundance": true, "integrity": true, "refund_chute": true, "refund_system": true, "mobile_budget": true, "coin_pressure": true, "overload": true},
 	]:
 		if not _mode_filter.is_empty() and String(mode.name) != _mode_filter:
 			continue
@@ -52,6 +53,9 @@ func _profile_mode(mode: Dictionary, seed: int) -> Dictionary:
 	var conveyor := shell.conveyor
 	var director := conveyor.get_node("CollectibleDirector") as CollectibleDirector
 	var d3 := shell.background_drop_director
+	var overload_enabled := bool(mode.get("overload", false))
+	conveyor.configure_overload_mode(overload_enabled)
+	d3.endless_schedule_enabled = overload_enabled
 	director.ballistic_coin_events_enabled = bool(mode.ballistic)
 	director.ballistic_abundance_enabled = bool(mode.abundance)
 	if _has_property(director, &"ballistic_integrity_enabled"):
@@ -61,7 +65,10 @@ func _profile_mode(mode: Dictionary, seed: int) -> Dictionary:
 	if _has_property(director, &"refund_system_enabled"):
 		director.set("refund_system_enabled", bool(mode.get("refund_system", false)))
 	if _has_property(director, &"static_teaching_coin_enabled"):
-		director.set("static_teaching_coin_enabled", bool(mode.get("refund_system", false)))
+		director.set(
+			"static_teaching_coin_enabled",
+			bool(mode.get("refund_system", false)) and not overload_enabled
+		)
 	if _has_property(director, &"bounded_optional_planning_enabled"):
 		director.set("bounded_optional_planning_enabled", bool(mode.get("mobile_budget", false)))
 	if _has_property(director, &"coin_pressure_enabled"):
@@ -73,9 +80,11 @@ func _profile_mode(mode: Dictionary, seed: int) -> Dictionary:
 		posmod(seed * 1664525 + 1013904223, 0x7fffffff),
 		1
 	)
-	conveyor.initial_warning_delay = 999.0
+	conveyor.initial_warning_delay = 999.0 if not overload_enabled else 0.0
 	conveyor.left_failure_enabled = false
 	conveyor.set_physics_process(false)
+	if overload_enabled:
+		conveyor._pattern_cooldown_remaining = 0.0
 	(conveyor.get_node("RoundController") as FixedRoundController).set_process(false)
 	director.set_process(false)
 	d3.set_process(false)
@@ -94,7 +103,8 @@ func _profile_mode(mode: Dictionary, seed: int) -> Dictionary:
 	var active_hazard_maximum := 0
 	var ricochet_steps := 0
 	var injected_stress := false
-	while conveyor.survival_time < PROFILE_SECONDS - 0.0001:
+	var profile_seconds := 120.0 if overload_enabled else PROFILE_SECONDS
+	while conveyor.survival_time < profile_seconds - 0.0001:
 		if (
 			_stress_enabled
 			and not injected_stress
@@ -104,8 +114,11 @@ func _profile_mode(mode: Dictionary, seed: int) -> Dictionary:
 			injected_stress = true
 		var event_count_before := director.performance_event_log().size()
 		var started_usec := Time.get_ticks_usec()
-		conveyor.survival_time += FIXED_STEP
-		conveyor._update_continuous_speed_ramps()
+		if overload_enabled:
+			conveyor._physics_process(FIXED_STEP)
+		else:
+			conveyor.survival_time += FIXED_STEP
+			conveyor._update_continuous_speed_ramps()
 		if bool(mode.integrity):
 			director.invalidate_landed_can_collision_cache_for_test()
 		var ricocheting_this_step := 0
@@ -119,7 +132,17 @@ func _profile_mode(mode: Dictionary, seed: int) -> Dictionary:
 		for product in conveyor.active_falling_products():
 			product._physics_process(FIXED_STEP)
 		for product in conveyor.active_landed_products():
+			# The profiler advances fixed steps synchronously without yielding to
+			# PhysicsServer2D. Disable transform synchronization only in this test
+			# fixture so the moving support accumulates the same leftward positions
+			# that normal engine-driven physics commits between frames.
+			var support := product.get_node_or_null("LandedBody") as AnimatableBody2D
+			if support != null:
+				support.sync_to_physics = false
 			product._physics_process(FIXED_STEP)
+		for sweeper in conveyor._active_sweepers:
+			if is_instance_valid(sweeper):
+				sweeper._physics_process(FIXED_STEP)
 		var elapsed_ms := float(Time.get_ticks_usec() - started_usec) / 1000.0
 		frame_cpu_ms.append(elapsed_ms)
 		if director.performance_event_log().size() > event_count_before:
@@ -172,6 +195,8 @@ func _profile_mode(mode: Dictionary, seed: int) -> Dictionary:
 	result.d3_warning_times = d3.successful_warning_times()
 	result.d3_longest_gap = d3.longest_successful_warning_gap()
 	result.d3_rejections = d3.candidate_rejection_counts_by_reason()
+	if overload_enabled:
+		result.overload_intensity = conveyor.overload_intensity_snapshot(conveyor.survival_time)
 	if _has_method(director, &"ballistic_integrity_summary"):
 		result.integrity = director.call("ballistic_integrity_summary")
 	shell.queue_free()

@@ -6,9 +6,9 @@ const { chromium } = require("playwright");
 const sharp = require("sharp");
 
 async function main() {
-  const [url, outputPath, widthText = "844", heightText = "390"] = process.argv.slice(2);
+  const [url, outputPath, widthText = "844", heightText = "390", startMode = "standard"] = process.argv.slice(2);
   if (!url || !outputPath) {
-    throw new Error("usage: capture_mobile_web.cjs URL OUTPUT_PNG [WIDTH HEIGHT]");
+    throw new Error("usage: capture_mobile_web.cjs URL OUTPUT_PNG [WIDTH HEIGHT [standard|overload|menu]]");
   }
 
   const width = Number(widthText);
@@ -32,7 +32,14 @@ async function main() {
   await page.goto(url, { waitUntil: "networkidle" });
   await page.locator("canvas").waitFor({ state: "visible" });
   await page.locator("canvas").click({ position: { x: width / 2, y: height / 2 } });
-  await page.keyboard.press("Enter");
+  if (startMode === "overload") {
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Enter");
+  } else if (startMode === "standard") {
+    await page.keyboard.press("Enter");
+  } else if (startMode !== "menu") {
+    throw new Error(`unsupported start mode: ${startMode}`);
+  }
   await page.waitForTimeout(1800);
 
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
@@ -64,6 +71,7 @@ async function main() {
   const pixelCount = data.length / info.channels;
   const stats = {
     viewport: { width, height },
+    start_mode: startMode,
     crop,
     quantized_color_bins: bins.size,
     non_near_black_ratio: nonNearBlack / pixelCount,

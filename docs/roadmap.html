@@ -1929,6 +1929,30 @@
     text: '16:9 and 18:9 retain the bottom deck; 19.5:9 and 20:9 use side wings. The wide layouts provide approximately 15.23 and 26.58 percent more monitor area than their bottom alternatives. Real StandardRun and ViewportFrame geometry, fixed 1152×648 internal surfaces and actual exported Web pixels passed at all four sizes with no browser console/page errors. The five-seed profile recorded 0.049 ms maximum p95, 0.108 ms maximum p99, 12.827 ms worst step, 12.796 ms maximum planning and zero steps above 16.67 ms. All 49 tests and four headless scene launches passed. This establishes technical readiness for physical review, not phone acceptance. See docs/vm074-responsive-mobile-cabinet.md.'
   };
 
+  const vm080OverloadEvidence = {
+    id: 'evidence-vm-0.8.0-overload-demand',
+    type: 'Evidence', date: '2026-09-28', source: 'Repeated human feedback summarized by Startup Lab',
+    text: 'Players have repeatedly asked why the game stops at 60 seconds; experienced players can see essentially all current content after approximately 15–30 minutes, and some report that Standard is too easy or simple. This is qualitative and unquantified feedback, not controlled retention evidence and not evidence that Standard should become harder.'
+  };
+
+  const vm080OverloadDecision = {
+    id: 'decision-vm-0.8.0-overload-separate-mode',
+    type: 'Decision', date: '2026-09-28', source: 'Startup Lab VM-0.8.0 brief',
+    text: 'Keep the accepted 60-second Standard mode frozen and add Overload as a separate endless mastery experiment using only existing hazards and Refund Coins. Track best survival and best Refunds independently. Postpone a second chute, leaderboards, cosmetics/characters, progression, monetization, additional modes and broader presentation polish.'
+  };
+
+  const vm080OverloadHypothesis = {
+    id: 'hypothesis-vm-0.8.0-overload-retention',
+    type: 'Hypothesis', date: '2026-09-28', source: 'Startup Lab VM-0.8.0 brief',
+    text: 'An endless escalating survival mode built from the existing systems may give experienced players a mastery and replay loop without making Standard hostile to newcomers. The relevant human signal is voluntary retry and self/peer competition, which remains unverified.'
+  };
+
+  const vm080OverloadResult = {
+    id: 'result-vm-0.8.0-overload-implementation',
+    type: 'Result', date: '2026-09-28', source: 'VM-0.8.0 deterministic, performance and browser validation',
+    text: 'VM-0.8.0 adds Standard/Overload menu selection, an endless elapsed-time HUD, separate local time/Refund records, fast same-mode Retry, local end-of-run telemetry, an approximately Standard-28-second opening and bounded 0/30/60/90/120-second intensity curves. D3 extends deterministically beyond six events and pre-reserves the existing product slot only in endless mode. Three 120-second stress seeds delivered 80–82 coins and 14 D3 warnings; the worst measured step was 13.081 ms, maximum planning was 13.042 ms, maximum p95/p99 were 0.069/0.224 ms, and no step exceeded 16.67 ms. The full 50-script suite, four headless scenes and exported Web selection passed. Human replay, competition, fairness and late-run readability remain unverified. See docs/vm080-overload.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -2114,7 +2138,11 @@
     vm074ResponsiveCabinetEvidence,
     vm074ResponsiveCabinetDecision,
     vm074ResponsiveCabinetHypothesis,
-    vm074ResponsiveCabinetResult
+    vm074ResponsiveCabinetResult,
+    vm080OverloadEvidence,
+    vm080OverloadDecision,
+    vm080OverloadHypothesis,
+    vm080OverloadResult
   ];
 
   const defaultFindings = [
@@ -2126,7 +2154,7 @@
   ];
 
   const defaultState = {
-    version: 52,
+    version: 53,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

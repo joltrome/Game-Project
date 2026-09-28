@@ -1,3 +1,22 @@
+# VM-0.8.0 Overload mode
+
+VM-0.8.0 keeps the complete 60-second Standard game and adds a separate endless
+mastery experiment. From the existing GET CANNED! menu, **CLOCK IN** starts
+Standard and **OVERLOAD** starts an endless run at approximately Standard's
+28-second intensity. Overload uses bounded 0/30/60/90/120-second curves, the
+existing hazards and VM-0.7.3 Refund Coin system, independent best survival and
+Refund records, and the VM-0.7.4 responsive mobile cabinet.
+
+Run the project normally and choose either mode from the menu. Export preset
+`Web GET CANNED VM-0.8.0 Overload` writes to
+`builds/VM-0.8.0-OVERLOAD/index.html`. See
+[`docs/vm080-overload.md`](docs/vm080-overload.md) for the exact escalation
+table, safety ceilings, telemetry, performance evidence, browser captures and
+the experienced-player validation protocol. Overload's replay/competition
+hypothesis remains unverified until human playtesting.
+
+---
+
 # VM-0.7.4 responsive mobile cabinet
 
 VM-0.7.4 keeps the complete VM-0.7.3 Standard game and its fixed 1152×648

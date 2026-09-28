@@ -88,6 +88,55 @@ func add_button(key: String, label: String, rect: Rect2, callback: Callable, pad
 	return button
 
 
+func add_text_button(key: String, label: String, rect: Rect2, callback: Callable) -> Button:
+	var button := Button.new()
+	button.text = label
+	button.name = key.replace("-", "_")
+	button.position = rect.position
+	button.size = rect.size
+	button.focus_mode = Control.FOCUS_ALL
+	for style in ["normal", "hover", "pressed", "focus", "disabled", "hover_pressed"]:
+		button.add_theme_stylebox_override(style, StyleBoxEmpty.new())
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		button.add_theme_color_override(state, Color.TRANSPARENT)
+	add_child(button)
+	var plate := ColorRect.new()
+	plate.name = "Plate"
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.position = Vector2.ZERO
+	plate.size = rect.size
+	plate.color = Color("172b3d")
+	button.add_child(plate)
+	var caption := C2PixelText.new()
+	caption.name = "Caption"
+	caption.family = "small"
+	caption.text = label
+	caption.glyph_scale = 3
+	caption.color = Color("f2e7c9")
+	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# The approved label is fixed and short. Avoid consulting glyph metrics while
+	# this button is still being assembled inside the parent's ready callback.
+	caption.position = Vector2(74.0, floorf((rect.size.y - 27.0) * 0.5))
+	button.add_child(caption)
+	var refresh := func() -> void:
+		var active := button.is_pressed() or button.has_focus() or button.is_hovered()
+		plate.color = Color("b93743") if active else Color("172b3d")
+		caption.color = Color("f2ba45") if active else Color("f2e7c9")
+	for event in [
+		button.mouse_entered,
+		button.mouse_exited,
+		button.focus_entered,
+		button.focus_exited,
+		button.button_down,
+		button.button_up,
+	]:
+		event.connect(refresh)
+	button.pressed.connect(callback)
+	buttons.append(button)
+	refresh.call()
+	return button
+
+
 func refresh_button(button: Button) -> void:
 	var state := "pressed" if button.is_pressed() else "focus" if button.has_focus() or button.is_hovered() else "idle"
 	(button.get_node("Artwork") as TextureRect).texture = load(str(button.get_meta(&"art_root", ART)) + "buttons/%s/%s.png" % [button.get_meta(&"art_key"), state])
