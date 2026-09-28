@@ -3,6 +3,8 @@ extends Control
 
 signal pause_requested
 
+enum CabinetLayout { BOTTOM_DECK, SIDE_WINGS }
+
 const DESIGN_SIZE := Vector2(1152.0, 648.0)
 const ACTIONS: Array[StringName] = [&"move_left", &"move_right", &"jump"]
 const IDLE := 0
@@ -42,6 +44,9 @@ const CREAM := Color("f2e7c9")
 @export var action_hit_size_css := Vector2(96.0, 96.0)
 @export var movement_visual_size_css := Vector2(64.0, 64.0)
 @export var action_visual_size_css := Vector2(80.0, 80.0)
+@export var responsive_side_wings_enabled: bool = false
+@export var minimum_wing_monitor_height_css: float = 240.0
+@export var minimum_wing_area_gain_ratio: float = 1.15
 @export_range(1.0, 4.0, 0.1) var maximum_effective_dpr: float = 3.0
 @export var debug_overlay_enabled: bool = false
 
@@ -54,11 +59,14 @@ var visual_rectangles: Array[Rect2] = []
 var gameplay_bounds := Rect2(Vector2.ZERO, DESIGN_SIZE)
 var deck_surface_rect := Rect2()
 var deck_control_rect := Rect2()
+var left_wing_rect := Rect2()
+var right_wing_rect := Rect2()
 var pause_hit_rect := Rect2(Vector2(8.0, 8.0), Vector2(48.0, 48.0))
 var safe_host_rect := Rect2(Vector2.ZERO, DESIGN_SIZE)
 var effective_dpr: float = 1.0
 var logical_per_css: float = 1.0
 var is_landscape: bool = true
+var cabinet_layout: CabinetLayout = CabinetLayout.BOTTOM_DECK
 var _css_viewport_size := DESIGN_SIZE
 var _host_per_css := Vector2.ONE
 var _art: Array[TextureRect] = []
@@ -193,6 +201,8 @@ func configure_viewport(
 		gameplay_bounds = legacy_game_rect
 		deck_surface_rect = Rect2()
 		deck_control_rect = Rect2()
+		left_wing_rect = Rect2()
+		right_wing_rect = Rect2()
 		pause_hit_rect = Rect2(
 			Vector2(maxf(host_size.x - 56.0, 8.0), 8.0),
 			Vector2(48.0, 48.0)
@@ -214,19 +224,40 @@ func configure_viewport(
 	)
 	var safe_right := safe_css.end.x
 	var safe_bottom := safe_css.end.y
-	var monitor_height := minf(
+	var deck_monitor_height := minf(
 		safe_css.size.y - deck_height_css - 8.0,
 		safe_css.size.x * 9.0 / 16.0
 	)
-	monitor_height = maxf(monitor_height, 1.0)
-	var monitor_size := Vector2(monitor_height * 16.0 / 9.0, monitor_height)
-	var monitor_css := Rect2(
+	deck_monitor_height = maxf(deck_monitor_height, 1.0)
+	var deck_monitor_size := Vector2(deck_monitor_height * 16.0 / 9.0, deck_monitor_height)
+	var deck_monitor_css := Rect2(
 		Vector2(
-			safe_css.position.x + (safe_css.size.x - monitor_size.x) * 0.5,
+			safe_css.position.x + (safe_css.size.x - deck_monitor_size.x) * 0.5,
 			safe_css.position.y
 		),
-		monitor_size
+		deck_monitor_size
 	)
+	var wing_monitor_width := maxf(minf(
+		safe_css.size.x - 296.0,
+		safe_css.size.y * 16.0 / 9.0
+	), 1.0)
+	var wing_monitor_size := Vector2(wing_monitor_width, wing_monitor_width * 9.0 / 16.0)
+	var wing_monitor_css := Rect2(
+		Vector2(
+			safe_css.position.x + 176.0 + (safe_css.size.x - 296.0 - wing_monitor_width) * 0.5,
+			safe_css.position.y + (safe_css.size.y - wing_monitor_size.y) * 0.5
+		),
+		wing_monitor_size
+	)
+	var deck_area := deck_monitor_size.x * deck_monitor_size.y
+	var wing_area := wing_monitor_size.x * wing_monitor_size.y
+	var use_wings := (
+		responsive_side_wings_enabled
+		and wing_monitor_size.y >= minimum_wing_monitor_height_css
+		and wing_area >= deck_area * minimum_wing_area_gain_ratio
+	)
+	cabinet_layout = CabinetLayout.SIDE_WINGS if use_wings else CabinetLayout.BOTTOM_DECK
+	var monitor_css := wing_monitor_css if use_wings else deck_monitor_css
 	var deck_css := Rect2(
 		Vector2(8.0, safe_bottom - deck_height_css),
 		Vector2(maxf(_css_viewport_size.x - 16.0, 1.0), deck_height_css)
@@ -235,7 +266,7 @@ func configure_viewport(
 		Vector2(safe_css.position.x, safe_bottom - deck_height_css),
 		Vector2(safe_css.size.x, deck_height_css)
 	)
-	var hit_css: Array[Rect2] = [
+	var deck_hit_css: Array[Rect2] = [
 		Rect2(
 			Vector2(safe_css.position.x + 8.0, safe_bottom - 92.0),
 			movement_hit_size_css
@@ -249,20 +280,36 @@ func configure_viewport(
 			action_hit_size_css
 		),
 	]
+	var wing_hit_css: Array[Rect2] = [
+		Rect2(Vector2(safe_css.position.x + 8.0, safe_bottom - 104.0), movement_hit_size_css),
+		Rect2(Vector2(safe_css.position.x + 88.0, safe_bottom - 104.0), movement_hit_size_css),
+		Rect2(Vector2(safe_right - 104.0, safe_bottom - 108.0), action_hit_size_css),
+	]
+	var hit_css := wing_hit_css if use_wings else deck_hit_css
 	var visual_css: Array[Rect2] = [
 		Rect2(hit_css[0].position + Vector2(4.0, 12.0), movement_visual_size_css),
 		Rect2(hit_css[1].position + Vector2(4.0, 12.0), movement_visual_size_css),
 		Rect2(hit_css[2].position + Vector2(8.0, 8.0), action_visual_size_css),
 	]
 	var pause_css := Rect2(
-		Vector2(monitor_css.end.x + 12.0, safe_css.position.y + 4.0),
+		Vector2(
+			safe_right - 80.0 if use_wings else monitor_css.end.x + 12.0,
+			safe_css.position.y + (12.0 if use_wings else 4.0)
+		),
 		Vector2(48.0, 48.0)
+	)
+	var left_wing_css := Rect2(safe_css.position, Vector2(168.0, safe_css.size.y))
+	var right_wing_css := Rect2(
+		Vector2(safe_right - 112.0, safe_css.position.y),
+		Vector2(112.0, safe_css.size.y)
 	)
 
 	safe_host_rect = _css_to_host(safe_css)
 	gameplay_bounds = _css_to_host(monitor_css)
-	deck_surface_rect = _css_to_host(deck_css)
-	deck_control_rect = _css_to_host(control_deck_css)
+	deck_surface_rect = _css_to_host(deck_css) if not use_wings else Rect2()
+	deck_control_rect = _css_to_host(control_deck_css) if not use_wings else Rect2()
+	left_wing_rect = _css_to_host(left_wing_css) if use_wings else Rect2()
+	right_wing_rect = _css_to_host(right_wing_css) if use_wings else Rect2()
 	pause_hit_rect = _css_to_host(pause_css)
 	rectangles.clear()
 	visual_rectangles.clear()
@@ -286,6 +333,10 @@ func arcade_layout_active() -> bool:
 
 func arcade_layout_supported() -> bool:
 	return touch_available and is_landscape
+
+
+func cabinet_layout_name() -> String:
+	return "SIDE_WINGS" if cabinet_layout == CabinetLayout.SIDE_WINGS else "BOTTOM_DECK"
 
 
 func release_all() -> void:
@@ -352,16 +403,24 @@ func _draw() -> void:
 		return
 	# Deck and bezel are host-space presentation only. The monitor content itself
 	# remains the unchanged 16:9 Standard scene rendered inside gameplay_bounds.
-	draw_rect(deck_surface_rect, DECK)
-	var seam_height := maxf(2.0 * _host_per_css.y, 1.0)
-	draw_rect(Rect2(deck_surface_rect.position, Vector2(deck_surface_rect.size.x, seam_height)), SEAM)
+	if cabinet_layout == CabinetLayout.SIDE_WINGS:
+		draw_rect(left_wing_rect, DECK)
+		draw_rect(right_wing_rect, DECK)
+	else:
+		draw_rect(deck_surface_rect, DECK)
+		var seam_height := maxf(2.0 * _host_per_css.y, 1.0)
+		draw_rect(Rect2(deck_surface_rect.position, Vector2(deck_surface_rect.size.x, seam_height)), SEAM)
 	var outer := gameplay_bounds.grow(3.0 * logical_per_css)
 	var inner := gameplay_bounds.grow(2.0 * logical_per_css)
 	draw_rect(outer, CAP, false, maxf(logical_per_css, 1.0))
 	draw_rect(inner, INK, false, maxf(2.0 * logical_per_css, 1.0))
 	if debug_overlay_enabled:
 		draw_rect(gameplay_bounds, Color(0.20, 0.85, 0.92, 0.85), false, 2.0)
-		draw_rect(deck_surface_rect, Color(0.95, 0.73, 0.27, 0.85), false, 2.0)
+		if cabinet_layout == CabinetLayout.SIDE_WINGS:
+			draw_rect(left_wing_rect, Color(0.95, 0.73, 0.27, 0.85), false, 2.0)
+			draw_rect(right_wing_rect, Color(0.95, 0.73, 0.27, 0.85), false, 2.0)
+		else:
+			draw_rect(deck_surface_rect, Color(0.95, 0.73, 0.27, 0.85), false, 2.0)
 		for rect in rectangles:
 			draw_rect(rect, Color(0.20, 0.85, 0.92, 0.12))
 			draw_rect(rect, Color(0.20, 0.85, 0.92, 0.90), false, 1.0)

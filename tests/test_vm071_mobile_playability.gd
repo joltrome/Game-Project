@@ -59,7 +59,7 @@ func _test_release_and_touch_layouts() -> void:
 	await process_frame
 	var director := session.game.conveyor.get_node("CollectibleDirector") as CollectibleDirector
 	check(
-		session.game.build_id_override == "VM-0.7.3-COIN-PRESSURE"
+		session.game.build_id_override == "VM-0.7.4-RESPONSIVE-MOBILE-CABINET"
 		and director.bounded_optional_planning_enabled
 		and director.performance_profiling_enabled
 		and director.coin_pressure_enabled,

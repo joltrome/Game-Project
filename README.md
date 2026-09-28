@@ -1,3 +1,22 @@
+# VM-0.7.4 responsive mobile cabinet
+
+VM-0.7.4 keeps the complete VM-0.7.3 Standard game and its fixed 1152×648
+render surface. Touch landscape now selects the accepted bottom deck on 16:9
+and 18:9 hosts, then switches to side control wings when the wing layout both
+fits a 240 CSS px-high monitor and provides at least 15% more monitor area.
+Desktop and portrait behavior are unchanged.
+
+Review the real game with
+`res://scenes/tests/mobile_standard_monitor_review.tscn`; keys `1`–`4` select
+16:9, 18:9, 19.5:9 and 20:9. Export preset
+`Web GET CANNED VM-0.7.4 Responsive Mobile Cabinet` writes to
+`builds/VM-0.7.4-RESPONSIVE-MOBILE-CABINET/index.html`. See
+[`docs/vm074-responsive-mobile-cabinet.md`](docs/vm074-responsive-mobile-cabinet.md)
+for exact geometry, render-surface proof, browser screenshots, performance and
+the remaining physical-device validation boundary.
+
+---
+
 # VM-0.7.3 Coin Pressure experiment
 
 VM-0.7.3 is an isolated anti-camping A/B candidate built on the VM-0.7.2.1

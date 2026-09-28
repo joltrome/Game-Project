@@ -25,6 +25,7 @@ const FRAME_PACING := preload("res://scripts/presentation/frame_pacing_telemetry
 @export var mobile_playability_enabled: bool = false
 @export var mobile_arcade_deck_enabled: bool = false
 @export var coin_pressure_enabled: bool = false
+@export var responsive_mobile_cabinet_enabled: bool = false
 
 var state: State = State.MENU
 var game: MotionExperimentShell
@@ -170,7 +171,9 @@ func start_game() -> void:
 	game.clean_tester_presentation = true
 	game.clean_control_hint_duration = 0.0
 	game.local_instrumentation_enabled = false
-	if coin_pressure_enabled:
+	if responsive_mobile_cabinet_enabled:
+		game.build_id_override = "VM-0.7.4-RESPONSIVE-MOBILE-CABINET"
+	elif coin_pressure_enabled:
 		game.build_id_override = "VM-0.7.3-COIN-PRESSURE"
 	elif mobile_arcade_deck_enabled:
 		game.build_id_override = "VM-0.7.2.1-MOBILE-MONITOR-HOTFIX"
@@ -412,8 +415,9 @@ func _apply_hud_style() -> void:
 func _layout() -> void:
 	var fitted := MotionExperimentShell.contained_rect(size, DESIGN_SIZE)
 	if touch != null:
-		var layout_reference := StandardTouchControls.layout_reference_size(size)
-		touch.configure_viewport(size, fitted, layout_reference, 1.0)
+		touch.responsive_side_wings_enabled = responsive_mobile_cabinet_enabled
+		var layout_reference := _mobile_layout_reference_size()
+		touch.configure_viewport(size, fitted, layout_reference, _mobile_device_pixel_ratio())
 
 	var use_mobile_monitor := (
 		mobile_arcade_deck_enabled
@@ -438,6 +442,29 @@ func _layout() -> void:
 		else:
 			game.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 			game.reflow_display()
+
+
+func _mobile_layout_reference_size() -> Vector2:
+	# Godot keeps the game at its fixed 1152x648 internal resolution on Web.
+	# Cabinet geometry, however, must follow the actual browser viewport so
+	# ultrawide phones can use their side space without changing game pixels.
+	if OS.has_feature("web"):
+		var json: Variant = JavaScriptBridge.eval(
+			"JSON.stringify([window.innerWidth, window.innerHeight])",
+			true
+		)
+		var parsed: Variant = JSON.parse_string(String(json))
+		if parsed is Array and parsed.size() >= 2:
+			var css_size := Vector2(float(parsed[0]), float(parsed[1]))
+			if css_size.x > 1.0 and css_size.y > 1.0:
+				return css_size
+	return StandardTouchControls.layout_reference_size(size)
+
+
+func _mobile_device_pixel_ratio() -> float:
+	if OS.has_feature("web"):
+		return maxf(float(JavaScriptBridge.eval("window.devicePixelRatio || 1", true)), 1.0)
+	return 1.0
 
 
 func _clear_ui() -> void:

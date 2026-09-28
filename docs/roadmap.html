@@ -1905,6 +1905,30 @@
     text: 'VM-0.7.3 adds four safe destination zones derived separately from each ballistic arc\'s reachable landing interval, a 75 percent committed single-event preference, bounded two-zone repetition penalties, an 85 percent preferred-attempt share and safe full-envelope fallback. A fixed-campsite comparison increased median displacement across delivered event coins from 48 px to 72 px while retaining approximately the same event volume. Five natural seeds produced 66 pressure singles across zones 28/8/14/16, 89.45 px weighted mean displacement, 38/66 complete doubles and 1/18 complete triples; maximum planning was 8.985 ms, maximum p95/p99 were 0.048/0.104 ms, and no simulated step exceeded 16.67 ms. All six D3 warnings remained present. Automated distribution does not prove that a human dominant strategy is removed. See docs/vm073-coin-pressure.md.'
   };
 
+  const vm074ResponsiveCabinetEvidence = {
+    id: 'evidence-vm-0.7.4-responsive-mobile-cabinet',
+    type: 'Evidence', date: '2026-09-28', source: 'Founder physical-phone review plus approved mobile-control studies',
+    text: 'VM-0.7.2.1 restored the real mobile render, but founder testing found the monitor too small when the bottom deck always consumed vertical space. The approved prior study measured materially larger contained 16:9 monitors when wide-phone horizontal space holds side control wings.'
+  };
+
+  const vm074ResponsiveCabinetDecision = {
+    id: 'decision-vm-0.7.4-responsive-mobile-cabinet',
+    type: 'Decision', date: '2026-09-28', source: 'Startup Lab VM-0.7.4 brief and approved geometry',
+    text: 'Preserve the accepted bottom deck near 16:9. Select side wings only when the measured wing candidate retains at least 240 CSS px of monitor height and at least 1.15 times the bottom candidate area. Keep the 1152×648 game, desktop presentation, portrait guidance and all VM-0.7.3 gameplay frozen.'
+  };
+
+  const vm074ResponsiveCabinetHypothesis = {
+    id: 'hypothesis-vm-0.7.4-responsive-mobile-cabinet',
+    type: 'Hypothesis', date: '2026-09-28', source: 'Startup Lab VM-0.7.4 brief',
+    text: 'Using otherwise-unused horizontal space for control wings may make the technician and active threats materially easier to read on wide phones without reducing touch comfort. Physical-device readability and comfort remain unverified.'
+  };
+
+  const vm074ResponsiveCabinetResult = {
+    id: 'result-vm-0.7.4-responsive-mobile-cabinet',
+    type: 'Result', date: '2026-09-28', source: 'VM-0.7.4 deterministic, browser-pixel and performance validation',
+    text: '16:9 and 18:9 retain the bottom deck; 19.5:9 and 20:9 use side wings. The wide layouts provide approximately 15.23 and 26.58 percent more monitor area than their bottom alternatives. Real StandardRun and ViewportFrame geometry, fixed 1152×648 internal surfaces and actual exported Web pixels passed at all four sizes with no browser console/page errors. The five-seed profile recorded 0.049 ms maximum p95, 0.108 ms maximum p99, 12.827 ms worst step, 12.796 ms maximum planning and zero steps above 16.67 ms. All 49 tests and four headless scene launches passed. This establishes technical readiness for physical review, not phone acceptance. See docs/vm074-responsive-mobile-cabinet.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -2086,7 +2110,11 @@
     vm073ChuteCampingEvidence,
     vm073CoinPressureDecision,
     vm073CoinPressureHypothesis,
-    vm073CoinPressureResult
+    vm073CoinPressureResult,
+    vm074ResponsiveCabinetEvidence,
+    vm074ResponsiveCabinetDecision,
+    vm074ResponsiveCabinetHypothesis,
+    vm074ResponsiveCabinetResult
   ];
 
   const defaultFindings = [
@@ -2098,7 +2126,7 @@
   ];
 
   const defaultState = {
-    version: 51,
+    version: 52,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

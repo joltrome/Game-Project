@@ -244,8 +244,8 @@ func _test_session_monitor_and_desktop_behavior() -> void:
 	)
 	session._layout()
 	check(
-		session.game.build_id_override == "VM-0.7.3-COIN-PRESSURE",
-		"Forward release build ID identifies the VM-0.7.3 experiment"
+		session.game.build_id_override == "VM-0.7.4-RESPONSIVE-MOBILE-CABINET",
+		"Forward release build ID identifies the VM-0.7.4 responsive cabinet"
 	)
 	check(
 		session.game.position.distance_to(session.touch.gameplay_bounds.position) <= EPSILON
