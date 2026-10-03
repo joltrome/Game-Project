@@ -14,6 +14,11 @@ const CUSTOM_PLUS_ADVANCE := {
 	"small": 4,
 }
 
+const CUSTOM_COMMA_ADVANCE := {
+	"display": 4,
+	"small": 3,
+}
+
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
@@ -34,7 +39,7 @@ func ink_width(value: String, at_scale: int) -> float:
 
 func supports_text(value: String) -> bool:
 	for character in value:
-		if character != "+" and not _glyphs.has(character):
+		if character not in ["+", ","] and not _glyphs.has(character):
 			return false
 	return true
 
@@ -44,6 +49,10 @@ func _draw() -> void:
 	for character in text:
 		if character == "+":
 			_draw_plus(x)
+			x += float(_glyph_advance(character)) * glyph_scale
+			continue
+		if character == ",":
+			_draw_comma(x)
 			x += float(_glyph_advance(character)) * glyph_scale
 			continue
 		var glyph: Dictionary = _glyphs[character]
@@ -56,6 +65,8 @@ func _draw() -> void:
 func _glyph_advance(character: String) -> int:
 	if character == "+":
 		return int(CUSTOM_PLUS_ADVANCE.get(family, CUSTOM_PLUS_ADVANCE.display))
+	if character == ",":
+		return int(CUSTOM_COMMA_ADVANCE.get(family, CUSTOM_COMMA_ADVANCE.display))
 	return int(_glyphs[character].xadvance)
 
 
@@ -70,3 +81,10 @@ func _draw_plus(x: float) -> void:
 		return
 	draw_rect(Rect2(x + 2.0 * scale_value, scale_value, scale_value, 7.0 * scale_value), color)
 	draw_rect(Rect2(x, 4.0 * scale_value, 5.0 * scale_value, scale_value), color)
+
+
+func _draw_comma(x: float) -> void:
+	var scale_value := float(glyph_scale)
+	var y := 6.0 if family == "small" else 8.0
+	draw_rect(Rect2(x + scale_value, y * scale_value, 2.0 * scale_value, 2.0 * scale_value), color)
+	draw_rect(Rect2(x, (y + 2.0) * scale_value, scale_value, scale_value), color)

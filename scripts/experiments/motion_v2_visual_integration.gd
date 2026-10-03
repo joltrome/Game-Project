@@ -15,6 +15,7 @@ const ASSET_ROOT := "res://assets/vm050_d3_v2/"
 const VIS02_ASSET_ROOT := "res://assets/vm050_d3_vis02/"
 const VIS03_ASSET_ROOT := "res://assets/vm050_d3_vis03/"
 const VIS04_ASSET_ROOT := "res://assets/vm050_vis04/"
+const VM081_ELECTRICAL_ROOT := "res://assets/visuals/vm081_overload/electrical/"
 const TECHNICIAN_TEXTURE := preload(
 	ASSET_ROOT + "VM050_D3_V2_technician_runtime_sheet.png"
 )
@@ -117,6 +118,7 @@ var vis04_coin_collision_size := Vector2(24.0, 24.0)
 var vis04_configuration_id: String = ""
 var c2_live_typography_enabled: bool = false
 var refund_chute_enabled: bool = false
+var vm081_electrical_enabled: bool = false
 
 var _technician_anchor: Node2D
 var _technician_sprite: AnimatedSprite2D
@@ -130,6 +132,7 @@ var _belt_sprites: Array[AnimatedSprite2D] = []
 var _falling_frames: Array[SpriteFrames] = []
 var _landed_frames: Array[SpriteFrames] = []
 var _carriage_frames: SpriteFrames
+var _electrical_frames: SpriteFrames
 var _coin_frames: SpriteFrames
 var _rack_frames: SpriteFrames
 var _rack_variant_frames: Array[SpriteFrames] = []
@@ -153,6 +156,8 @@ func _ready() -> void:
 		set_process(false)
 		return
 	_build_frame_resources()
+	if vm081_electrical_enabled:
+		_install_electrical_source_housing()
 	_install_technician()
 	_install_conveyor_tiles()
 	_install_warning_visuals()
@@ -410,6 +415,13 @@ func _build_frame_resources() -> void:
 		_animation(&"active_sweep", 3, 6, 1.0 / 0.07, true),
 		_animation(&"return", 7, 8, 1.0 / 0.12, false),
 	])
+	if vm081_electrical_enabled:
+		_electrical_frames = _make_external_frames({
+			&"charge": ["charge-0.png", "charge-1.png", "charge-2.png"],
+			&"standard": ["arc-standard-0.png", "arc-standard-1.png", "arc-standard-2.png", "arc-standard-3.png"],
+			&"late": ["arc-late-0.png", "arc-late-1.png", "arc-late-2.png", "arc-late-3.png"],
+			&"live_exit": ["arc-live-exit-0.png", "arc-live-exit-1.png", "arc-live-exit-2.png", "arc-live-exit-3.png"],
+		})
 	var coin_texture := VIS04_C1_COIN_TEXTURE if vis04_enabled else COIN_TEXTURE
 	var coin_frame_size := (
 		VIS04_C1_COIN_FRAME_SIZE if vis04_enabled else COIN_FRAME_SIZE
@@ -551,6 +563,31 @@ func _new_sprite(frames: SpriteFrames, runtime_scale: float = 1.0) -> AnimatedSp
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite.centered = true
 	return sprite
+
+
+func _make_external_frames(animation_files: Dictionary) -> SpriteFrames:
+	var frames := SpriteFrames.new()
+	frames.remove_animation(&"default")
+	for animation_name: StringName in animation_files:
+		frames.add_animation(animation_name)
+		frames.set_animation_speed(animation_name, 1.0)
+		frames.set_animation_loop(animation_name, animation_name != &"charge")
+		var files: Array = animation_files[animation_name]
+		for index in files.size():
+			var duration := 0.06 if animation_name == &"charge" and index == 2 else 0.07
+			frames.add_frame(animation_name, load(VM081_ELECTRICAL_ROOT + str(files[index])), duration)
+	return frames
+
+
+func _install_electrical_source_housing() -> void:
+	var housing := Sprite2D.new()
+	housing.name = "VM081ElectricalSourceHousing"
+	housing.texture = load(VM081_ELECTRICAL_ROOT + "source-housing.png")
+	housing.centered = false
+	housing.position = Vector2(64,484)
+	housing.z_index = 39
+	housing.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	conveyor.add_child(housing)
 
 
 func _make_vis04_technician_frames() -> SpriteFrames:
@@ -917,10 +954,10 @@ func _ensure_carriage_visual(sweeper: AirSweeper) -> void:
 	(sweeper.get_node("Arm") as CanvasItem).visible = false
 	(sweeper.get_node("Housing") as CanvasItem).visible = false
 	(sweeper.get_node("Label") as CanvasItem).visible = false
-	var sprite := _new_sprite(_carriage_frames, 2.0)
+	var sprite := _new_sprite(_electrical_frames if vm081_electrical_enabled else _carriage_frames, 1.0 if vm081_electrical_enabled else 2.0)
 	sprite.name = "V2CarriageVisual"
 	sprite.z_index = 12
-	sprite.play(&"active_sweep")
+	sprite.play(&"standard" if vm081_electrical_enabled else &"active_sweep")
 	sweeper.add_child(sprite)
 
 
@@ -1016,7 +1053,11 @@ func _update_carriage_visual_states() -> void:
 			sprite.pause()
 			continue
 		var should_return := sweeper.position.x >= sweeper.exit_x - sweeper.hazard_size.x
-		var target_animation: StringName = &"return" if should_return else &"active_sweep"
+		var target_animation: StringName
+		if vm081_electrical_enabled:
+			target_animation = &"live_exit" if should_return else &"late" if conveyor.overload_mode_enabled and conveyor.survival_time >= 30.0 else &"standard"
+		else:
+			target_animation = &"return" if should_return else &"active_sweep"
 		if sprite.animation != target_animation:
 			sprite.play(target_animation)
 
@@ -1076,13 +1117,13 @@ func _on_sweeper_entry_cue_started(_altitude: float, _duration: float) -> void:
 	var entry := conveyor.get_node("SweeperEntry") as Node2D
 	var cue := entry.get_node_or_null("V2CarriageTelegraph") as AnimatedSprite2D
 	if cue == null:
-		cue = _new_sprite(_carriage_frames, 2.0)
+		cue = _new_sprite(_electrical_frames if vm081_electrical_enabled else _carriage_frames, 1.0 if vm081_electrical_enabled else 2.0)
 		cue.name = "V2CarriageTelegraph"
 		cue.z_index = 12
 		entry.add_child(cue)
 	(conveyor.get_node("SweeperEntry/ActivationCue") as CanvasItem).visible = false
 	cue.visible = true
-	cue.play(&"telegraph")
+	cue.play(&"charge" if vm081_electrical_enabled else &"telegraph")
 
 
 func _on_sweeper_spawned(sweeper: AirSweeper) -> void:

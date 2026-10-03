@@ -4,6 +4,7 @@ extends Control
 const CONVEYOR_SCENE := preload("res://scenes/prototypes/conveyor.tscn")
 const VIS03_FALLING_COLLISION_SIZE := Vector2(60.0, 60.0)
 const VIS04_BASELINE_COIN_COLLISION_SIZE := Vector2(24.0, 24.0)
+const OVERLOAD_EMERGENCY_VISUAL := preload("res://scripts/experiments/overload_emergency_visual.gd")
 
 @export_enum("D2", "D3") var variant_id: String = "D2"
 @export var internal_size := Vector2i(1152, 480)
@@ -23,11 +24,13 @@ const VIS04_BASELINE_COIN_COLLISION_SIZE := Vector2(24.0, 24.0)
 @export var clean_control_hint_duration: float = 4.0
 @export var local_instrumentation_enabled: bool = true
 @export var overload_mode_enabled: bool = false
+@export var vm081_presentation_enabled: bool = false
 
 var conveyor: ConveyorPrototype
 var background_drop_director: MotionBackgroundDropDirector
 var instrumentation: MotionLocalInstrumentation
 var v2_visual_integration: MotionV2VisualIntegration
+var overload_emergency_visual: Node2D
 var _clean_control_hint_remaining: float = 0.0
 
 @onready var _viewport_frame: SubViewportContainer = $ViewportFrame
@@ -174,9 +177,17 @@ func _build_variant() -> void:
 		v2_visual_integration.vis04_coin_collision_size = vis04_coin_collision_size
 		v2_visual_integration.vis04_configuration_id = vis04_configuration_id
 		v2_visual_integration.refund_chute_enabled = refund_chute_enabled
+		v2_visual_integration.vm081_electrical_enabled = vm081_presentation_enabled
 		v2_visual_integration.debug_overlay_enabled = v2_debug_overlay_enabled
 		v2_visual_integration.debug_overlay_toggle_allowed = debug_overlay_toggle_allowed
 		conveyor.add_child(v2_visual_integration)
+	if overload_mode_enabled and vm081_presentation_enabled:
+		overload_emergency_visual = OVERLOAD_EMERGENCY_VISUAL.new()
+		overload_emergency_visual.name = "OverloadEmergencyVisual"
+		overload_emergency_visual.conveyor = conveyor
+		overload_emergency_visual.background_drop_director = background_drop_director
+		overload_emergency_visual.debug_stage_keys_enabled = debug_overlay_toggle_allowed
+		conveyor.add_child(overload_emergency_visual)
 	if local_instrumentation_enabled:
 		instrumentation = MotionLocalInstrumentation.new()
 		instrumentation.name = "MotionLocalInstrumentation"
@@ -189,6 +200,14 @@ func _build_variant() -> void:
 		and not vis04_runtime_art_enabled
 	):
 		_apply_runtime_hazard_skin()
+
+
+func overload_visual_stage_name() -> String:
+	return overload_emergency_visual.stage_name() if is_instance_valid(overload_emergency_visual) else "STANDARD"
+
+
+func maximum_overload_visual_stage_name() -> String:
+	return overload_emergency_visual.maximum_stage_name() if is_instance_valid(overload_emergency_visual) else "STANDARD"
 
 
 func _configure_camera_and_hud() -> void:

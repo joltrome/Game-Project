@@ -1,7 +1,7 @@
 class_name StandardSession
 extends Control
 
-enum State { MENU, GAME, RESULTS, CREDITS, DEATH_BEAT, PAUSED }
+enum State { MENU, MODE_SELECT, GAME, RESULTS, CREDITS, DEATH_BEAT, PAUSED }
 enum RunMode { STANDARD, OVERLOAD }
 
 const DEATH_BEAT_SECONDS := 0.75
@@ -16,6 +16,7 @@ const GOLD := Color("f2ba45")
 const VOLUME_SLIDER := preload("res://scripts/presentation/c2_volume_slider.gd")
 const FRAME_PACING := preload("res://scripts/presentation/frame_pacing_telemetry.gd")
 const OVERLOAD_RECORD_STORE := preload("res://scripts/presentation/overload_record_store.gd")
+const OVERLOAD_SCORE := preload("res://scripts/presentation/overload_score.gd")
 
 @export var score_storage_path: String = "user://standard_best.cfg"
 @export var audio_settings_path: String = "user://standard_audio.cfg"
@@ -30,6 +31,8 @@ const OVERLOAD_RECORD_STORE := preload("res://scripts/presentation/overload_reco
 @export var responsive_mobile_cabinet_enabled: bool = false
 @export var overload_mode_available: bool = false
 @export var overload_storage_path: String = "user://overload_best.cfg"
+@export var overload_survival_points_per_second: int = 100
+@export var overload_refund_points: int = 250
 
 var state: State = State.MENU
 var game: MotionExperimentShell
@@ -41,6 +44,8 @@ var last_survived: bool = false
 var last_survival_seconds: float = 0.0
 var last_overload_telemetry: Dictionary = {}
 var _overload_max_active_coins: int = 0
+var last_overload_score: int = 0
+var last_overload_new_best: bool = false
 var _ui: Control
 var _music_slider: C2VolumeSlider
 var _sfx_slider: C2VolumeSlider
@@ -115,7 +120,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif state == State.PAUSED:
 			_toggle_pause_with_confirm()
 		get_viewport().set_input_as_handled()
-	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE and state in [State.RESULTS,State.CREDITS]:
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE and state in [State.MODE_SELECT,State.RESULTS,State.CREDITS]:
 		_activate_ui(show_menu)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("restart") and state in [State.GAME, State.RESULTS, State.PAUSED]:
@@ -194,8 +199,9 @@ func start_game() -> void:
 	game.clean_control_hint_duration = 0.0
 	game.local_instrumentation_enabled = false
 	game.overload_mode_enabled = current_mode == RunMode.OVERLOAD
+	game.vm081_presentation_enabled = overload_mode_available
 	if overload_mode_available:
-		game.build_id_override = "VM-0.8.0-OVERLOAD"
+		game.build_id_override = "VM-0.8.1-OVERLOAD-REWORK"
 	elif responsive_mobile_cabinet_enabled:
 		game.build_id_override = "VM-0.7.4-RESPONSIVE-MOBILE-CABINET"
 	elif coin_pressure_enabled:
@@ -259,7 +265,10 @@ func start_game() -> void:
 	hud.round_controller=round_controller
 	hud.coins=game.conveyor.get_node("CollectibleDirector")
 	hud.overload_mode_enabled = current_mode == RunMode.OVERLOAD
+	hud.overload_survival_points_per_second = overload_survival_points_per_second
+	hud.overload_refund_points = overload_refund_points
 	_ui.add_child(hud)
+	touch.overload_hud=hud
 	touch.set_game_active(true)
 	_frame_pacing.begin_run(mobile_playability_enabled)
 	_layout()
@@ -288,23 +297,64 @@ func show_menu() -> void:
 	_clear_ui()
 	_c2 = C2Screen.new()
 	_ui.add_child(_c2)
-	var play := _c2.add_button("clock-in", "CLOCK IN", Rect2(416,472,320,70), start_standard_game, true)
-	if overload_mode_available:
-		# Keep the alternate mode legible without competing with the existing
-		# hero art, belt, credits, or volume controls. Records live on the result
-		# screen, where both independent axes have adequate room.
-		_c2.add_text_button("overload", "OVERLOAD", Rect2(780,466,244,60), start_overload_game)
-	best_label = _score_text(scores.best_score)
-	var scale_value := 3
-	while best_label.ink_width(best_label.text, scale_value) > 176 and scale_value > 1:
-		scale_value -= 1
-	best_label.glyph_scale = scale_value
-	best_label.position = Vector2(1048-best_label.ink_width(best_label.text,scale_value),376)
+	var play_callback := show_mode_select if overload_mode_available else start_standard_game
+	var play := _c2.add_button("clock-in", "CLOCK IN", Rect2(416,472,320,70), play_callback, true)
 	_c2.add_button("credits", "CREDITS", Rect2(660,557,112,44), _confirmed(show_credits))
 	_add_volume_sliders(_c2, Vector2(790.0, 538.0))
 	_c2.wire_focus()
 	play.grab_focus()
 	_layout()
+
+
+func show_mode_select() -> void:
+	if not overload_mode_available:
+		start_standard_game()
+		return
+	state = State.MODE_SELECT
+	audio.set_gameplay_sfx_enabled(false)
+	audio.stop_run_music_immediately()
+	_clear_ui()
+	_c2 = C2Screen.new()
+	_c2.show_menu_static_lettering = false
+	_ui.add_child(_c2)
+	_add_pixel_label(_c2, "SELECT MODE", Vector2(80, 68), "small", 2, CREAM)
+	_add_centered_label(_c2, "60 SECOND SHIFT", 396.0, 562.0, "small", 2, INK)
+	_add_centered_label(_c2, "ENDLESS / ESCALATING", 804.0, 562.0, "small", 2, INK)
+	_add_pixel_label(_c2, "ESC: BACK", Vector2(80, 580), "small", 2, INK)
+	var standard := _c2.add_overload_button(
+		"standard", "standard", Rect2(236,472,320,70), Vector2(224,460), start_standard_game
+	)
+	var overload := _c2.add_overload_button(
+		"overload", "overload", Rect2(644,472,320,70), Vector2(632,460), start_overload_game
+	)
+	_c2.add_overload_button(
+		"back", "back", Rect2(64,478,144,64), Vector2(64,478), _confirmed(show_menu)
+	)
+	standard.focus_entered.connect(_update_mode_record.bind(RunMode.STANDARD))
+	standard.mouse_entered.connect(_update_mode_record.bind(RunMode.STANDARD))
+	overload.focus_entered.connect(_update_mode_record.bind(RunMode.OVERLOAD))
+	overload.mouse_entered.connect(_update_mode_record.bind(RunMode.OVERLOAD))
+	_c2.wire_focus()
+	_update_mode_record(RunMode.STANDARD)
+	standard.grab_focus()
+	_layout()
+
+
+func _update_mode_record(mode: RunMode) -> void:
+	if state != State.MODE_SELECT or not is_instance_valid(_c2):
+		return
+	for child_name in ["ModeRecordLabel", "ModeRecordValue"]:
+		var old := _c2.get_node_or_null(child_name)
+		if old != null:
+			old.queue_free()
+	var label_text := "STANDARD BEST" if mode == RunMode.STANDARD else "OVERLOAD BEST"
+	var value := str(scores.best_score)
+	if mode == RunMode.OVERLOAD:
+		value = OVERLOAD_SCORE.format_score(overload_records.best_score) if overload_records.has_best_score else "--"
+	var label := _add_right_label(_c2, label_text, 1048.0, 350.0, "small", 2, CREAM)
+	label.name = "ModeRecordLabel"
+	var record := _add_right_label(_c2, value, 1048.0, 378.0, "display", 3, CREAM)
+	record.name = "ModeRecordValue"
 
 
 func show_credits() -> void:
@@ -377,7 +427,7 @@ static func headline_for(cause: ConveyorPrototype.DeathCause, survived: bool) ->
 		ConveyorPrototype.DeathCause.FALLING_PRODUCT, ConveyorPrototype.DeathCause.BACKGROUND_PRODUCT:
 			return "CANNED."
 		ConveyorPrototype.DeathCause.RETRIEVAL_CARRIAGE:
-			return "GRABBED."
+			return "FRIED."
 		ConveyorPrototype.DeathCause.LEFT_OUT:
 			return "VENDED."
 		_:
@@ -392,7 +442,17 @@ func _show_results(score: int, survived: bool) -> void:
 	last_score = score
 	last_survived = survived
 	if current_mode == RunMode.OVERLOAD:
-		overload_records.record_run(last_survival_seconds, score)
+		last_overload_score = OVERLOAD_SCORE.calculate(
+			last_survival_seconds,
+			score,
+			overload_survival_points_per_second,
+			overload_refund_points
+		)
+		last_overload_new_best = overload_records.record_run(
+			last_survival_seconds,
+			score,
+			last_overload_score
+		)
 	else:
 		scores.record_score(score)
 	touch.set_game_active(false)
@@ -406,23 +466,25 @@ func _show_results(score: int, survived: bool) -> void:
 	result_headline = headline_for(last_death_cause, survived)
 	_c2 = C2Screen.new()
 	_c2.is_result = true
+	_c2.show_result_static_lettering = current_mode != RunMode.OVERLOAD
 	_c2.headline = result_headline.trim_suffix(".").to_lower().replace(" ", "-")
 	_ui.add_child(_c2)
-	result_score = _score_text(score)
+	var displayed_score := last_overload_score if current_mode == RunMode.OVERLOAD else score
+	result_score = _score_text(displayed_score, current_mode == RunMode.OVERLOAD)
 	best_label = _score_text(
-		overload_records.best_refunds
-		if current_mode == RunMode.OVERLOAD
-		else scores.best_score
+		overload_records.best_score if current_mode == RunMode.OVERLOAD else scores.best_score,
+		current_mode == RunMode.OVERLOAD
 	)
 	var scale_value := 5
 	while maxf(result_score.ink_width(result_score.text,scale_value), best_label.ink_width(best_label.text,scale_value)) > 232 and scale_value > 1:
 		scale_value -= 1
-	for item: Array in [[result_score,450],[best_label,714]]:
-		var label := item[0] as C2PixelText
-		label.glyph_scale = scale_value
-		label.position = Vector2(item[1]-floorf(label.ink_width(label.text,scale_value)/2),291)
 	if current_mode == RunMode.OVERLOAD:
 		_add_overload_result_details()
+	else:
+		for item: Array in [[result_score,450],[best_label,714]]:
+			var label := item[0] as C2PixelText
+			label.glyph_scale = scale_value
+			label.position = Vector2(item[1]-floorf(label.ink_width(label.text,scale_value)/2),291)
 	var retry := _c2.add_button("retry", "RETRY", Rect2(336,472,280,70), start_game, true)
 	_c2.add_button("menu", "MENU", Rect2(644,478,144,64), _confirmed(show_menu))
 	_add_volume_sliders(_c2, Vector2(790.0, 538.0))
@@ -439,37 +501,40 @@ static func death_uses_impact_sound(cause: ConveyorPrototype.DeathCause) -> bool
 	]
 
 
-func _score_text(value: int) -> C2PixelText:
+func _score_text(value: int, grouped: bool = false) -> C2PixelText:
 	var label := C2PixelText.new()
-	label.text = "%02d" % value
+	label.text = OVERLOAD_SCORE.format_score(value) if grouped else "%02d" % value
 	_c2.add_child(label)
 	return label
 
 
 func _add_overload_result_details() -> void:
-	var marker := C2PixelText.new()
-	marker.family = "small"
-	marker.text = "OVERLOAD"
-	marker.glyph_scale = 3
-	marker.color = GOLD
-	_c2.add_child(marker)
-	marker.position = Vector2(516, 244)
-	result_survival = C2PixelText.new()
-	result_survival.family = "small"
-	result_survival.text = "SURVIVAL  %s" % OVERLOAD_RECORD_STORE.format_survival_time(last_survival_seconds)
-	result_survival.glyph_scale = 2
-	result_survival.color = CREAM
-	result_survival.position = Vector2(336, 430)
-	_c2.add_child(result_survival)
-	best_survival = C2PixelText.new()
-	best_survival.family = "small"
-	best_survival.text = "BEST TIME  %s" % OVERLOAD_RECORD_STORE.format_survival_time(
-		overload_records.best_survival_seconds
+	_add_pixel_label(_c2, "OVERLOAD", Vector2(80,68), "small", 2, GOLD)
+	_add_pixel_label(_c2, "R: RETRY", Vector2(76,577), "small", 2, INK)
+	_add_pixel_label(_c2, "ESC: MENU", Vector2(240,577), "small", 2, INK)
+	_add_centered_label(_c2, "SCORE", 576.0, 244.0, "small", 2, CREAM)
+	var score_scale := 5
+	while result_score.ink_width(result_score.text, score_scale) > 512.0 and score_scale > 1:
+		score_scale -= 1
+	result_score.glyph_scale = score_scale
+	result_score.position = Vector2(576.0 - result_score.ink_width(result_score.text,score_scale) * 0.5,272)
+	result_survival = _add_centered_label(
+		_c2,
+		"SURVIVAL %s   REFUNDS %d" % [OVERLOAD_RECORD_STORE.format_survival_time(last_survival_seconds), last_score],
+		576.0,
+		330.0,
+		"small",
+		2,
+		CREAM
 	)
-	best_survival.glyph_scale = 2
-	best_survival.color = CREAM
-	best_survival.position = Vector2(644, 430)
-	_c2.add_child(best_survival)
+	var record_color := GOLD if last_overload_new_best else CREAM
+	_add_right_label(_c2, "NEW BEST" if last_overload_new_best else "BEST SCORE", 1048.0,350.0,"small",2,record_color)
+	var best_scale := 3
+	while best_label.ink_width(best_label.text,best_scale) > 232.0 and best_scale > 1:
+		best_scale -= 1
+	best_label.glyph_scale = best_scale
+	best_label.color = record_color
+	best_label.position = Vector2(1048.0-best_label.ink_width(best_label.text,best_scale),378)
 
 
 func _capture_overload_telemetry(frame_summary: Dictionary) -> void:
@@ -477,6 +542,8 @@ func _capture_overload_telemetry(frame_summary: Dictionary) -> void:
 	var director := conveyor.get_node("CollectibleDirector") as CollectibleDirector
 	var intensity := conveyor.overload_intensity_snapshot(last_survival_seconds)
 	last_overload_telemetry = {
+		"combined_score": OVERLOAD_SCORE.calculate(last_survival_seconds, last_score, overload_survival_points_per_second, overload_refund_points),
+		"score_formula_id": OVERLOAD_SCORE.FORMULA_ID,
 		"survival_seconds": last_survival_seconds,
 		"refunds": last_score,
 		"death_cause": ConveyorPrototype.DeathCause.keys()[last_death_cause],
@@ -490,8 +557,33 @@ func _capture_overload_telemetry(frame_summary: Dictionary) -> void:
 		"max_active_coins": _overload_max_active_coins,
 		"coin_planning": director.performance_profile_summary(),
 		"frame_pacing": frame_summary.duplicate(true),
+		"visual_stage": game.overload_visual_stage_name() if game.has_method("overload_visual_stage_name") else "UNAVAILABLE",
+		"maximum_visual_stage": game.maximum_overload_visual_stage_name() if game.has_method("maximum_overload_visual_stage_name") else "UNAVAILABLE",
 	}
-	print("VM080_OVERLOAD_RUN ", JSON.stringify(last_overload_telemetry))
+	print("VM081_OVERLOAD_RUN ", JSON.stringify(last_overload_telemetry))
+
+
+func _add_pixel_label(parent: Node, value: String, position_value: Vector2, family_value: String, scale_value: int, color_value: Color) -> C2PixelText:
+	var label := C2PixelText.new()
+	label.text = value
+	label.family = family_value
+	label.glyph_scale = scale_value
+	label.color = color_value
+	label.position = position_value
+	parent.add_child(label)
+	return label
+
+
+func _add_centered_label(parent: Node, value: String, center_x: float, y: float, family_value: String, scale_value: int, color_value: Color) -> C2PixelText:
+	var label := _add_pixel_label(parent,value,Vector2.ZERO,family_value,scale_value,color_value)
+	label.position = Vector2(center_x-label.ink_width(value,scale_value)*0.5,y)
+	return label
+
+
+func _add_right_label(parent: Node, value: String, right_x: float, y: float, family_value: String, scale_value: int, color_value: Color) -> C2PixelText:
+	var label := _add_pixel_label(parent,value,Vector2.ZERO,family_value,scale_value,color_value)
+	label.position = Vector2(right_x-label.ink_width(value,scale_value),y)
+	return label
 
 
 func _dispose_game() -> void:
@@ -551,6 +643,12 @@ func _layout() -> void:
 		else:
 			game.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 			game.reflow_display()
+	if is_instance_valid(hud):
+		hud.visible = not (
+			current_mode == RunMode.OVERLOAD
+			and use_mobile_monitor
+			and touch.arcade_layout_supported()
+		)
 
 
 func _mobile_layout_reference_size() -> Vector2:
@@ -577,6 +675,8 @@ func _mobile_device_pixel_ratio() -> float:
 
 
 func _clear_ui() -> void:
+	if touch != null:
+		touch.overload_hud=null
 	hud=null
 	_c2 = null
 	for child in _ui.get_children():

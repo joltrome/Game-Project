@@ -139,13 +139,14 @@ var sweeper_altitude: float = 518.0
 
 @export_category("Overload Bounded Intensity")
 @export var overload_mode_enabled: bool = false
-@export var overload_starting_equivalent_seconds: float = 28.0
-@export var overload_maximum_intensity_time: float = 120.0
-@export var overload_conveyor_multipliers := PackedFloat32Array([1.12, 1.22, 1.30, 1.36, 1.40])
-@export var overload_sweeper_multipliers := PackedFloat32Array([1.07, 1.13, 1.18, 1.22, 1.25])
-@export var overload_hazard_multipliers := PackedFloat32Array([1.06, 1.10, 1.14, 1.17, 1.20])
-@export var overload_pattern_cooldowns := PackedFloat32Array([0.62, 0.52, 0.46, 0.42, 0.40])
-@export var overload_compound_margins := PackedFloat32Array([0.56, 0.52, 0.48, 0.45, 0.42])
+@export var overload_starting_equivalent_seconds: float = 60.0
+@export var overload_maximum_intensity_time: float = 90.0
+@export var overload_curve_times := PackedFloat32Array([0.0, 15.0, 30.0, 45.0, 60.0, 90.0])
+@export var overload_conveyor_multipliers := PackedFloat32Array([1.25, 1.35, 1.425, 1.47, 1.50, 1.50])
+@export var overload_sweeper_multipliers := PackedFloat32Array([1.15, 1.25, 1.35, 1.45, 1.55, 1.60])
+@export var overload_hazard_multipliers := PackedFloat32Array([1.12, 1.25, 1.35, 1.45, 1.52, 1.58])
+@export var overload_pattern_cooldowns := PackedFloat32Array([0.50, 0.42, 0.35, 0.30, 0.27, 0.25])
+@export var overload_compound_margins := PackedFloat32Array([0.50, 0.44, 0.39, 0.35, 0.32, 0.30])
 
 var survival_time: float = 0.0
 var is_dead: bool = false
@@ -467,15 +468,20 @@ func _overload_curve_value(values: PackedFloat32Array, time_seconds: float) -> f
 		return 0.0
 	if values.size() == 1:
 		return values[0]
-	var capped_time := clampf(time_seconds, 0.0, maxf(overload_maximum_intensity_time, 0.0))
-	var segment_duration := maxf(overload_maximum_intensity_time, 0.001) / float(values.size() - 1)
-	var lower_index := mini(floori(capped_time / segment_duration), values.size() - 1)
-	var upper_index := mini(lower_index + 1, values.size() - 1)
-	if lower_index == upper_index:
-		return values[lower_index]
-	var segment_start := float(lower_index) * segment_duration
-	var weight := clampf((capped_time - segment_start) / segment_duration, 0.0, 1.0)
-	return lerpf(values[lower_index], values[upper_index], weight)
+	if overload_curve_times.size() != values.size():
+		push_error("Overload curve times and values must have matching sizes")
+		return values[0]
+	var capped_time := clampf(time_seconds, overload_curve_times[0], overload_curve_times[-1])
+	for upper_index in range(1, values.size()):
+		if capped_time <= overload_curve_times[upper_index]:
+			var lower_index := upper_index - 1
+			var weight := inverse_lerp(
+				overload_curve_times[lower_index],
+				overload_curve_times[upper_index],
+				capped_time
+			)
+			return lerpf(values[lower_index], values[upper_index], weight)
+	return values[-1]
 
 
 func target_fall_duration_at(time_seconds: float) -> float:

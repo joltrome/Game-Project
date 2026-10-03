@@ -74,6 +74,8 @@ var _pause_art: TextureRect
 var _rotate: C2PixelText
 var _hovered_control := -1
 var _last_layout_signature := ""
+var overload_hud: CohesionHUD
+var _overload_host_labels: Array[C2PixelText] = []
 
 
 func _ready() -> void:
@@ -113,6 +115,7 @@ func _ready() -> void:
 		_art.append(art)
 
 	_build_pause_button()
+	_build_overload_host_hud()
 	_rotate = C2PixelText.new()
 	_rotate.name = "RotateGuidance"
 	_rotate.family = "small"
@@ -122,6 +125,35 @@ func _ready() -> void:
 	add_child(_rotate)
 	resized.connect(_layout)
 	_layout()
+
+
+func _process(_delta: float) -> void:
+	if is_instance_valid(overload_hud) and _overload_host_labels.size() == 6:
+		_overload_host_labels[3].text = overload_hud.score_text.text
+		_overload_host_labels[4].text = overload_hud.timer_text.text
+		_overload_host_labels[5].text = overload_hud.refund_text.text
+		for label in _overload_host_labels:
+			label.queue_redraw()
+
+
+func _build_overload_host_hud() -> void:
+	for value in ["SCORE","SURVIVAL","REFUNDS"]:
+		var label := C2PixelText.new()
+		label.family="small"
+		label.text=value
+		label.glyph_scale=2
+		label.color=CREAM
+		label.z_index=5
+		add_child(label)
+		_overload_host_labels.append(label)
+	for value in ["0","00:00.00","0"]:
+		var label := C2PixelText.new()
+		label.text=value
+		label.glyph_scale=2
+		label.color=CREAM
+		label.z_index=5
+		add_child(label)
+		_overload_host_labels.append(label)
 
 
 func _build_pause_button() -> void:
@@ -392,7 +424,35 @@ func _layout() -> void:
 		floorf((size.y - 24.0) * 0.5)
 	)
 	_rotate.visible = touch_available and game_active and not is_landscape
+	_layout_overload_host_hud(show_arcade)
 	queue_redraw()
+
+
+func _layout_overload_host_hud(show_arcade: bool) -> void:
+	var show_hud := show_arcade and is_instance_valid(overload_hud) and overload_hud.overload_mode_enabled
+	for label in _overload_host_labels:
+		label.visible=show_hud
+	if not show_hud:
+		return
+	var css_centers: Array[float]
+	var label_y: float
+	if cabinet_layout == CabinetLayout.SIDE_WINGS:
+		css_centers=[108.0,108.0,_css_viewport_size.x-80.0]
+		label_y=64.0
+	else:
+		css_centers=[_css_viewport_size.x*0.384375,_css_viewport_size.x*0.5875,_css_viewport_size.x*0.740625]
+		label_y=_css_viewport_size.y-92.0
+	for index in 3:
+		var title_y := label_y if cabinet_layout==CabinetLayout.BOTTOM_DECK or index==0 else 132.0
+		var value_y := title_y+22.0
+		var center_host := _css_to_host(Rect2(Vector2(css_centers[index],title_y),Vector2.ZERO)).position
+		var title := _overload_host_labels[index]
+		var value := _overload_host_labels[index+3]
+		title.scale=_host_per_css
+		value.scale=_host_per_css
+		title.position=Vector2(center_host.x-title.ink_width(title.text,2)*_host_per_css.x*0.5,center_host.y)
+		var value_center := _css_to_host(Rect2(Vector2(css_centers[index],value_y),Vector2.ZERO)).position
+		value.position=Vector2(value_center.x-value.ink_width(value.text,2)*_host_per_css.x*0.5,value_center.y)
 
 
 func _draw() -> void:
