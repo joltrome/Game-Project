@@ -67,6 +67,36 @@ After editing:
 4. Identify fairness, control-feel, performance, and scope risks.
 5. Update the roadmap/decision log when a material decision or result changes.
 
+### Permanent project handoff
+
+`docs/PROJECT_HANDOFF.md` is the durable cross-session source of truth. At the
+end of every accepted implementation milestone:
+
+1. Update its current baseline, build, branch, accepted decisions, evidence,
+   hypotheses, artifacts, and one recommended next action.
+2. Replace stale current-state facts instead of appending duplicate snapshots.
+3. Keep only the most recent meaningful milestone history.
+4. Preserve the permanent rendering, UI, cost, safety, and scope rules.
+5. When Startup Lab accepts a Work design study, copy its accepted decisions and
+   authoritative artifact paths into the next Codex milestone's handoff update.
+
+Work design studies do not modify the repository and are not implementation
+results until Codex integrates and validates them.
+
+### Permanent production UI rule
+
+The existing production GET CANNED! UI is the visual source of truth. Every new
+button, label, metric, record, result, selector, HUD element, or panel must
+extend that production language. Do not simplify, normalize, or reinterpret
+existing elements into generic UI.
+
+Primary buttons require authored pixel-art IDLE, FOCUS, and PRESSED states. The
+pressed state must visibly depress/react while preserving the production
+silhouette, detailing, border treatment, and mechanical construction. If a new
+asset is required, design it as though it belongs to the same original GET
+CANNED! asset sheet. Generic cards, flat substitute buttons, and default Godot
+button visuals do not pass this rule.
+
 ## Cost and paid-service control
 
 Use `docs/cost-usage.md` as the cumulative ledger for separately billed project usage.
