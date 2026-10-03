@@ -42,9 +42,12 @@ func run() -> void:
 	mouse.button_mask=0
 	root.push_input(mouse,true)
 	Input.flush_buffered_events()
-	check(s.state == StandardSession.State.GAME, "Mouse release on CLOCK IN starts gameplay")
+	check(s.state == StandardSession.State.MODE_SELECT, "Mouse release on CLOCK IN opens Mode Select")
+	(s._c2.get_node("standard") as Button).pressed.emit()
+	await process_frame
+	check(s.state == StandardSession.State.GAME, "Authored Standard action starts gameplay")
 	s.show_menu()
-	var mappings := {Cause.FALLING_PRODUCT:"CANNED.", Cause.BACKGROUND_PRODUCT:"CANNED.", Cause.RETRIEVAL_CARRIAGE:"GRABBED.", Cause.LEFT_OUT:"VENDED.", Cause.UNKNOWN:"GAME OVER."}
+	var mappings := {Cause.FALLING_PRODUCT:"CANNED.", Cause.BACKGROUND_PRODUCT:"CANNED.", Cause.RETRIEVAL_CARRIAGE:"FRIED.", Cause.LEFT_OUT:"VENDED.", Cause.UNKNOWN:"GAME OVER."}
 	for cause: int in mappings:
 		s.start_game()
 		var c := s.game.conveyor
@@ -109,7 +112,10 @@ func run() -> void:
 	s._show_results(9223372036854775807,true)
 	check(s.result_score.text == "9223372036854775807" and s.result_score.ink_width(s.result_score.text,s.result_score.glyph_scale) <= 232, "Result int64 score never truncates")
 	s.show_menu()
-	check(s.best_label.ink_width(s.best_label.text,s.best_label.glyph_scale) <= 176, "Menu int64 best fits")
+	(s._c2.get_node("clock_in") as Button).pressed.emit()
+	await process_frame
+	var record_labels := s._c2.get_children().filter(func(node: Node) -> bool: return node is C2PixelText and (node as C2PixelText).text == "9223372036854775807")
+	check(s.state == StandardSession.State.MODE_SELECT and record_labels.size()==1, "Mode-select record presents the Standard best instead of leaving it ambiguously on Main Menu")
 	s.queue_free()
 	await process_frame
 	DirAccess.remove_absolute("/tmp/vms-rc1-death-test.cfg")

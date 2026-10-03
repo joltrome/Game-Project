@@ -161,6 +161,8 @@ func _test_pause_and_touch() -> void:
 	root.add_child(session)
 	await process_frame
 	(session._c2.get_node("clock_in") as Button).pressed.emit()
+	await process_frame
+	(session._c2.get_node("standard") as Button).pressed.emit()
 	await create_timer(0.25, true, false, true).timeout
 	check(session.touch.pause_button.visible, "One upper-left Pause button is visible during desktop gameplay")
 	session.audio.set_user_volume_percent(&"Music", 50.0)

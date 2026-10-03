@@ -60,7 +60,7 @@ func _test_release_and_touch_layouts() -> void:
 	var director := session.game.conveyor.get_node("CollectibleDirector") as CollectibleDirector
 	check(
 		session.game.build_id_override == (
-			"VM-0.8.0-OVERLOAD"
+			"VM-0.8.1-OVERLOAD-REWORK"
 			if session.overload_mode_available
 			else "VM-0.7.4-RESPONSIVE-MOBILE-CABINET"
 		)

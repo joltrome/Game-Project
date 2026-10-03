@@ -4,6 +4,8 @@ This backlog records ideas without granting implementation approval. Evidence, h
 
 ## Postponed
 
+- **Electrical SFX for Overload:** The VM-0.8.1 visual short deliberately reuses no generated or sourced electrical audio. Consider charge/travel/death/clear cues only after founder review confirms the visual warning and hazard identity. Risk: audio can mask an insufficient 200 ms visual warning or add fatigue during frequent late-run sweeps.
+
 - **Refund Chute camping and destination-pressure experiment:** New playtest evidence indicates a repeatable scoring pattern: camp below the single Refund Chute, wait for an ejection, chase it, then return below the chute. Status: observed risk, not a VM-0.7.2 task. The next approved investigation, if Startup Lab authorizes it, should retain one chute while testing player-relative destination pressure and greater meaningful trajectory/landing variation. Do not change targeting during the mobile-deck milestone, and do not add a second chute before the one-chute experiment is evaluated.
 - **Standard difficulty and Endless/Overload:** Experienced-player reports that Standard can feel easy, rapid high coin collection, and a suggestion for endless survival are not approval to retune Standard. Keep the current 60-second difficulty frozen until fresh evidence isolates the reward-topology issue. Endless/Overload remains a separate future mode question, not part of VM-0.7.2.
 - **Mobile side-wing controls:** Work explored side-wing controls, but the founder selected the dedicated bottom arcade deck for the first physical review. Keep side wings only as a fallback if physical-phone testing shows that the bottom deck makes the 16:9 gameplay monitor or technician unacceptably small.

@@ -13,6 +13,8 @@ facts after an accepted milestone; do not append duplicate state snapshots.
 - Current accepted build: `builds/VM-0.8.0-OVERLOAD.zip`
 - In-progress isolated candidate: **VM-0.8.1 — Overload Rework** on
   `release/vm-0.8.1-overload-rework`
+- Candidate report: `docs/vm081-overload-rework.md`
+- Candidate build: `builds/VM-0.8.1-OVERLOAD-REWORK.zip`
 - Product direction: the conveyor game is primary. Standard remains an
   approachable 60-second shift; Overload is a separate veteran/mastery mode.
 
@@ -109,6 +111,27 @@ Portrait shows `ROTATE DEVICE`.
   instability without forcing players to read the timer.
 - Success still depends on unprompted voluntary Retry and score competition.
 
+## VM-0.8.1 Candidate Result
+
+- Main Menu now opens a production-family Mode Select. Standard starts focused;
+  authored idle/focus/pressed art is used for Standard, Overload and Back.
+- Active Overload uses current-run Score, Survival and Refunds only. Results use
+  Score as the primary comparison number while retaining raw run explanation.
+- Score is provisionally `floor(100 × active seconds) + 250 × Refunds`; weights
+  are configurable and unvalidated. Historical independent raw records are not
+  combined into a fake Best Score.
+- Overload starts at the declared Standard-60-second equivalent and reaches
+  bounded maximum values at 90 seconds. Maximum conveyor speed still leaves
+  90 px/s rightward player recovery.
+- UNSTABLE/WARNING/CRITICAL/MAX decoration is presentation-only. The electrical
+  replacement preserves the one existing 96×28, y=518 carriage actor, 200 ms
+  warning, path, timing, collision, live exit, and cleanup; electrical contact
+  reports `FRIED.`
+- Full main implementation suite: 51 scripts, 0 failures. Three deterministic
+  120-second profiles had no step above 33.33 ms; worst step was 17.622 ms.
+  Desktop and forced-touch 640×360/844×390 Web pixels loaded with a clean
+  project console. Physical-phone and human gameplay acceptance remain pending.
+
 ## Deferred / Backlog
 
 Electrical SFX; second Refund Chute; new hazards; power-ups/items; coin magnet;
@@ -141,8 +164,9 @@ VM-0.8.1.
 
 ## Next Recommended Step
 
-Complete VM-0.8.1 on its isolated branch, then return its Web build for founder
-review. Validate production-faithful mode/results/HUD presentation, combined
-Score comprehension, stronger bounded difficulty, four emergency states, the
-200 ms electrical warning, unchanged hazard mechanics, mobile rendering, and
-late-run performance before proposing any further change.
+Run founder review of the isolated VM-0.8.1 Web build and the development-only
+review scene. Evaluate production-family mode/results/HUD presentation,
+combined Score comprehension, voluntary Retry/score competition, stronger
+bounded difficulty, four emergency states, the 200 ms electrical warning,
+physical-phone rendering and late-run feel. Do not merge, upload, tune, or add
+systems until Startup Lab reviews the evidence.

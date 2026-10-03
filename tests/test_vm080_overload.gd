@@ -3,6 +3,7 @@ extends SceneTree
 const CONVEYOR_SCENE := preload("res://scenes/prototypes/conveyor.tscn")
 const SESSION_SCENE := preload("res://scenes/presentation/standard_session.tscn")
 const RECORD_STORE := preload("res://scripts/presentation/overload_record_store.gd")
+const OVERLOAD_SCORE := preload("res://scripts/presentation/overload_score.gd")
 const SCORE_PATH := "/tmp/vms-vm080-standard-score.cfg"
 const AUDIO_PATH := "/tmp/vms-vm080-audio.cfg"
 const OVERLOAD_PATH := "/tmp/vms-vm080-overload-record.cfg"
@@ -36,9 +37,9 @@ func run() -> void:
 func _test_bounded_intensity_and_standard_contract() -> void:
 	var standard := await _make_conveyor(false)
 	var overload := await _make_conveyor(true)
-	var checkpoints := PackedFloat32Array([0.0, 30.0, 60.0, 90.0, 120.0, 180.0])
-	var expected_conveyor := PackedFloat32Array([1.12, 1.22, 1.30, 1.36, 1.40, 1.40])
-	var expected_cooldown := PackedFloat32Array([0.62, 0.52, 0.46, 0.42, 0.40, 0.40])
+	var checkpoints := PackedFloat32Array([0.0, 15.0, 30.0, 45.0, 60.0, 90.0, 120.0, 180.0])
+	var expected_conveyor := PackedFloat32Array([1.25, 1.35, 1.425, 1.47, 1.50, 1.50, 1.50, 1.50])
+	var expected_cooldown := PackedFloat32Array([0.50, 0.42, 0.35, 0.30, 0.27, 0.25, 0.25, 0.25])
 	var previous_conveyor := -INF
 	var previous_cooldown := INF
 	for index in checkpoints.size():
@@ -63,7 +64,7 @@ func _test_bounded_intensity_and_standard_contract() -> void:
 		absf(overload.conveyor_speed_at(0.0) - standard.conveyor_speed_at(equivalent)) <= 2.0
 		and absf(overload.sweeper_speed_at(0.0) - standard.sweeper_speed_at(equivalent)) <= 3.0
 		and absf(overload.hazard_speed_multiplier_at(0.0) - standard.hazard_speed_multiplier_at(equivalent)) <= 0.02,
-		"Overload begins near the declared 28-second Standard intensity without replaying teaching"
+		"Overload begins at declared late-Standard intensity without replaying teaching"
 	)
 	check(
 		is_equal_approx(standard.conveyor_speed_at(0.0), 140.0)
@@ -103,9 +104,15 @@ func _test_independent_records() -> void:
 	check(
 		is_equal_approx(loaded.best_survival_seconds, 97.42)
 		and loaded.best_refunds == 9
+		and not loaded.has_best_score
 		and RECORD_STORE.format_survival_time(97.42) == "01:37.42",
-		"Best survival and best Refunds persist as separate axes with centisecond formatting"
+		"Historical raw records remain separate and do not fabricate a combined Best Score"
 	)
+	var actual_score := OVERLOAD_SCORE.calculate(61.25,7)
+	check(actual_score == 7875 and OVERLOAD_SCORE.format_score(16892) == "16,892", "Combined Score uses stable configurable integer arithmetic and comma grouping")
+	check(loaded.record_run(61.25,7,actual_score), "First actual VM-0.8.1 run establishes Best Score")
+	loaded.load_bests()
+	check(loaded.has_best_score and loaded.best_score == 7875, "Best Score persists with formula scope")
 
 
 func _test_menu_modes_retry_and_results() -> void:
@@ -117,16 +124,25 @@ func _test_menu_modes_retry_and_results() -> void:
 	await process_frame
 	await process_frame
 	var clock_in := session._c2.get_node("clock_in") as Button
-	var overload_button := session._c2.get_node("overload") as Button
 	var credits := session._c2.get_node("credits") as Button
 	check(
-		clock_in != null and overload_button != null and credits != null
-		and clock_in.has_focus()
-		and not overload_button.focus_neighbor_left.is_empty()
-		and not overload_button.focus_neighbor_right.is_empty(),
-		"Menu exposes Standard, Overload, and Credits with keyboard/controller focus wiring"
+		clock_in != null and credits != null and clock_in.has_focus()
+		and session._c2.get_node_or_null("overload") == null,
+		"Main Menu preserves one primary CLOCK IN action without direct mode clutter"
 	)
-
+	clock_in.pressed.emit()
+	await process_frame
+	var standard_button := session._c2.get_node("standard") as Button
+	var overload_button := session._c2.get_node("overload") as Button
+	var back_button := session._c2.get_node("back") as Button
+	check(
+		session.state == StandardSession.State.MODE_SELECT
+		and standard_button.has_focus()
+		and overload_button.get_node("Artwork") is TextureRect
+		and back_button.get_node("Artwork") is TextureRect
+		and not overload_button.focus_neighbor_left.is_empty(),
+		"CLOCK IN opens authored sibling mode controls with Standard focused and Back wired"
+	)
 	overload_button.pressed.emit()
 	await process_frame
 	await physics_frame
@@ -151,7 +167,9 @@ func _test_menu_modes_retry_and_results() -> void:
 		and overload_coins.refund_system_enabled
 		and overload_coins.ballistic_integrity_enabled
 		and not overload_coins.static_teaching_coin_enabled
-		and session.game.build_id_override == "VM-0.8.0-OVERLOAD",
+		and session.game.build_id_override == "VM-0.8.1-OVERLOAD-REWORK"
+		and session.game.vm081_presentation_enabled
+		and session.game.overload_emergency_visual != null,
 		"Overload enters the accepted VM-0.7.3 coin stream after teaching and identifies its build"
 	)
 	session.game.conveyor.survival_time = 61.25
@@ -169,9 +187,10 @@ func _test_menu_modes_retry_and_results() -> void:
 	check(
 		session.state == StandardSession.State.RESULTS
 		and session.result_survival.text.contains("01:01.25")
-		and session.best_survival.text.contains("01:37.42")
-		and session.overload_records.best_refunds == 9,
-		"Overload result presents run survival while preserving independently stronger prior records"
+		and session.result_survival.text.contains("REFUNDS 7")
+		and session.result_score.text == "7,875"
+		and session.overload_records.best_score == 7875,
+		"Overload Results prioritize combined Score and preserve raw run explanation"
 	)
 	var retry := session._c2.get_node("retry") as Button
 	retry.pressed.emit()
@@ -187,6 +206,8 @@ func _test_menu_modes_retry_and_results() -> void:
 	session.show_menu()
 	await process_frame
 	(session._c2.get_node("clock_in") as Button).pressed.emit()
+	await process_frame
+	(session._c2.get_node("standard") as Button).pressed.emit()
 	await process_frame
 	await physics_frame
 	var standard_round := session.game.conveyor.get_node("RoundController") as FixedRoundController

@@ -140,8 +140,8 @@ func _test_exact_layouts_and_assets() -> void:
 		"All arcade control art uses nearest-neighbor filtering"
 	)
 	check(
-		touch.get_children().filter(func(node: Node) -> bool: return node is C2PixelText).size() == 1,
-		"Deck contains icon art only; no LEFT/RIGHT/JUMP text labels were added"
+		touch.get_children().filter(func(node: Node) -> bool: return node is C2PixelText and node.text in ["LEFT","RIGHT","JUMP"]).is_empty(),
+		"Deck keeps movement controls icon-only while reserving production type for Overload metrics"
 	)
 
 	touch.configure_viewport(
@@ -245,7 +245,7 @@ func _test_session_monitor_and_desktop_behavior() -> void:
 	session._layout()
 	check(
 		session.game.build_id_override == (
-			"VM-0.8.0-OVERLOAD"
+			"VM-0.8.1-OVERLOAD-REWORK"
 			if session.overload_mode_available
 			else "VM-0.7.4-RESPONSIVE-MOBILE-CABINET"
 		),
