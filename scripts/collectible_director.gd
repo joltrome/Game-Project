@@ -228,6 +228,7 @@ const REJECTION_UNKNOWN := "unknown"
 @export var bounded_group_member_attempts: int = 8
 @export var bounded_group_extra_pool_calls: int = 2
 @export var bounded_single_attempts: int = 24
+@export var bounded_event_total_attempts: int = 0
 
 @export_category("Coin Pressure Experiment")
 @export var coin_pressure_enabled: bool = false
@@ -1374,6 +1375,7 @@ func _plan_ballistic_event_group_once(
 	# allowing the complete event to be judged before anything is spawned.
 	var candidate_pools: Array = []
 	var pool_started_usec := Time.get_ticks_usec()
+	var group_candidate_attempts := 0
 	for coin_index in range(target_count):
 		var pool: Array[Dictionary] = []
 		var pool_calls := 0
@@ -1402,6 +1404,13 @@ func _plan_ballistic_event_group_once(
 			pool.size() < desired_pool_size
 			and pool_calls < maximum_pool_calls
 		):
+			var remaining_event_attempts := (
+				bounded_event_total_attempts - group_candidate_attempts
+				if bounded_optional_planning_enabled and bounded_event_total_attempts > 0
+				else bounded_group_member_attempts
+			)
+			if remaining_event_attempts <= 0:
+				break
 			pool_calls += 1
 			var requested_lifetime := float(requested_lifetimes[coin_index])
 			var preferred_side := int(side_plan[coin_index])
@@ -1422,7 +1431,7 @@ func _plan_ballistic_event_group_once(
 				[],
 				launch_delay,
 				maxi(
-					bounded_group_member_attempts
+					mini(bounded_group_member_attempts, remaining_event_attempts)
 					if bounded_optional_planning_enabled
 					else ballistic_group_member_placement_attempts,
 					1
@@ -1438,6 +1447,7 @@ func _plan_ballistic_event_group_once(
 				_performance_current_event_placement_attempts += int(
 					sampled.get("attempts", 0)
 				)
+			group_candidate_attempts += int(sampled.get("attempts", 0))
 			var candidate: Dictionary = sampled.get("candidate", {})
 			var plan: Dictionary = sampled.get("ballistic_plan", {})
 			if candidate.is_empty() or plan.is_empty():
@@ -1570,6 +1580,17 @@ func _plan_ballistic_event_group_once(
 	# A full target pool can be empty under transient constraints. Give the final
 	# single fallback its own bounded search so a failed multi-event does not turn
 	# into an avoidable zero-coin gap.
+	var remaining_fallback_attempts := (
+		bounded_event_total_attempts - group_candidate_attempts
+		if bounded_optional_planning_enabled and bounded_event_total_attempts > 0
+		else bounded_single_attempts
+	)
+	if remaining_fallback_attempts <= 0:
+		return {
+			"samples": [],
+			"group_attempts": total_group_attempts,
+			"degradation_reason": last_reason,
+		}
 	var final_single_started_usec := Time.get_ticks_usec()
 	var single_sample := _sample_independent_candidate(
 		float(requested_lifetimes[0]),
@@ -1582,7 +1603,7 @@ func _plan_ballistic_event_group_once(
 		[],
 		float(launch_delay_plan[0]) if not launch_delay_plan.is_empty() else 0.0,
 		maxi(
-			bounded_single_attempts
+			mini(bounded_single_attempts, remaining_fallback_attempts)
 			if bounded_optional_planning_enabled
 			else ballistic_single_placement_attempts,
 			1

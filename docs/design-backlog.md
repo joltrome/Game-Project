@@ -4,6 +4,15 @@ This backlog records ideas without granting implementation approval. Evidence, h
 
 ## Postponed
 
+- **VM-0.8.1.1 founder follow-up:** Do not tune the six emergency stages, the
+  45-second D3/electrical overlap, the 112-attempt Overload planning budget, or
+  the 100/250 Score weights from implementation observation alone. First use
+  the record-disabled 0/15/30/45/60/90 review helper and collect founder/fresh
+  experienced-player evidence about visual distinction, readability, fairness,
+  perceived structural difference, voluntary Retry, and physical-phone tail
+  behavior. One deterministic 16.857 ms frame remains a known performance tail;
+  it is not authorization for a planner rewrite.
+
 - **Electrical SFX for Overload:** The VM-0.8.1 visual short deliberately reuses no generated or sourced electrical audio. Consider charge/travel/death/clear cues only after founder review confirms the visual warning and hazard identity. Risk: audio can mask an insufficient 200 ms visual warning or add fatigue during frequent late-run sweeps.
 
 - **Refund Chute camping and destination-pressure experiment:** New playtest evidence indicates a repeatable scoring pattern: camp below the single Refund Chute, wait for an ejection, chase it, then return below the chute. Status: observed risk, not a VM-0.7.2 task. The next approved investigation, if Startup Lab authorizes it, should retain one chute while testing player-relative destination pressure and greater meaningful trajectory/landing variation. Do not change targeting during the mobile-deck milestone, and do not add a second chute before the one-chute experiment is evaluated.

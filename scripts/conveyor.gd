@@ -147,6 +147,7 @@ var sweeper_altitude: float = 518.0
 @export var overload_hazard_multipliers := PackedFloat32Array([1.12, 1.25, 1.35, 1.45, 1.52, 1.58])
 @export var overload_pattern_cooldowns := PackedFloat32Array([0.50, 0.42, 0.35, 0.30, 0.27, 0.25])
 @export var overload_compound_margins := PackedFloat32Array([0.50, 0.44, 0.39, 0.35, 0.32, 0.30])
+@export var overload_d3_sweeper_overlap_threshold: float = 45.0
 
 var survival_time: float = 0.0
 var is_dead: bool = false
@@ -196,7 +197,9 @@ var _right_pressure_reserved_at: float = -1.0
 var _base_conveyor_speed: float = 140.0
 var _product_event_replacement_handler: Callable = Callable()
 var _external_product_event_pending: bool = false
+var _external_product_sequence_active: bool = false
 var _reserved_external_suppression_ids: Array[String] = []
+var _overload_d3_sweeper_launched_for_pending := false
 
 @onready var player: SharedPlayerController = $Player
 @onready var _hazard_container: Node2D = $Hazards
@@ -243,6 +246,8 @@ func _physics_process(delta: float) -> void:
 		return
 	_update_right_edge_dwell(delta)
 	_update_sweeper_encounters()
+	if not _external_product_sequence_active:
+		_overload_d3_sweeper_launched_for_pending = false
 
 	_update_sweeper_entry_cue(delta)
 	if _has_pending_drop():
@@ -460,7 +465,21 @@ func overload_intensity_snapshot(time_seconds: float) -> Dictionary:
 		"pattern_cooldown": _overload_curve_value(overload_pattern_cooldowns, time_seconds),
 		"compound_margin": _overload_curve_value(overload_compound_margins, time_seconds),
 		"pattern_weights": Array(phase_four_pattern_weights),
+		"d3_sweeper_overlap_enabled": time_seconds >= overload_d3_sweeper_overlap_threshold,
 	}
+
+
+func apply_overload_review_checkpoint(time_seconds: float) -> void:
+	if not overload_mode_enabled:
+		return
+	_clear_warning_state()
+	_clear_pattern_state()
+	survival_time = clampf(time_seconds, 0.0, overload_maximum_intensity_time)
+	_update_continuous_speed_ramps()
+	_pattern_cooldown_remaining = 0.0
+	_pending_fall_duration = target_fall_duration_at(survival_time)
+	_pending_sweeper_speed = sweeper_speed_at(survival_time)
+	_update_timer_label()
 
 
 func _overload_curve_value(values: PackedFloat32Array, time_seconds: float) -> float:
@@ -1300,6 +1319,14 @@ func external_product_event_is_pending() -> bool:
 	return _external_product_event_pending
 
 
+func set_external_product_sequence_active(is_active: bool) -> void:
+	_external_product_sequence_active = is_active
+
+
+func external_product_sequence_is_active() -> bool:
+	return _external_product_sequence_active
+
+
 func reserve_ordinary_product_suppression(replacement_id: String) -> bool:
 	if replacement_id.is_empty() or is_dead or is_round_complete:
 		return false
@@ -1550,6 +1577,20 @@ func _record_encounter(record: Dictionary) -> void:
 
 
 func _try_start_reserved_pattern() -> bool:
+	# Late Overload may use one grounded-safe electrical sweep while an authored
+	# D3 product sequence owns the ordinary product slot. This is the smallest
+	# existing-hazard overlap that breaks the serial wait without weakening D3,
+	# collision, reachability, or sweeper geometry validation.
+	if (
+		overload_mode_enabled
+		and survival_time >= overload_d3_sweeper_overlap_threshold
+		and _external_product_sequence_active
+		and not _overload_d3_sweeper_launched_for_pending
+		and _pattern_can_start(PatternType.SWEEPER_ONLY)
+	):
+		_reserved_pattern_type = PatternType.SWEEPER_ONLY
+		_record_pattern_selection(_reserved_pattern_type, survival_time)
+
 	if _reserved_pattern_type < 0:
 		_reserved_pattern_type = _select_director_pattern(survival_time)
 		if _reserved_pattern_type < 0:
@@ -1599,6 +1640,11 @@ func _try_start_reserved_pattern() -> bool:
 			return false
 
 	var committed_pattern := _reserved_pattern_type
+	if (
+		committed_pattern == PatternType.SWEEPER_ONLY
+		and _external_product_sequence_active
+	):
+		_overload_d3_sweeper_launched_for_pending = true
 	_active_pattern_type = committed_pattern
 	_reserved_pattern_type = -1
 	_active_pattern_elapsed = 0.0
@@ -2333,6 +2379,7 @@ func _clear_pattern_state() -> void:
 	_right_pressure_target_x = NAN
 	_right_pressure_reserved_at = -1.0
 	_external_product_event_pending = false
+	_external_product_sequence_active = false
 	_reserved_external_suppression_ids.clear()
 
 

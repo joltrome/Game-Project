@@ -29,6 +29,7 @@ run/main_scene.vis04_pa_ca="res://scenes/experiments/motion_vis04_pa_ca.tscn"
 run/main_scene.vis04_pb_ca="res://scenes/experiments/motion_vis04_pb_ca.tscn"
 run/main_scene.vis04_pb_cb="res://scenes/experiments/motion_vis04_pb_cb.tscn"
 run/main_scene.vis04_provisional="res://scenes/experiments/motion_vis04_provisional.tscn"
+run/main_scene.vm0811_review="res://scenes/tests/vm081_overload_review.tscn"
 config/features=PackedStringArray("4.7")
 
 [autoload]

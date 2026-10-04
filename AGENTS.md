@@ -132,6 +132,8 @@ For paid API development sessions, record available provider/model, request ID, 
 - Tunable coyote time and jump buffering.
 - Useful but not consequence-free air control.
 - No keyboard input combinations blocked by the chosen bindings.
+- Any control or input hint shown to the player must have an automated
+  functional test where practical; label-only correctness is insufficient.
 
 ### Fairness
 

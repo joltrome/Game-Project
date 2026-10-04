@@ -245,7 +245,7 @@ func _test_session_monitor_and_desktop_behavior() -> void:
 	session._layout()
 	check(
 		session.game.build_id_override == (
-			"VM-0.8.1-OVERLOAD-REWORK"
+			"VM-0.8.1.1-OVERLOAD-QA-TUNING"
 			if session.overload_mode_available
 			else "VM-0.7.4-RESPONSIVE-MOBILE-CABINET"
 		),

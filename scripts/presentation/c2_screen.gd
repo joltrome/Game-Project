@@ -1,6 +1,8 @@
 class_name C2Screen
 extends Control
 
+signal overload_visual_target_changed(button: Button)
+
 const ART := "res://assets/ui/get_canned_c2/"
 const OVERLOAD_ART := "res://assets/ui/vm081_overload/buttons/"
 const RUN := preload("res://assets/vm050_vis04/VM050_VIS04_S1_50x60_run_sheet.png")
@@ -16,6 +18,10 @@ var show_result_static_lettering: bool = true
 var elapsed: float = 0.0
 var _textures: Dictionary = {}
 var buttons: Array[Button] = []
+var _overload_buttons: Array[Button] = []
+var _hovered_overload_button: Button
+var _pressed_overload_button: Button
+var _keyboard_focus_visible := false
 
 
 func _ready() -> void:
@@ -41,6 +47,26 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	elapsed += delta
 	queue_redraw()
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		_keyboard_focus_visible = false
+		_refresh_overload_button_group()
+		return
+	if not event.is_pressed() or event.is_echo():
+		return
+	if (
+		event.is_action("ui_left")
+		or event.is_action("ui_right")
+		or event.is_action("ui_up")
+		or event.is_action("ui_down")
+		or event.is_action("ui_focus_next")
+		or event.is_action("ui_focus_prev")
+	):
+		_keyboard_focus_visible = true
+		_hovered_overload_button = null
+		call_deferred("_refresh_overload_button_group")
 
 
 func _draw() -> void:
@@ -172,18 +198,29 @@ func add_overload_button(
 	button.add_child(art)
 	button.set_meta(&"overload_asset_stem", asset_stem)
 	button.set_meta(&"overload_compact", compact)
-	var refresh := func() -> void: refresh_overload_button(button)
-	for event in [button.mouse_entered, button.mouse_exited, button.focus_entered, button.focus_exited, button.button_down, button.button_up]:
-		event.connect(refresh)
+	button.mouse_entered.connect(_on_overload_button_mouse_entered.bind(button))
+	button.mouse_exited.connect(_on_overload_button_mouse_exited.bind(button))
+	button.focus_entered.connect(_refresh_overload_button_group)
+	button.focus_exited.connect(_refresh_overload_button_group)
+	button.button_down.connect(_on_overload_button_down.bind(button))
+	button.button_up.connect(_on_overload_button_up.bind(button))
 	button.pressed.connect(callback)
 	add_child(button)
 	buttons.append(button)
+	_overload_buttons.append(button)
 	refresh_overload_button(button)
 	return button
 
 
 func refresh_overload_button(button: Button) -> void:
-	var state_name := "pressed" if button.is_pressed() else "focus" if button.has_focus() or button.is_hovered() else "idle"
+	var active_target := active_overload_visual_button()
+	var state_name := (
+		"pressed"
+		if button == _pressed_overload_button
+		else "focus"
+		if button == active_target
+		else "idle"
+	)
 	var suffix := "-compact" if bool(button.get_meta(&"overload_compact", false)) else ""
 	var path := "%s%s-%s%s.png" % [
 		OVERLOAD_ART,
@@ -191,7 +228,60 @@ func refresh_overload_button(button: Button) -> void:
 		state_name,
 		suffix,
 	]
-	(button.get_node("Artwork") as TextureRect).texture = load(path)
+	if not _textures.has(path):
+		_textures[path] = load(path)
+	(button.get_node("Artwork") as TextureRect).texture = _textures[path]
+
+
+func active_overload_visual_button() -> Button:
+	if is_instance_valid(_pressed_overload_button):
+		return _pressed_overload_button
+	if is_instance_valid(_hovered_overload_button):
+		return _hovered_overload_button
+	if not _keyboard_focus_visible:
+		return null
+	var focused := get_viewport().gui_get_focus_owner() as Button
+	return focused if focused in _overload_buttons else null
+
+
+func keyboard_focus_visuals_enabled() -> bool:
+	return _keyboard_focus_visible
+
+
+func activate_keyboard_focus_visuals() -> void:
+	_keyboard_focus_visible = true
+	_hovered_overload_button = null
+	_refresh_overload_button_group()
+
+
+func _on_overload_button_mouse_entered(button: Button) -> void:
+	_keyboard_focus_visible = false
+	_hovered_overload_button = button
+	_refresh_overload_button_group()
+
+
+func _on_overload_button_mouse_exited(button: Button) -> void:
+	if _hovered_overload_button == button:
+		_hovered_overload_button = null
+	_refresh_overload_button_group()
+
+
+func _on_overload_button_down(button: Button) -> void:
+	_pressed_overload_button = button
+	_refresh_overload_button_group()
+
+
+func _on_overload_button_up(button: Button) -> void:
+	if _pressed_overload_button == button:
+		_pressed_overload_button = null
+	_refresh_overload_button_group()
+
+
+func _refresh_overload_button_group() -> void:
+	for button in _overload_buttons:
+		if is_instance_valid(button):
+			refresh_overload_button(button)
+	overload_visual_target_changed.emit(active_overload_visual_button())
 
 
 func refresh_button(button: Button) -> void:

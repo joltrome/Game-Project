@@ -71,6 +71,8 @@ func _profile_mode(mode: Dictionary, seed: int) -> Dictionary:
 		)
 	if _has_property(director, &"bounded_optional_planning_enabled"):
 		director.set("bounded_optional_planning_enabled", bool(mode.get("mobile_budget", false)))
+	if _has_property(director, &"bounded_event_total_attempts"):
+		director.set("bounded_event_total_attempts", 112 if overload_enabled else 0)
 	if _has_property(director, &"coin_pressure_enabled"):
 		director.set("coin_pressure_enabled", bool(mode.get("coin_pressure", false)))
 	director.performance_profiling_enabled = true

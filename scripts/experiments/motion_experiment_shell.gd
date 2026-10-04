@@ -210,6 +210,17 @@ func maximum_overload_visual_stage_name() -> String:
 	return overload_emergency_visual.maximum_stage_name() if is_instance_valid(overload_emergency_visual) else "STANDARD"
 
 
+func apply_overload_review_checkpoint(time_seconds: float) -> void:
+	if not overload_mode_enabled or not is_instance_valid(conveyor):
+		return
+	var checkpoint := clampf(time_seconds, 0.0, conveyor.overload_maximum_intensity_time)
+	conveyor.apply_overload_review_checkpoint(checkpoint)
+	if is_instance_valid(background_drop_director):
+		background_drop_director.seek_endless_schedule_for_review(checkpoint)
+	if is_instance_valid(overload_emergency_visual):
+		overload_emergency_visual.synchronize_to_time(checkpoint)
+
+
 func _configure_camera_and_hud() -> void:
 	var camera := conveyor.get_node("Camera2D") as Camera2D
 	camera.position = Vector2(576.0, 412.0 if variant_id == "D2" else 324.0)

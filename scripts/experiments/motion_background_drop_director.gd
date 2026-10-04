@@ -182,6 +182,33 @@ func configure_schedule_seed(new_seed: int) -> void:
 	_build_nominal_schedule()
 
 
+func seek_endless_schedule_for_review(time_seconds: float) -> void:
+	if not endless_schedule_enabled or state != VisualState.STORED:
+		return
+	_build_nominal_schedule()
+	var checkpoint := maxf(time_seconds, 0.0)
+	while _nominal_reservation_times[-1] <= checkpoint:
+		var minimum_interval := maxf(minimum_repeat_interval, 0.0)
+		var maximum_interval := maxf(maximum_repeat_interval, minimum_interval)
+		_nominal_reservation_times.append(
+			_nominal_reservation_times[-1]
+			+ _schedule_rng.randf_range(minimum_interval, maximum_interval)
+		)
+	_events_released = 0
+	while (
+		_events_released < _nominal_reservation_times.size()
+		and _nominal_reservation_times[_events_released] <= checkpoint
+	):
+		_events_released += 1
+	next_reservation_time = _nominal_reservation_times[_events_released]
+	reservation_pending = false
+	_active_schedule_index = -1
+	_replacement_retry_remaining = 0.0
+	_last_successful_warning_time = checkpoint - maximum_repeat_interval
+	_conveyor.set_external_product_event_pending(false)
+	_conveyor.set_external_product_sequence_active(false)
+
+
 func active_sequence_count() -> int:
 	return 1 if state in [VisualState.SELECTED, VisualState.RELEASED] else 0
 
@@ -370,6 +397,7 @@ func _try_start_reserved_sequence() -> String:
 	selected_lane_index = lane
 	selected_lane_x = candidate_lane_x[lane]
 	state = VisualState.SELECTED
+	_conveyor.set_external_product_sequence_active(true)
 	reservation_pending = false
 	warning_time_remaining = warning_duration
 	_pulse_elapsed = 0.0
@@ -530,6 +558,7 @@ func _on_external_product_landed(
 	})
 	var completed_schedule := _active_schedule_index
 	state = VisualState.STORED
+	_conveyor.set_external_product_sequence_active(false)
 	selected_lane_index = -1
 	selected_lane_x = NAN
 	warning_time_remaining = 0.0
@@ -606,6 +635,7 @@ func _cancel_unfinishable_reservation() -> void:
 	_active_schedule_index = -1
 	next_reservation_time = INF
 	_conveyor.set_external_product_event_pending(false)
+	_conveyor.set_external_product_sequence_active(false)
 
 
 func _on_external_product_player_hit(
@@ -639,6 +669,7 @@ func _on_gameplay_stopped() -> void:
 	next_reservation_time = INF
 	if is_instance_valid(_conveyor):
 		_conveyor.set_external_product_event_pending(false)
+		_conveyor.set_external_product_sequence_active(false)
 	var outcome := "death" if _conveyor.is_dead else "complete"
 	_record("stopped", {
 		"outcome": outcome,

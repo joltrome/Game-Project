@@ -11,10 +11,12 @@ facts after an accepted milestone; do not append duplicate state snapshots.
 - Standard/mobile reference: **VM-0.7.4 Responsive Mobile Cabinet** at
   `f12c75758d5224a3b30607d7e51734a30c47a271`
 - Current accepted build: `builds/VM-0.8.0-OVERLOAD.zip`
-- In-progress isolated candidate: **VM-0.8.1 — Overload Rework** on
-  `release/vm-0.8.1-overload-rework`
-- Candidate report: `docs/vm081-overload-rework.md`
-- Candidate build: `builds/VM-0.8.1-OVERLOAD-REWORK.zip`
+- In-progress isolated candidate: **VM-0.8.1.1 — Overload QA & Tuning** on
+  `release/vm-0.8.1.1-overload-qa-tuning`
+- Candidate source parent: VM-0.8.1 at
+  `a035802e72d09841021d3abfaa90784c351477e2`
+- Candidate report: `docs/vm0811-overload-qa-tuning.md`
+- Candidate build: `builds/VM-0.8.1.1-OVERLOAD-QA-TUNING.zip`
 - Product direction: the conveyor game is primary. Standard remains an
   approachable 60-second shift; Overload is a separate veteran/mastery mode.
 
@@ -73,6 +75,9 @@ Portrait shows `ROTATE DEVICE`.
   full repository test suite once after targeted work.
 - Performance review emphasizes tail behavior: planning maximum, p95, p99,
   worst step, and counts above 16.67/33.33/50 ms—not average FPS alone.
+- Any displayed control/input hint must have an automated functional test where
+  practical; tests must inject the real input path rather than only call the
+  target transition directly.
 - No paid API/service may be used without a prior cost estimate and approval.
 
 ## Current Audio
@@ -107,14 +112,21 @@ Portrait shows `ROTATE DEVICE`.
   provide one comparable result; both weights remain experimental.
 - A dense traveling electrical short on the unchanged 96×28 danger envelope may
   communicate warning, active danger, and death better than the grabber art.
-- Four persistent cabinet failure states may communicate increasing machine
-  instability without forcing players to read the timer.
+- Six persistent cabinet failure states aligned to 0/15/30/45/60/90 seconds
+  may communicate increasing machine instability without timer reading.
+- One validator-approved electrical/D3 overlap from 45 seconds onward may
+  create distinct mastery pressure without speed-only tuning or a new hazard.
+- Real checkpoint review may reduce tuning time and founder-survival bias while
+  preserving real records through explicit debug-run isolation.
 - Success still depends on unprompted voluntary Retry and score competition.
 
-## VM-0.8.1 Candidate Result
+## VM-0.8.1.1 Candidate Result
 
-- Main Menu now opens a production-family Mode Select. Standard starts focused;
-  authored idle/focus/pressed art is used for Standard, Overload and Back.
+- Mode Select now enters visually neutral while retaining logical keyboard
+  focus. Pointer hover and keyboard focus are mutually exclusive visual modes;
+  Escape, Back, Enter, Space and touch paths have functional regression tests.
+- Best-record content uses one persistent label/value pair, eliminating the
+  deferred-delete overlap seen during rapid Standard/Overload switching.
 - Active Overload uses current-run Score, Survival and Refunds only. Results use
   Score as the primary comparison number while retaining raw run explanation.
 - Score is provisionally `floor(100 × active seconds) + 250 × Refunds`; weights
@@ -123,14 +135,21 @@ Portrait shows `ROTATE DEVICE`.
 - Overload starts at the declared Standard-60-second equivalent and reaches
   bounded maximum values at 90 seconds. Maximum conveyor speed still leaves
   90 px/s rightward player recovery.
-- UNSTABLE/WARNING/CRITICAL/MAX decoration is presentation-only. The electrical
+- UNSTABLE/WARNING/CRITICAL/SEVERE/CATASTROPHIC/MAX decoration adds localized
+  cabinet lighting, a 2 px/0.18 s threshold jolt and a 1 px/8 Hz MAX vibration
+  without moving gameplay coordinates. The electrical
   replacement preserves the one existing 96×28, y=518 carriage actor, 200 ms
   warning, path, timing, collision, live exit, and cleanup; electrical contact
   reports `FRIED.`
-- Full main implementation suite: 51 scripts, 0 failures. Three deterministic
-  120-second profiles had no step above 33.33 ms; worst step was 17.622 ms.
-  Desktop and forced-touch 640×360/844×390 Web pixels loaded with a clean
-  project console. Physical-phone and human gameplay acceptance remain pending.
+- From 45 seconds onward, one existing electrical sweep may overlap an actual
+  D3 warning/fall after the existing validators approve it; caps remain one
+  Sweeper and one falling product.
+- The review helper selects real 0/15/30/45/60/90 states with 1–6 or F11/F12;
+  forced runs are visibly marked and cannot update any Best record.
+- Three final 120-second profiles had no step above 33.33 ms; worst step was
+  16.857 ms and one seed had one step above 16.67 ms. Desktop and 640×360 /
+  844×390 exported Web pixels loaded with clean browser consoles. Physical-phone
+  and human gameplay acceptance remain pending.
 
 ## Deferred / Backlog
 
@@ -138,7 +157,7 @@ Electrical SFX; second Refund Chute; new hazards; power-ups/items; coin magnet;
 slowdown; characters/cosmetics; progression/economy; global leaderboards;
 daily challenges; ads/IAP/Steam integration; monetization; Prototype A machine
 jam; additional modes; and broader presentation polish. None is authorized by
-VM-0.8.1.
+VM-0.8.1.1.
 
 ## Current Work / Codex Artifacts
 
@@ -147,6 +166,7 @@ VM-0.8.1.
 - Approved emergency/electrical handoff:
   `/Users/jeromenicholaz/.codex/.chatgpt-projects/g-p-6a620f9598f48191b1f5f1a94286b5cd/artifacts/vm080_emergency_electrical_study/HANDOFF.md`
 - VM-0.8.0 report: `docs/vm080-overload.md`
+- VM-0.8.1.1 report: `docs/vm0811-overload-qa-tuning.md`
 - VM-0.7.4 mobile report: `docs/vm074-responsive-mobile-cabinet.md`
 - Accepted build references:
   `builds/VM-0.8.0-OVERLOAD.zip` and
@@ -164,9 +184,9 @@ VM-0.8.1.
 
 ## Next Recommended Step
 
-Run founder review of the isolated VM-0.8.1 Web build and the development-only
-review scene. Evaluate production-family mode/results/HUD presentation,
-combined Score comprehension, voluntary Retry/score competition, stronger
-bounded difficulty, four emergency states, the 200 ms electrical warning,
-physical-phone rendering and late-run feel. Do not merge, upload, tune, or add
-systems until Startup Lab reviews the evidence.
+Run founder review of the isolated VM-0.8.1.1 Web build and the development-only
+review scene. Verify neutral Mode Select entry, Escape/Back, single-source Best
+record display, six real 0/15/30/45/60/90 checkpoint states, visual distinction,
+late D3/electrical overlap readability and fairness, the 200 ms electrical
+warning, physical-phone rendering and late-run feel. Do not merge, upload, tune,
+or add systems until Startup Lab reviews the evidence.

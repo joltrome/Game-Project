@@ -115,7 +115,10 @@ func run() -> void:
 	(s._c2.get_node("clock_in") as Button).pressed.emit()
 	await process_frame
 	var record_labels := s._c2.get_children().filter(func(node: Node) -> bool: return node is C2PixelText and (node as C2PixelText).text == "9223372036854775807")
-	check(s.state == StandardSession.State.MODE_SELECT and record_labels.size()==1, "Mode-select record presents the Standard best instead of leaving it ambiguously on Main Menu")
+	check(s.state == StandardSession.State.MODE_SELECT and record_labels.is_empty() and (s._c2.get_node("ModeRecordValue") as C2PixelText).text == "--", "Mode Select opens with a neutral persistent record display")
+	(s._c2.get_node("standard") as Button).mouse_entered.emit()
+	record_labels = s._c2.get_children().filter(func(node: Node) -> bool: return node is C2PixelText and (node as C2PixelText).text == "9223372036854775807")
+	check(record_labels.size() == 1, "Standard hover reveals the full-width Standard best in place")
 	s.queue_free()
 	await process_frame
 	DirAccess.remove_absolute("/tmp/vms-rc1-death-test.cfg")

@@ -33,6 +33,9 @@ const OVERLOAD_SCORE := preload("res://scripts/presentation/overload_score.gd")
 @export var overload_storage_path: String = "user://overload_best.cfg"
 @export var overload_survival_points_per_second: int = 100
 @export var overload_refund_points: int = 250
+@export var overload_planning_attempt_budget: int = 112
+@export var debug_intensity_review_enabled: bool = false
+@export var debug_intensity_checkpoint_seconds: float = 0.0
 
 var state: State = State.MENU
 var game: MotionExperimentShell
@@ -66,6 +69,9 @@ var best_label: C2PixelText
 var result_survival: C2PixelText
 var best_survival: C2PixelText
 var _frame_pacing = FRAME_PACING.new()
+var _mode_record_label: C2PixelText
+var _mode_record_value: C2PixelText
+var _debug_intensity_label: C2PixelText
 
 @onready var audio: SessionAudio = $Audio
 
@@ -114,14 +120,22 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("pause") and not event.is_echo():
+	# Escape is both the advertised Back key and a Pause binding. Resolve
+	# non-game navigation first so the Pause branch cannot consume ESC: BACK.
+	if (
+		event is InputEventKey
+		and event.pressed
+		and not event.echo
+		and event.keycode == KEY_ESCAPE
+		and state in [State.MODE_SELECT, State.RESULTS, State.CREDITS]
+	):
+		_activate_ui(show_menu)
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("pause") and not event.is_echo():
 		if state == State.GAME:
 			_toggle_pause_with_confirm()
 		elif state == State.PAUSED:
 			_toggle_pause_with_confirm()
-		get_viewport().set_input_as_handled()
-	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE and state in [State.MODE_SELECT,State.RESULTS,State.CREDITS]:
-		_activate_ui(show_menu)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("restart") and state in [State.GAME, State.RESULTS, State.PAUSED]:
 		start_game()
@@ -201,7 +215,7 @@ func start_game() -> void:
 	game.overload_mode_enabled = current_mode == RunMode.OVERLOAD
 	game.vm081_presentation_enabled = overload_mode_available
 	if overload_mode_available:
-		game.build_id_override = "VM-0.8.1-OVERLOAD-REWORK"
+		game.build_id_override = "VM-0.8.1.1-OVERLOAD-QA-TUNING"
 	elif responsive_mobile_cabinet_enabled:
 		game.build_id_override = "VM-0.7.4-RESPONSIVE-MOBILE-CABINET"
 	elif coin_pressure_enabled:
@@ -250,6 +264,13 @@ func start_game() -> void:
 	collectible_director.coin_pressure_enabled = coin_pressure_enabled
 	collectible_director.performance_profiling_enabled = mobile_playability_enabled
 	collectible_director.bounded_optional_planning_enabled = mobile_playability_enabled
+	# Bound the mastery-mode event planner as a tail-latency safeguard. Standard
+	# retains its accepted planning path and therefore its coin behavior.
+	collectible_director.bounded_event_total_attempts = (
+		overload_planning_attempt_budget
+		if current_mode == RunMode.OVERLOAD
+		else 0
+	)
 	var round_controller := game.conveyor.get_node("RoundController") as FixedRoundController
 	# Death can originate inside a physics collision callback. Finish that callback
 	# before disabling the complete run and its collision objects.
@@ -268,6 +289,17 @@ func start_game() -> void:
 	hud.overload_survival_points_per_second = overload_survival_points_per_second
 	hud.overload_refund_points = overload_refund_points
 	_ui.add_child(hud)
+	if debug_intensity_review_enabled and current_mode == RunMode.OVERLOAD:
+		game.apply_overload_review_checkpoint(debug_intensity_checkpoint_seconds)
+		_debug_intensity_label = _add_centered_label(
+			_ui,
+			"DEBUG INTENSITY %d SEC  RECORDS DISABLED" % roundi(debug_intensity_checkpoint_seconds),
+			576.0,
+			610.0,
+			"small",
+			1,
+			GOLD
+		)
 	touch.overload_hud=hud
 	touch.set_game_active(true)
 	_frame_pacing.begin_run(mobile_playability_enabled)
@@ -330,31 +362,49 @@ func show_mode_select() -> void:
 	_c2.add_overload_button(
 		"back", "back", Rect2(64,478,144,64), Vector2(64,478), _confirmed(show_menu)
 	)
-	standard.focus_entered.connect(_update_mode_record.bind(RunMode.STANDARD))
-	standard.mouse_entered.connect(_update_mode_record.bind(RunMode.STANDARD))
-	overload.focus_entered.connect(_update_mode_record.bind(RunMode.OVERLOAD))
-	overload.mouse_entered.connect(_update_mode_record.bind(RunMode.OVERLOAD))
+	_c2.overload_visual_target_changed.connect(_on_mode_visual_target_changed)
 	_c2.wire_focus()
-	_update_mode_record(RunMode.STANDARD)
+	_create_mode_record_display()
+	_update_mode_record(-1)
 	standard.grab_focus()
 	_layout()
 
 
-func _update_mode_record(mode: RunMode) -> void:
+func _update_mode_record(mode: int) -> void:
 	if state != State.MODE_SELECT or not is_instance_valid(_c2):
 		return
-	for child_name in ["ModeRecordLabel", "ModeRecordValue"]:
-		var old := _c2.get_node_or_null(child_name)
-		if old != null:
-			old.queue_free()
-	var label_text := "STANDARD BEST" if mode == RunMode.STANDARD else "OVERLOAD BEST"
-	var value := str(scores.best_score)
-	if mode == RunMode.OVERLOAD:
+	if not is_instance_valid(_mode_record_label) or not is_instance_valid(_mode_record_value):
+		return
+	var label_text := "BEST RECORD"
+	var value := "--"
+	if mode == RunMode.STANDARD:
+		label_text = "STANDARD BEST"
+		value = str(scores.best_score)
+	elif mode == RunMode.OVERLOAD:
+		label_text = "OVERLOAD BEST"
 		value = OVERLOAD_SCORE.format_score(overload_records.best_score) if overload_records.has_best_score else "--"
-	var label := _add_right_label(_c2, label_text, 1048.0, 350.0, "small", 2, CREAM)
-	label.name = "ModeRecordLabel"
-	var record := _add_right_label(_c2, value, 1048.0, 378.0, "display", 3, CREAM)
-	record.name = "ModeRecordValue"
+	_mode_record_label.text = label_text
+	_mode_record_label.position.x = 1048.0 - _mode_record_label.ink_width(label_text, 2)
+	_mode_record_value.text = value
+	_mode_record_value.position.x = 1048.0 - _mode_record_value.ink_width(value, 3)
+
+
+func _create_mode_record_display() -> void:
+	_mode_record_label = _add_right_label(_c2, "BEST RECORD", 1048.0, 350.0, "small", 2, CREAM)
+	_mode_record_label.name = "ModeRecordLabel"
+	_mode_record_value = _add_right_label(_c2, "--", 1048.0, 378.0, "display", 3, CREAM)
+	_mode_record_value.name = "ModeRecordValue"
+
+
+func _on_mode_visual_target_changed(button: Button) -> void:
+	if button == null:
+		_update_mode_record(-1)
+	elif button.name == "standard":
+		_update_mode_record(RunMode.STANDARD)
+	elif button.name == "overload":
+		_update_mode_record(RunMode.OVERLOAD)
+	else:
+		_update_mode_record(-1)
 
 
 func show_credits() -> void:
@@ -448,10 +498,14 @@ func _show_results(score: int, survived: bool) -> void:
 			overload_survival_points_per_second,
 			overload_refund_points
 		)
-		last_overload_new_best = overload_records.record_run(
-			last_survival_seconds,
-			score,
-			last_overload_score
+		last_overload_new_best = (
+			false
+			if debug_intensity_review_enabled
+			else overload_records.record_run(
+				last_survival_seconds,
+				score,
+				last_overload_score
+			)
 		)
 	else:
 		scores.record_score(score)
@@ -512,6 +566,8 @@ func _add_overload_result_details() -> void:
 	_add_pixel_label(_c2, "OVERLOAD", Vector2(80,68), "small", 2, GOLD)
 	_add_pixel_label(_c2, "R: RETRY", Vector2(76,577), "small", 2, INK)
 	_add_pixel_label(_c2, "ESC: MENU", Vector2(240,577), "small", 2, INK)
+	if debug_intensity_review_enabled:
+		_add_centered_label(_c2, "DEBUG RUN - RECORDS DISABLED", 576.0, 218.0, "small", 1, GOLD)
 	_add_centered_label(_c2, "SCORE", 576.0, 244.0, "small", 2, CREAM)
 	var score_scale := 5
 	while result_score.ink_width(result_score.text, score_scale) > 512.0 and score_scale > 1:
@@ -687,6 +743,9 @@ func _clear_ui() -> void:
 	best_label = null
 	result_survival = null
 	best_survival = null
+	_mode_record_label = null
+	_mode_record_value = null
+	_debug_intensity_label = null
 	_music_slider = null
 	_sfx_slider = null
 

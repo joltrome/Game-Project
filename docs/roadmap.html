@@ -1977,6 +1977,30 @@
     text: 'VM-0.8.1 implements Main Menu → Mode Select, authored Standard/Overload/Back states, current-run Score/Survival/Refund HUD, Score-first Overload Results, formula-scoped Best Score migration, explicit 0/15/30/45/60/90-second bounded intensity checkpoints, UNSTABLE/WARNING/CRITICAL/MAX visual stages, and charge/arc/exit art on the unchanged carriage actor. Three 120-second profiles measured 14.210–17.576 ms maximum planning, 0.072–0.074 ms p95, 0.179–0.183 ms p99, 14.260–17.622 ms worst step, 0–2 steps above 16.67 ms, and none above 33.33 or 50 ms. The 51-script suite had zero failures; targeted post-suite presentation corrections passed; required scenes launched; Web export, desktop flow, 640×360 deck, 844×390 wings and clean browser console were verified. Physical-phone comfort, exact compact non-game mobile recomposition, balance and human comprehension remain founder-review items. See docs/vm081-overload-rework.md.'
   };
 
+  const vm0811QaEvidence = {
+    id: 'evidence-vm-0.8.1.1-overload-qa-tuning',
+    type: 'Evidence', date: '2026-10-03', source: 'Founder VM-0.8.1 desktop/mobile QA',
+    text: 'Founder testing found five concrete problems: Standard looked permanently highlighted on Mode Select entry; displayed ESC: BACK did not work; Standard/Overload Best text could overlap; late 30/45/60/90-second states could not be compared efficiently; and Overload presentation/encounter structure still felt too similar to Standard. The existing three-seed profile also contained 0–2 steps above 16.67 ms. These observations establish correction targets, not acceptance of a replacement balance.'
+  };
+
+  const vm0811QaDecision = {
+    id: 'decision-vm-0.8.1.1-overload-qa-tuning',
+    type: 'Decision', date: '2026-10-03', source: 'Startup Lab VM-0.8.1.1 brief',
+    text: 'Fix Mode Select semantics and real input behavior; preserve one persistent record display; provide record-disabled real checkpoint review at 0/15/30/45/60/90 seconds; align presentation to those checkpoints; and test one existing-hazard late D3/electrical overlap through current validators. Keep Standard, Score weights, electrical geometry/timing, and the hazard set frozen.'
+  };
+
+  const vm0811QaHypothesis = {
+    id: 'hypothesis-vm-0.8.1.1-overload-qa-tuning',
+    type: 'Hypothesis', date: '2026-10-03', source: 'Startup Lab VM-0.8.1.1 brief',
+    text: 'Controlled validator-approved concurrency may create stronger mastery pressure than speed-only escalation; localized persistent cabinet emergency presentation may make mechanical phases legible without timer reading; and real checkpoint review may reduce tuning time and founder-survival bias. Human perception, fairness and replay effects remain unverified.'
+  };
+
+  const vm0811QaResult = {
+    id: 'result-vm-0.8.1.1-overload-qa-tuning',
+    type: 'Result', date: '2026-10-03', source: 'VM-0.8.1.1 implementation, deterministic profile and exported-Web QA',
+    text: 'VM-0.8.1.1 enters Mode Select visually neutral, applies exclusive hover/focus/pressed precedence, makes Escape functional, and updates one persistent Best-record label/value pair. Its review helper applies actual 0/15/30/45/60/90 gameplay and D3 schedule states while disabling records. UNSTABLE/WARNING/CRITICAL/SEVERE/CATASTROPHIC/MAX cabinet presentation uses localized lighting, a 2 px 0.18 s threshold jolt and 1 px 8 Hz MAX vibration without moving gameplay. From 45 seconds, one existing electrical sweep may overlap an actual D3 warning/fall only after current validators approve it; caps remain one Sweeper and one falling product. A 112-attempt Overload-only optional-planning budget reduced three-seed worst steps to 11.413–16.857 ms, with one step above 16.67 ms and none above 33.33/50 ms. Exported desktop, 640×360 and 844×390 pixels loaded with zero browser-console errors. Human and physical-phone acceptance remain pending. See docs/vm0811-overload-qa-tuning.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -2170,7 +2194,11 @@
     vm081OverloadEvidence,
     vm081OverloadDecision,
     vm081OverloadHypothesis,
-    vm081OverloadResult
+    vm081OverloadResult,
+    vm0811QaEvidence,
+    vm0811QaDecision,
+    vm0811QaHypothesis,
+    vm0811QaResult
   ];
 
   const defaultFindings = [
