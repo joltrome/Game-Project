@@ -303,7 +303,7 @@ distinct rather than merely faster.
 No OpenAI API or third-party paid-service request was made. All implementation,
 profiling, Web export and browser QA were local. Separately billed cost for this
 task is `$0.00`; cumulative separately billed project cost remains `$0.00`.
-The task-end ChatGPT Plus/Codex account snapshot showed 4% of the shared 5-hour
-window and 46% of the shared weekly window used, no paid credit balance, and two
+The final ChatGPT Plus/Codex account snapshot showed 11% of the shared 5-hour
+window and 47% of the shared weekly window used, no paid credit balance, and two
 unused free reset credits. Exact task-only tokens and model identity were not
 exposed.
