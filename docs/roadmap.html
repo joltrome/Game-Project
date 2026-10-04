@@ -2001,6 +2001,30 @@
     text: 'VM-0.8.1.1 enters Mode Select visually neutral, applies exclusive hover/focus/pressed precedence, makes Escape functional, and updates one persistent Best-record label/value pair. Its review helper applies actual 0/15/30/45/60/90 gameplay and D3 schedule states while disabling records. UNSTABLE/WARNING/CRITICAL/SEVERE/CATASTROPHIC/MAX cabinet presentation uses localized lighting, a 2 px 0.18 s threshold jolt and 1 px 8 Hz MAX vibration without moving gameplay. From 45 seconds, one existing electrical sweep may overlap an actual D3 warning/fall only after current validators approve it; caps remain one Sweeper and one falling product. A 112-attempt Overload-only optional-planning budget reduced three-seed worst steps to 11.413–16.857 ms, with one step above 16.67 ms and none above 33.33/50 ms. Exported desktop, 640×360 and 844×390 pixels loaded with zero browser-console errors. Human and physical-phone acceptance remain pending. See docs/vm0811-overload-qa-tuning.md.'
   };
 
+  const vm0812TerminalEvidence = {
+    id: 'evidence-vm-0.8.1.2-terminal-overload',
+    type: 'Evidence', date: '2026-10-04', source: 'Founder review plus deterministic pre-change scheduler diagnostic',
+    text: 'Founder review found VM-0.8.1.1 mechanically passive, MAX only slightly faster, both mode records undiscoverable and focus changes visually unstable. Engineering verified that the old MAX electrical speed was approximately 832 px/s with a 0.75 s center arrival, below its inherited 0.8–1.2 s Standalone Sweeper gate. A natural-lifecycle diagnostic then selected one compound near 5.008 s and starved behind D3 reservation/lane rejection, delivering no further hazards through 100 s. This demonstrates that configured multipliers are not evidence of effective pressure.'
+  };
+
+  const vm0812TerminalDecision = {
+    id: 'decision-vm-0.8.1.2-terminal-overload',
+    type: 'Decision', date: '2026-10-04', source: 'Startup Lab VM-0.8.1.2 brief',
+    text: 'Treat MAX as a terminal survival state beginning at 60 seconds, not the last comfortable point on a smooth curve. Preserve telegraphs and at least one validated response while removing Standard-oriented comfort and serialization. Use only existing hazards, keep Standard and Score weights frozen, show both mode records persistently, and judge future Overload tuning through delivered event density, concurrency, rejection and downtime.'
+  };
+
+  const vm0812TerminalHypothesis = {
+    id: 'hypothesis-vm-0.8.1.2-terminal-overload',
+    type: 'Hypothesis', date: '2026-10-04', source: 'Startup Lab VM-0.8.1.2 brief',
+    text: 'Compressed qualitative phases, Overload-specific electrical response validation, validated D3/ordinary coexistence, higher late concurrency and near-continuous MAX scheduling may make the machine feel terminally overloaded while retaining a physically possible response. The target that a competent player usually survives only 3–10 seconds after entering MAX remains a human playtest hypothesis.'
+  };
+
+  const vm0812TerminalResult = {
+    id: 'result-vm-0.8.1.2-terminal-overload',
+    type: 'Result', date: '2026-10-04', source: 'VM-0.8.1.2 implementation, deterministic pressure/performance profiling and exported-Web QA',
+    text: 'VM-0.8.1.2 uses 0/10/20/30/45/60 phases, an Overload-only 85% conveyor cap, dynamic late caps up to three Sweepers and three falling products, an Overload response-corridor solver, projected D3/ordinary footprint coexistence, explicit rejection logs and CLEAN/SATURATED review. At 45 versus 60/MAX, accepted patterns rose 76→116/min, sweeps 76→116/min, ordinary drops 8→16/min, time with at least two threats 92.5→100%, and maximum meaningful threats four→five. Both records are always visible and persisted end to end; button anchors remain stable. Three 120 s stress seeds had 10.142–13.886 ms worst steps and zero >16.67/33.33/50 ms. All 53 tests passed; release/review Web builds and actual desktop/mobile pixels loaded with clean browser consoles. Human MAX survival, perceived fairness and physical-phone acceptance remain unverified. See docs/vm0812-terminal-overload.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -2198,7 +2222,11 @@
     vm0811QaEvidence,
     vm0811QaDecision,
     vm0811QaHypothesis,
-    vm0811QaResult
+    vm0811QaResult,
+    vm0812TerminalEvidence,
+    vm0812TerminalDecision,
+    vm0812TerminalHypothesis,
+    vm0812TerminalResult
   ];
 
   const defaultFindings = [
@@ -2210,7 +2238,7 @@
   ];
 
   const defaultState = {
-    version: 54,
+    version: 55,
     statuses: Object.fromEntries(phases.flatMap(p => p.tasks.map(t => [t[0], IMPLEMENTATION_TASK_STATUSES.get(t[0]) || 'not_started']))),
     findings: defaultFindings,
     playtests: []

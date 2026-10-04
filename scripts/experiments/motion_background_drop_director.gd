@@ -345,8 +345,31 @@ func candidate_rejection_reason(
 		if absf(projected_x - candidate_x) < overlap_distance:
 			return "landed_product_overlap"
 	for product in _conveyor.active_falling_products():
-		if is_instance_valid(product):
+		if not is_instance_valid(product):
+			continue
+		if not _conveyor.overload_mode_enabled:
 			return "falling_product_active"
+		# Later Overload may retain an already-falling ordinary product while D3
+		# selects another lane. Compare their positions at the D3 impact horizon
+		# rather than treating any active product as a global serialization lock.
+		var remaining_fall := (
+			maxf(
+				_conveyor.floor_y - product.falling_size.y * 0.5 - product.position.y,
+				0.0
+			) / product.fall_speed
+			if product.fall_speed > 0.0
+			else INF
+		)
+		var conveyor_travel := maxf(impact_time - remaining_fall, 0.0)
+		var predicted_x := (
+			product.global_position.x
+			- _conveyor.conveyor_speed_at(_conveyor.survival_time) * conveyor_travel
+		)
+		var falling_clearance := (
+			_conveyor.product_size.x + product.falling_size.x
+		) * 0.5 + horizontal_clearance
+		if absf(predicted_x - candidate_x) < falling_clearance:
+			return "falling_product_projected_overlap"
 	if _conveyor.warning_is_visible():
 		return "ordinary_warning_active"
 	var collectibles := _conveyor.get_node_or_null("CollectibleDirector") as CollectibleDirector

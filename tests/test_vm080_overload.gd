@@ -37,9 +37,9 @@ func run() -> void:
 func _test_bounded_intensity_and_standard_contract() -> void:
 	var standard := await _make_conveyor(false)
 	var overload := await _make_conveyor(true)
-	var checkpoints := PackedFloat32Array([0.0, 15.0, 30.0, 45.0, 60.0, 90.0, 120.0, 180.0])
-	var expected_conveyor := PackedFloat32Array([1.25, 1.35, 1.425, 1.47, 1.50, 1.50, 1.50, 1.50])
-	var expected_cooldown := PackedFloat32Array([0.50, 0.42, 0.35, 0.30, 0.27, 0.25, 0.25, 0.25])
+	var checkpoints := PackedFloat32Array([0.0, 10.0, 20.0, 30.0, 45.0, 60.0, 90.0, 180.0])
+	var expected_conveyor := PackedFloat32Array([1.25, 1.34, 1.42, 1.50, 1.65, 1.82, 1.82, 1.82])
+	var expected_cooldown := PackedFloat32Array([0.50, 0.42, 0.35, 0.28, 0.22, 0.08, 0.08, 0.08])
 	var previous_conveyor := -INF
 	var previous_cooldown := INF
 	for index in checkpoints.size():
@@ -77,8 +77,8 @@ func _test_bounded_intensity_and_standard_contract() -> void:
 	)
 	check(
 		overload.director_phase_at(0.0) == 3
-		and overload.pattern_weights_at(0.0) == PackedInt32Array([0, 0, 50, 50])
-		and overload.conveyor_speed_at(999.0) <= overload.player.maximum_speed * overload.maximum_conveyor_player_speed_ratio
+		and overload.pattern_weights_at(0.0) == PackedInt32Array([10, 10, 40, 40])
+		and overload.conveyor_speed_at(999.0) <= overload.player.maximum_speed * overload.overload_maximum_conveyor_player_speed_ratio
 		and overload.player_rightward_recovery_speed_at(999.0) > 0.0
 		and overload.target_fall_duration_at(999.0) > 0.0,
 		"Maximum Overload preserves compound-only selection, positive reaction time, and rightward recovery"
@@ -167,7 +167,7 @@ func _test_menu_modes_retry_and_results() -> void:
 		and overload_coins.refund_system_enabled
 		and overload_coins.ballistic_integrity_enabled
 		and not overload_coins.static_teaching_coin_enabled
-		and session.game.build_id_override == "VM-0.8.1.1-OVERLOAD-QA-TUNING"
+		and session.game.build_id_override == "VM-0.8.1.2-TERMINAL-OVERLOAD"
 		and session.game.vm081_presentation_enabled
 		and session.game.overload_emergency_visual != null,
 		"Overload enters the accepted VM-0.7.3 coin stream after teaching and identifies its build"

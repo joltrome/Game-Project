@@ -36,6 +36,7 @@ const OVERLOAD_SCORE := preload("res://scripts/presentation/overload_score.gd")
 @export var overload_planning_attempt_budget: int = 112
 @export var debug_intensity_review_enabled: bool = false
 @export var debug_intensity_checkpoint_seconds: float = 0.0
+@export var debug_intensity_saturated_fixture: bool = false
 
 var state: State = State.MENU
 var game: MotionExperimentShell
@@ -69,8 +70,10 @@ var best_label: C2PixelText
 var result_survival: C2PixelText
 var best_survival: C2PixelText
 var _frame_pacing = FRAME_PACING.new()
-var _mode_record_label: C2PixelText
-var _mode_record_value: C2PixelText
+var _standard_record_label: C2PixelText
+var _standard_record_value: C2PixelText
+var _overload_record_label: C2PixelText
+var _overload_record_value: C2PixelText
 var _debug_intensity_label: C2PixelText
 
 @onready var audio: SessionAudio = $Audio
@@ -215,7 +218,7 @@ func start_game() -> void:
 	game.overload_mode_enabled = current_mode == RunMode.OVERLOAD
 	game.vm081_presentation_enabled = overload_mode_available
 	if overload_mode_available:
-		game.build_id_override = "VM-0.8.1.1-OVERLOAD-QA-TUNING"
+		game.build_id_override = "VM-0.8.1.2-TERMINAL-OVERLOAD"
 	elif responsive_mobile_cabinet_enabled:
 		game.build_id_override = "VM-0.7.4-RESPONSIVE-MOBILE-CABINET"
 	elif coin_pressure_enabled:
@@ -290,10 +293,16 @@ func start_game() -> void:
 	hud.overload_refund_points = overload_refund_points
 	_ui.add_child(hud)
 	if debug_intensity_review_enabled and current_mode == RunMode.OVERLOAD:
-		game.apply_overload_review_checkpoint(debug_intensity_checkpoint_seconds)
+		game.apply_overload_review_checkpoint(
+			debug_intensity_checkpoint_seconds,
+			debug_intensity_saturated_fixture
+		)
 		_debug_intensity_label = _add_centered_label(
 			_ui,
-			"DEBUG INTENSITY %d SEC  RECORDS DISABLED" % roundi(debug_intensity_checkpoint_seconds),
+			"DEBUG %s %d SEC  RECORDS DISABLED" % [
+				"SATURATED" if debug_intensity_saturated_fixture else "CLEAN",
+				roundi(debug_intensity_checkpoint_seconds),
+			],
 			576.0,
 			610.0,
 			"small",
@@ -362,49 +371,34 @@ func show_mode_select() -> void:
 	_c2.add_overload_button(
 		"back", "back", Rect2(64,478,144,64), Vector2(64,478), _confirmed(show_menu)
 	)
-	_c2.overload_visual_target_changed.connect(_on_mode_visual_target_changed)
 	_c2.wire_focus()
 	_create_mode_record_display()
-	_update_mode_record(-1)
 	standard.grab_focus()
 	_layout()
 
 
-func _update_mode_record(mode: int) -> void:
-	if state != State.MODE_SELECT or not is_instance_valid(_c2):
-		return
-	if not is_instance_valid(_mode_record_label) or not is_instance_valid(_mode_record_value):
-		return
-	var label_text := "BEST RECORD"
-	var value := "--"
-	if mode == RunMode.STANDARD:
-		label_text = "STANDARD BEST"
-		value = str(scores.best_score)
-	elif mode == RunMode.OVERLOAD:
-		label_text = "OVERLOAD BEST"
-		value = OVERLOAD_SCORE.format_score(overload_records.best_score) if overload_records.has_best_score else "--"
-	_mode_record_label.text = label_text
-	_mode_record_label.position.x = 1048.0 - _mode_record_label.ink_width(label_text, 2)
-	_mode_record_value.text = value
-	_mode_record_value.position.x = 1048.0 - _mode_record_value.ink_width(value, 3)
-
-
 func _create_mode_record_display() -> void:
-	_mode_record_label = _add_right_label(_c2, "BEST RECORD", 1048.0, 350.0, "small", 2, CREAM)
-	_mode_record_label.name = "ModeRecordLabel"
-	_mode_record_value = _add_right_label(_c2, "--", 1048.0, 378.0, "display", 3, CREAM)
-	_mode_record_value.name = "ModeRecordValue"
-
-
-func _on_mode_visual_target_changed(button: Button) -> void:
-	if button == null:
-		_update_mode_record(-1)
-	elif button.name == "standard":
-		_update_mode_record(RunMode.STANDARD)
-	elif button.name == "overload":
-		_update_mode_record(RunMode.OVERLOAD)
-	else:
-		_update_mode_record(-1)
+	_standard_record_label = _add_centered_label(
+		_c2, "STANDARD BEST", 396.0, 382.0, "small", 2, CREAM
+	)
+	_standard_record_label.name = "StandardRecordLabel"
+	_standard_record_value = _add_centered_label(
+		_c2, str(scores.best_score), 396.0, 414.0, "display", 3, CREAM
+	)
+	_standard_record_value.name = "StandardRecordValue"
+	_overload_record_label = _add_centered_label(
+		_c2, "OVERLOAD BEST", 804.0, 382.0, "small", 2, CREAM
+	)
+	_overload_record_label.name = "OverloadRecordLabel"
+	var overload_value := (
+		OVERLOAD_SCORE.format_score(overload_records.best_score)
+		if overload_records.has_best_score
+		else "--"
+	)
+	_overload_record_value = _add_centered_label(
+		_c2, overload_value, 804.0, 414.0, "display", 3, CREAM
+	)
+	_overload_record_value.name = "OverloadRecordValue"
 
 
 func show_credits() -> void:
@@ -743,8 +737,10 @@ func _clear_ui() -> void:
 	best_label = null
 	result_survival = null
 	best_survival = null
-	_mode_record_label = null
-	_mode_record_value = null
+	_standard_record_label = null
+	_standard_record_value = null
+	_overload_record_label = null
+	_overload_record_value = null
 	_debug_intensity_label = null
 	_music_slider = null
 	_sfx_slider = null

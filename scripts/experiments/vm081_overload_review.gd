@@ -6,8 +6,9 @@ var session: StandardSession
 var _review_stage := 0
 var _checkpoint_index := 0
 var _capture_path := ""
+var _saturated := false
 
-const CHECKPOINTS := [0.0, 15.0, 30.0, 45.0, 60.0, 90.0]
+const CHECKPOINTS := [0.0, 10.0, 20.0, 30.0, 45.0, 60.0, 75.0, 90.0]
 
 
 func _ready() -> void:
@@ -16,6 +17,7 @@ func _ready() -> void:
 	session.auto_focus_pause_enabled = false
 	session.debug_intensity_review_enabled = true
 	session.debug_intensity_checkpoint_seconds = CHECKPOINTS[_checkpoint_index]
+	session.debug_intensity_saturated_fixture = _saturated
 	add_child(session)
 	session.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	await get_tree().process_frame
@@ -41,8 +43,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_apply_review_stage()
 			get_viewport().set_input_as_handled()
 		KEY_F10:
-			if is_instance_valid(session.game):
-				session.game.conveyor._start_sweeper_entry_cue()
+			_saturated = not _saturated
+			_select_checkpoint(_checkpoint_index)
 			get_viewport().set_input_as_handled()
 		KEY_F11:
 			_select_checkpoint(posmod(_checkpoint_index - 1, CHECKPOINTS.size()))
@@ -50,7 +52,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_F12:
 			_select_checkpoint(posmod(_checkpoint_index + 1, CHECKPOINTS.size()))
 			get_viewport().set_input_as_handled()
-		KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6:
+		KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8:
 			_select_checkpoint(int(event.keycode - KEY_1))
 			get_viewport().set_input_as_handled()
 
@@ -63,6 +65,7 @@ func _apply_review_stage() -> void:
 func _select_checkpoint(index: int) -> void:
 	_checkpoint_index = clampi(index, 0, CHECKPOINTS.size() - 1)
 	session.debug_intensity_checkpoint_seconds = CHECKPOINTS[_checkpoint_index]
+	session.debug_intensity_saturated_fixture = _saturated
 	session.start_overload_game()
 
 
@@ -74,5 +77,7 @@ func _read_command_line_review_options() -> void:
 				if is_equal_approx(CHECKPOINTS[index], requested):
 					_checkpoint_index = index
 					break
+		elif argument == "--saturated":
+			_saturated = true
 		elif argument.begins_with("--capture-path="):
 			_capture_path = argument.trim_prefix("--capture-path=")

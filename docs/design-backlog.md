@@ -4,14 +4,20 @@ This backlog records ideas without granting implementation approval. Evidence, h
 
 ## Postponed
 
-- **VM-0.8.1.1 founder follow-up:** Do not tune the six emergency stages, the
-  45-second D3/electrical overlap, the 112-attempt Overload planning budget, or
-  the 100/250 Score weights from implementation observation alone. First use
-  the record-disabled 0/15/30/45/60/90 review helper and collect founder/fresh
-  experienced-player evidence about visual distinction, readability, fairness,
-  perceived structural difference, voluntary Retry, and physical-phone tail
-  behavior. One deterministic 16.857 ms frame remains a known performance tail;
-  it is not authorization for a planner rewrite.
+- **VM-0.8.1.2 founder follow-up:** Do not tune the 0/10/20/30/45/60 terminal
+  curve, three-Sweeper/three-product MAX caps, 85% Overload conveyor cap,
+  Overload-specific response solver, D3 coexistence rule, 112-attempt coin
+  planning budget, emergency visuals or 100/250 Score weights from automated
+  pressure alone. Use CLEAN/SATURATED review plus natural founder and
+  experienced-player runs. Record seconds survived after entering MAX, readable
+  versus unexplained deaths, cue-stack comprehension, actual response
+  feasibility, voluntary Retry and physical-phone behavior.
+
+- **Permanent Overload-tuning rule:** Configured intensity multipliers are not
+  sufficient evidence of effective difficulty. Any future change must measure
+  accepted event density, concurrent meaningful threats, rejection reasons and
+  hazard-free downtime. A higher table value that is rejected by a validator is
+  not increased pressure.
 
 - **Electrical SFX for Overload:** The VM-0.8.1 visual short deliberately reuses no generated or sourced electrical audio. Consider charge/travel/death/clear cues only after founder review confirms the visual warning and hazard identity. Risk: audio can mask an insufficient 200 ms visual warning or add fatigue during frequent late-run sweeps.
 

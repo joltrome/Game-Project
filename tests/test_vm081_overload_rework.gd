@@ -84,10 +84,10 @@ func _test_mode_score_visuals_and_electric_contract() -> void:
 func _test_score_and_stage_boundaries() -> void:
 	check(SCORE.calculate(76.42,37)==16892 and SCORE.calculate(-1.0,-2)==0, "Combined Score is deterministic, integer-stable and clamps invalid negative inputs")
 	var visual := EMERGENCY.new() as OverloadEmergencyVisual
-	check(visual.stage_at(0.0)==OverloadEmergencyVisual.Stage.UNSTABLE and visual.stage_at(14.999)==OverloadEmergencyVisual.Stage.UNSTABLE, "UNSTABLE covers 0 through under 15 seconds")
-	check(visual.stage_at(15.0)==OverloadEmergencyVisual.Stage.WARNING and visual.stage_at(29.999)==OverloadEmergencyVisual.Stage.WARNING, "WARNING activates exactly at 15 seconds")
-	check(visual.stage_at(30.0)==OverloadEmergencyVisual.Stage.CRITICAL and visual.stage_at(44.999)==OverloadEmergencyVisual.Stage.CRITICAL, "CRITICAL covers 30 through under 45 seconds")
-	check(visual.stage_at(45.0)==OverloadEmergencyVisual.Stage.SEVERE and visual.stage_at(59.999)==OverloadEmergencyVisual.Stage.SEVERE, "SEVERE makes the 45-second checkpoint perceptible")
-	check(visual.stage_at(60.0)==OverloadEmergencyVisual.Stage.CATASTROPHIC and visual.stage_at(89.999)==OverloadEmergencyVisual.Stage.CATASTROPHIC, "CATASTROPHIC makes the 60-second checkpoint perceptible")
-	check(visual.stage_at(90.0)==OverloadEmergencyVisual.Stage.MAX and visual.stage_at(9999.0)==OverloadEmergencyVisual.Stage.MAX, "MAX activates at 90 seconds and remains bounded")
+	check(visual.stage_at(0.0)==OverloadEmergencyVisual.Stage.UNSTABLE and visual.stage_at(9.999)==OverloadEmergencyVisual.Stage.UNSTABLE, "UNSTABLE covers 0 through under 10 seconds")
+	check(visual.stage_at(10.0)==OverloadEmergencyVisual.Stage.WARNING and visual.stage_at(19.999)==OverloadEmergencyVisual.Stage.WARNING, "WARNING activates exactly at 10 seconds")
+	check(visual.stage_at(20.0)==OverloadEmergencyVisual.Stage.CRITICAL and visual.stage_at(29.999)==OverloadEmergencyVisual.Stage.CRITICAL, "CRITICAL covers 20 through under 30 seconds")
+	check(visual.stage_at(30.0)==OverloadEmergencyVisual.Stage.SEVERE and visual.stage_at(44.999)==OverloadEmergencyVisual.Stage.SEVERE, "SEVERE makes the 30-second checkpoint perceptible")
+	check(visual.stage_at(45.0)==OverloadEmergencyVisual.Stage.CATASTROPHIC and visual.stage_at(59.999)==OverloadEmergencyVisual.Stage.CATASTROPHIC, "CATASTROPHIC begins at 45 seconds")
+	check(visual.stage_at(60.0)==OverloadEmergencyVisual.Stage.MAX and visual.stage_at(9999.0)==OverloadEmergencyVisual.Stage.MAX, "MAX activates at 60 seconds and remains bounded")
 	visual.free()

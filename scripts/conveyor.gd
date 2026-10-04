@@ -140,14 +140,19 @@ var sweeper_altitude: float = 518.0
 @export_category("Overload Bounded Intensity")
 @export var overload_mode_enabled: bool = false
 @export var overload_starting_equivalent_seconds: float = 60.0
-@export var overload_maximum_intensity_time: float = 90.0
-@export var overload_curve_times := PackedFloat32Array([0.0, 15.0, 30.0, 45.0, 60.0, 90.0])
-@export var overload_conveyor_multipliers := PackedFloat32Array([1.25, 1.35, 1.425, 1.47, 1.50, 1.50])
+@export var overload_maximum_intensity_time: float = 60.0
+@export var overload_curve_times := PackedFloat32Array([0.0, 10.0, 20.0, 30.0, 45.0, 60.0])
+@export var overload_conveyor_multipliers := PackedFloat32Array([1.25, 1.34, 1.42, 1.50, 1.65, 1.82])
 @export var overload_sweeper_multipliers := PackedFloat32Array([1.15, 1.25, 1.35, 1.45, 1.55, 1.60])
 @export var overload_hazard_multipliers := PackedFloat32Array([1.12, 1.25, 1.35, 1.45, 1.52, 1.58])
-@export var overload_pattern_cooldowns := PackedFloat32Array([0.50, 0.42, 0.35, 0.30, 0.27, 0.25])
-@export var overload_compound_margins := PackedFloat32Array([0.50, 0.44, 0.39, 0.35, 0.32, 0.30])
-@export var overload_d3_sweeper_overlap_threshold: float = 45.0
+@export var overload_pattern_cooldowns := PackedFloat32Array([0.50, 0.42, 0.35, 0.28, 0.22, 0.08])
+@export var overload_compound_margins := PackedFloat32Array([0.50, 0.44, 0.39, 0.34, 0.29, 0.24])
+@export var overload_maximum_hazard_free_windows := PackedFloat32Array([3.0, 2.7, 2.3, 1.9, 1.4, 0.9])
+@export_range(0.0, 0.99, 0.01) var overload_maximum_conveyor_player_speed_ratio: float = 0.85
+@export var overload_d3_sweeper_overlap_threshold: float = 30.0
+@export var overload_multi_sweeper_threshold: float = 45.0
+@export var overload_multi_falling_threshold: float = 30.0
+@export var overload_minimum_visible_response_time: float = 0.18
 
 var survival_time: float = 0.0
 var is_dead: bool = false
@@ -305,6 +310,20 @@ func director_phase_at(time_seconds: float) -> int:
 
 
 func pattern_weights_at(time_seconds: float) -> PackedInt32Array:
+	if overload_mode_enabled:
+		match overload_phase_at(time_seconds):
+			0:
+				return PackedInt32Array([10, 10, 40, 40])
+			1:
+				return PackedInt32Array([5, 5, 45, 45])
+			2:
+				return PackedInt32Array([0, 10, 45, 45])
+			3:
+				return PackedInt32Array([0, 12, 44, 44])
+			4:
+				return PackedInt32Array([0, 20, 40, 40])
+			_:
+				return PackedInt32Array([0, 50, 25, 25])
 	match director_phase_at(time_seconds):
 		1:
 			return phase_two_pattern_weights
@@ -414,7 +433,11 @@ func conveyor_speed_at(time_seconds: float) -> float:
 		)
 	)
 	var controllable_limit := (
-		player.maximum_speed * maximum_conveyor_player_speed_ratio
+		player.maximum_speed * (
+			overload_maximum_conveyor_player_speed_ratio
+			if overload_mode_enabled
+			else maximum_conveyor_player_speed_ratio
+		)
 		if is_instance_valid(player)
 		else INF
 	)
@@ -464,9 +487,44 @@ func overload_intensity_snapshot(time_seconds: float) -> Dictionary:
 		"hazard_multiplier": _overload_curve_value(overload_hazard_multipliers, time_seconds),
 		"pattern_cooldown": _overload_curve_value(overload_pattern_cooldowns, time_seconds),
 		"compound_margin": _overload_curve_value(overload_compound_margins, time_seconds),
-		"pattern_weights": Array(phase_four_pattern_weights),
+		"phase": overload_phase_at(time_seconds),
+		"pattern_weights": Array(pattern_weights_at(time_seconds)),
 		"d3_sweeper_overlap_enabled": time_seconds >= overload_d3_sweeper_overlap_threshold,
+		"maximum_active_sweepers": maximum_active_sweepers_at(time_seconds),
+		"maximum_concurrent_falling_cans": maximum_concurrent_falling_cans_at(time_seconds),
+		"maximum_hazard_free_window": maximum_hazard_free_window_at(time_seconds),
+		"rightward_recovery_speed": player_rightward_recovery_speed_at(time_seconds),
 	}
+
+
+func overload_phase_at(time_seconds: float) -> int:
+	var phase := 0
+	for index in overload_curve_times.size():
+		if time_seconds + 0.0001 >= overload_curve_times[index]:
+			phase = index
+	return phase
+
+
+func maximum_active_sweepers_at(time_seconds: float) -> int:
+	if overload_mode_enabled and time_seconds >= overload_maximum_intensity_time:
+		return maxi(maximum_active_sweepers, 3)
+	if overload_mode_enabled and time_seconds >= overload_multi_sweeper_threshold:
+		return maxi(maximum_active_sweepers, 2)
+	return maximum_active_sweepers
+
+
+func maximum_concurrent_falling_cans_at(time_seconds: float) -> int:
+	if overload_mode_enabled and time_seconds >= overload_maximum_intensity_time:
+		return maxi(maximum_concurrent_falling_cans, 3)
+	if overload_mode_enabled and time_seconds >= overload_multi_falling_threshold:
+		return maxi(maximum_concurrent_falling_cans, 2)
+	return maximum_concurrent_falling_cans
+
+
+func maximum_hazard_free_window_at(time_seconds: float) -> float:
+	if not overload_mode_enabled:
+		return INF
+	return _overload_curve_value(overload_maximum_hazard_free_windows, time_seconds)
 
 
 func apply_overload_review_checkpoint(time_seconds: float) -> void:
@@ -1101,6 +1159,8 @@ func pattern_is_solvable(
 		return false
 	match pattern_type:
 		PatternType.SWEEPER_ONLY:
+			if overload_mode_enabled:
+				return overload_sweeper_response_is_solvable(evaluation_time)
 			var visible_arrival_time := sweeper_center_arrival_time(
 				evaluation_time
 			)
@@ -1127,6 +1187,54 @@ func pattern_is_solvable(
 				>= compound_margin_at(evaluation_time)
 			)
 	return false
+
+
+func overload_sweeper_response_is_solvable(time_seconds: float) -> bool:
+	# Standard keeps its historical 0.8–1.2 s center-arrival gate. Overload uses
+	# the response the player actually receives: the fixed warning plus travel to
+	# the current player region, and a reachable grounded corridor. Remaining
+	# grounded is a valid response because the frozen carriage clears that band.
+	var player_x := clampf(player.position.x, control_band_left, control_band_right)
+	var visible_response_time := sweeper_player_region_arrival_delay(
+		player_x,
+		time_seconds
+	)
+	if (
+		visible_response_time + 0.0001
+		< sweeper_entry_cue_duration + overload_minimum_visible_response_time
+	):
+		return false
+	var movement_time := maxf(
+		visible_response_time - overload_minimum_visible_response_time,
+		0.0
+	)
+	var left_reach := absf(net_left_input_world_speed()) * movement_time
+	var right_reach := maxf(net_right_input_world_speed(), 0.0) * movement_time
+	var sample_step := maxf(player_collision_size().x * 0.5, 8.0)
+	var candidate_x := control_band_left
+	while candidate_x <= control_band_right + 0.001:
+		var reachable := (
+			candidate_x >= player_x - left_reach
+			and candidate_x <= player_x + right_reach
+		)
+		if reachable and _ground_corridor_is_clear_at(candidate_x, movement_time):
+			return true
+		candidate_x += sample_step
+	return false
+
+
+func _ground_corridor_is_clear_at(target_x: float, prediction_time: float) -> bool:
+	var clearance := landed_product_size.x * 0.5 + player_collision_size().x * 0.5
+	for product in _landed_products:
+		if not is_instance_valid(product):
+			continue
+		var predicted_x := (
+			product.conveyor_center_x()
+			- conveyor_speed_at(survival_time) * maxf(prediction_time, 0.0)
+		)
+		if absf(predicted_x - target_x) < clearance:
+			return false
+	return true
 
 
 func active_sweeper_count() -> int:
@@ -1347,7 +1455,7 @@ func spawn_external_conveyor_product(
 	if (
 		is_dead
 		or is_round_complete
-		or _falling_products.size() >= maximum_concurrent_falling_cans
+		or _falling_products.size() >= maximum_concurrent_falling_cans_at(survival_time)
 		or drop_x - product_size.x * 0.5 < belt_left_x
 		or drop_x + product_size.x * 0.5 > belt_right_x
 	):
@@ -1558,6 +1666,15 @@ func _record_pattern_selection(pattern_type: int, selected_at: float) -> void:
 	pattern_selected.emit(pattern_type, selected_at)
 
 
+func _record_pattern_rejection(pattern_type: int, reason: String) -> void:
+	_record_encounter({
+		"event": "pattern_rejected",
+		"pattern_type": pattern_type,
+		"reason": reason,
+		"time": survival_time,
+	})
+
+
 func _record_compound_decision(pattern_type: int) -> void:
 	if not _pattern_is_compound(pattern_type):
 		return
@@ -1601,7 +1718,26 @@ func _try_start_reserved_pattern() -> bool:
 			return false
 		_record_pattern_selection(_reserved_pattern_type, survival_time)
 
+	_record_encounter({
+		"event": "pattern_attempt",
+		"pattern_type": _reserved_pattern_type,
+		"time": survival_time,
+	})
 	if not _pattern_can_start(_reserved_pattern_type):
+		var rejection_reason := _pattern_start_rejection_reason(_reserved_pattern_type)
+		_record_pattern_rejection(_reserved_pattern_type, rejection_reason)
+		# A D3 pre-reservation owns the product slot, not the complete director.
+		# Overload may substitute a separately validated electrical response so a
+		# can-bearing reservation cannot create a long quiet scheduler stall.
+		if (
+			overload_mode_enabled
+			and _external_product_event_pending
+			and _pattern_is_compound(_reserved_pattern_type)
+			and _pattern_can_start(PatternType.SWEEPER_ONLY)
+		):
+			_reserved_pattern_type = PatternType.SWEEPER_ONLY
+			_record_pattern_selection(_reserved_pattern_type, survival_time)
+			return _try_start_reserved_pattern()
 		if _reserved_pattern_type == PatternType.RIGHT_EDGE_PRESSURE:
 			_pattern_cooldown_remaining = pattern_retry_delay
 			return false
@@ -1654,6 +1790,11 @@ func _try_start_reserved_pattern() -> bool:
 		_active_pattern_started_at
 	)
 	_record_pattern_commit(committed_pattern, _active_pattern_started_at)
+	_record_encounter({
+		"event": "pattern_commit",
+		"pattern_type": committed_pattern,
+		"time": _active_pattern_started_at,
+	})
 	if committed_pattern == PatternType.RIGHT_EDGE_PRESSURE:
 		_right_pressure_requested = false
 		_right_edge_dwell_time = 0.0
@@ -1829,7 +1970,7 @@ func _pattern_can_start(pattern_type: int) -> bool:
 		and (
 			_has_pending_drop()
 			or _external_product_event_pending
-			or _falling_products.size() >= maximum_concurrent_falling_cans
+			or _falling_products.size() >= maximum_concurrent_falling_cans_at(survival_time)
 		)
 	):
 		return false
@@ -1837,12 +1978,41 @@ func _pattern_can_start(pattern_type: int) -> bool:
 		includes_sweeper
 		and sweeper_event_is_immediate
 		and (
-			_active_sweepers.size() >= maximum_active_sweepers
+			_active_sweepers.size() >= maximum_active_sweepers_at(survival_time)
 			or _sweeper_spawn_pending
 		)
 	):
 		return false
 	return true
+
+
+func _pattern_start_rejection_reason(pattern_type: int) -> String:
+	if not pattern_is_solvable(pattern_type, survival_time):
+		return "response_unsolvable"
+	var includes_can := pattern_type in [
+		PatternType.CAN_ONLY,
+		PatternType.SWEEPER_THEN_CAN,
+		PatternType.CAN_THEN_SWEEPER,
+		PatternType.RIGHT_EDGE_PRESSURE,
+	]
+	if includes_can:
+		if _has_pending_drop():
+			return "ordinary_warning_pending"
+		if _external_product_event_pending:
+			return "d3_product_slot_reserved"
+		if _falling_products.size() >= maximum_concurrent_falling_cans_at(survival_time):
+			return "falling_product_cap"
+	var immediate_sweeper := pattern_type in [
+		PatternType.SWEEPER_ONLY,
+		PatternType.SWEEPER_THEN_CAN,
+		PatternType.RIGHT_EDGE_PRESSURE,
+	]
+	if immediate_sweeper:
+		if _sweeper_spawn_pending:
+			return "electrical_warning_pending"
+		if _active_sweepers.size() >= maximum_active_sweepers_at(survival_time):
+			return "active_sweeper_cap"
+	return "scheduler_state"
 
 
 func _events_for_pattern(
@@ -1943,7 +2113,7 @@ func _trigger_due_pattern_events() -> void:
 			triggered = (
 				not _has_pending_drop()
 				and not _external_product_event_pending
-				and _falling_products.size() < maximum_concurrent_falling_cans
+				and _falling_products.size() < maximum_concurrent_falling_cans_at(survival_time)
 				and _start_next_telegraph(
 					event.fall_duration,
 					event.target_x,
@@ -1979,6 +2149,11 @@ func _trigger_due_pattern_events() -> void:
 
 
 func _bounded_pattern_cooldown(requested_cooldown: float) -> float:
+	if overload_mode_enabled:
+		requested_cooldown = minf(
+			requested_cooldown,
+			maximum_hazard_free_window_at(survival_time)
+		)
 	if _teaching_can_presented and not _teaching_sweeper_presented:
 		return minf(requested_cooldown, teaching_followup_cooldown)
 	if (
@@ -2005,7 +2180,7 @@ func _start_sweeper_entry_cue(
 ) -> bool:
 	if (
 		_sweeper_spawn_pending
-		or _active_sweepers.size() >= maximum_active_sweepers
+		or _active_sweepers.size() >= maximum_active_sweepers_at(survival_time)
 	):
 		return false
 	_sweeper_spawn_pending = true

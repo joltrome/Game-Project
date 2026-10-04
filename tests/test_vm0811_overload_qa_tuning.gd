@@ -57,8 +57,9 @@ func _test_mode_select_interactions() -> void:
 		"Mouse hover gives visual precedence to only the hovered mode"
 	)
 	check(
-		(screen.get_node("ModeRecordLabel") as C2PixelText).text == "OVERLOAD BEST",
-		"Overload hover updates the persistent record display in place"
+		(screen.get_node("StandardRecordLabel") as C2PixelText).text == "STANDARD BEST"
+		and (screen.get_node("OverloadRecordLabel") as C2PixelText).text == "OVERLOAD BEST",
+		"Both mode records remain persistent while Overload is hovered"
 	)
 	overload.mouse_exited.emit()
 	check(
@@ -87,9 +88,9 @@ func _test_mode_select_interactions() -> void:
 		var target := standard if index % 2 == 0 else overload
 		target.mouse_entered.emit()
 		check(
-			screen.get_children().filter(func(child: Node) -> bool: return child.name == "ModeRecordLabel").size() == 1
-			and screen.get_children().filter(func(child: Node) -> bool: return child.name == "ModeRecordValue").size() == 1,
-			"Rapid record switching keeps exactly one persistent label/value pair"
+			screen.get_children().filter(func(child: Node) -> bool: return child.name == "StandardRecordValue").size() == 1
+			and screen.get_children().filter(func(child: Node) -> bool: return child.name == "OverloadRecordValue").size() == 1,
+			"Rapid focus switching keeps one fixed record value per mode"
 		)
 		target.mouse_exited.emit()
 
@@ -133,11 +134,11 @@ func _test_mode_select_interactions() -> void:
 
 
 func _test_real_intensity_review_and_record_protection() -> void:
-	var expected_conveyor := PackedFloat32Array([1.25, 1.35, 1.425, 1.47, 1.50, 1.50])
+	var expected_conveyor := PackedFloat32Array([1.25, 1.34, 1.42, 1.50, 1.65, 1.82])
 	var expected_sweeper := PackedFloat32Array([1.15, 1.25, 1.35, 1.45, 1.55, 1.60])
 	var expected_hazard := PackedFloat32Array([1.12, 1.25, 1.35, 1.45, 1.52, 1.58])
-	var expected_cooldown := PackedFloat32Array([0.50, 0.42, 0.35, 0.30, 0.27, 0.25])
-	var expected_margin := PackedFloat32Array([0.50, 0.44, 0.39, 0.35, 0.32, 0.30])
+	var expected_cooldown := PackedFloat32Array([0.50, 0.42, 0.35, 0.28, 0.22, 0.08])
+	var expected_margin := PackedFloat32Array([0.50, 0.44, 0.39, 0.34, 0.29, 0.24])
 	var expected_stages := [
 		OverloadEmergencyVisual.Stage.UNSTABLE,
 		OverloadEmergencyVisual.Stage.WARNING,
@@ -146,7 +147,7 @@ func _test_real_intensity_review_and_record_protection() -> void:
 		OverloadEmergencyVisual.Stage.CATASTROPHIC,
 		OverloadEmergencyVisual.Stage.MAX,
 	]
-	var checkpoints := PackedFloat32Array([0.0, 15.0, 30.0, 45.0, 60.0, 90.0])
+	var checkpoints := PackedFloat32Array([0.0, 10.0, 20.0, 30.0, 45.0, 60.0])
 	var session := _make_session()
 	session.debug_intensity_review_enabled = true
 	root.add_child(session)
@@ -179,7 +180,7 @@ func _test_real_intensity_review_and_record_protection() -> void:
 		)
 
 	var best_before := session.overload_records.best_score
-	session.last_survival_seconds = 90.0
+	session.last_survival_seconds = 60.0
 	session._show_results(12, false)
 	check(
 		session.overload_records.best_score == best_before
@@ -196,7 +197,7 @@ func _test_late_d3_overlap_and_standard_freeze() -> void:
 	shell.vm081_presentation_enabled = true
 	root.add_child(shell)
 	await process_frame
-	shell.apply_overload_review_checkpoint(45.0)
+	shell.apply_overload_review_checkpoint(30.0)
 	var conveyor := shell.conveyor
 	conveyor.set_physics_process(false)
 	conveyor._clear_pattern_state()
@@ -207,12 +208,14 @@ func _test_late_d3_overlap_and_standard_freeze() -> void:
 		launched
 		and conveyor._sweeper_spawn_pending
 		and conveyor._pending_sweeper_pattern_type == ConveyorPrototype.PatternType.SWEEPER_ONLY
-		and conveyor.pattern_is_solvable(ConveyorPrototype.PatternType.SWEEPER_ONLY, 45.0),
+		and conveyor.pattern_is_solvable(ConveyorPrototype.PatternType.SWEEPER_ONLY, 30.0),
 		"Late Overload can overlap one validator-approved electrical sweep with an active D3 sequence"
 	)
 	check(
 		conveyor.maximum_active_sweepers == 1
 		and conveyor.maximum_concurrent_falling_cans == 1
+		and conveyor.maximum_active_sweepers_at(45.0) == 2
+		and conveyor.maximum_concurrent_falling_cans_at(30.0) == 2
 		and conveyor.sweeper_size == Vector2(96, 28)
 		and is_equal_approx(conveyor.sweeper_entry_cue_duration, 0.20),
 		"Concurrency tuning preserves the single-sweeper/single-falling limits and frozen electrical geometry/timing"

@@ -7,11 +7,11 @@ const ROOT := "res://assets/visuals/vm081_overload/emergency/"
 const STAGE_NAMES := ["UNSTABLE", "WARNING", "CRITICAL", "SEVERE", "CATASTROPHIC", "MAX"]
 const RED_LIGHT := Color("d53f4f")
 
-@export var warning_threshold_seconds: float = 15.0
-@export var critical_threshold_seconds: float = 30.0
-@export var severe_threshold_seconds: float = 45.0
-@export var catastrophic_threshold_seconds: float = 60.0
-@export var maximum_threshold_seconds: float = 90.0
+@export var warning_threshold_seconds: float = 10.0
+@export var critical_threshold_seconds: float = 20.0
+@export var severe_threshold_seconds: float = 30.0
+@export var catastrophic_threshold_seconds: float = 45.0
+@export var maximum_threshold_seconds: float = 60.0
 @export var reduced_motion: bool = false
 @export var debug_stage_keys_enabled: bool = false
 @export var transition_jolt_duration: float = 0.18

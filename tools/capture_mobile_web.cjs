@@ -33,9 +33,13 @@ async function main() {
   await page.locator("canvas").waitFor({ state: "visible" });
   await page.locator("canvas").click({ position: { x: width / 2, y: height / 2 } });
   if (startMode === "overload") {
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(200);
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("Enter");
   } else if (startMode === "standard") {
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(200);
     await page.keyboard.press("Enter");
   } else if (startMode !== "menu") {
     throw new Error(`unsupported start mode: ${startMode}`);

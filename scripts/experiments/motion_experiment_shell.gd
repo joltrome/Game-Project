@@ -5,6 +5,7 @@ const CONVEYOR_SCENE := preload("res://scenes/prototypes/conveyor.tscn")
 const VIS03_FALLING_COLLISION_SIZE := Vector2(60.0, 60.0)
 const VIS04_BASELINE_COIN_COLLISION_SIZE := Vector2(24.0, 24.0)
 const OVERLOAD_EMERGENCY_VISUAL := preload("res://scripts/experiments/overload_emergency_visual.gd")
+const CONVEYOR_PRODUCT_SCENE := preload("res://scenes/hazards/conveyor_product.tscn")
 
 @export_enum("D2", "D3") var variant_id: String = "D2"
 @export var internal_size := Vector2i(1152, 480)
@@ -210,7 +211,7 @@ func maximum_overload_visual_stage_name() -> String:
 	return overload_emergency_visual.maximum_stage_name() if is_instance_valid(overload_emergency_visual) else "STANDARD"
 
 
-func apply_overload_review_checkpoint(time_seconds: float) -> void:
+func apply_overload_review_checkpoint(time_seconds: float, saturated: bool = false) -> void:
 	if not overload_mode_enabled or not is_instance_valid(conveyor):
 		return
 	var checkpoint := clampf(time_seconds, 0.0, conveyor.overload_maximum_intensity_time)
@@ -219,6 +220,42 @@ func apply_overload_review_checkpoint(time_seconds: float) -> void:
 		background_drop_director.seek_endless_schedule_for_review(checkpoint)
 	if is_instance_valid(overload_emergency_visual):
 		overload_emergency_visual.synchronize_to_time(checkpoint)
+	if saturated and checkpoint >= 30.0:
+		_install_saturated_overload_review_fixture()
+
+
+func _install_saturated_overload_review_fixture() -> void:
+	# Deterministic representative pressure, assembled only after each existing
+	# system validates its own placement. This is a review fixture, not a hidden
+	# production spawn path.
+	var product := CONVEYOR_PRODUCT_SCENE.instantiate() as ConveyorProduct
+	product.position = Vector2(850.0, conveyor.floor_y - conveyor.landed_product_size.y * 0.5)
+	product.configure_conveyor(
+		0.0,
+		conveyor.floor_y,
+		conveyor.landed_lifetime,
+		conveyor.despawn_warning_duration,
+		conveyor.product_size,
+		conveyor.landed_product_size,
+		conveyor.conveyor_speed_at(conveyor.survival_time),
+		conveyor.offscreen_cleanup_x,
+		conveyor.effective_product_falling_collision_size()
+	)
+	product.landed.connect(conveyor._on_product_landed)
+	product.cleared.connect(conveyor._on_product_cleared)
+	conveyor.get_node("Hazards").add_child(product)
+	product._land()
+	if is_instance_valid(background_drop_director):
+		background_drop_director.reservation_pending = true
+		background_drop_director._active_schedule_index = background_drop_director.released_event_count()
+		background_drop_director._try_start_reserved_sequence()
+	conveyor._start_sweeper_entry_cue(
+		conveyor.sweeper_speed_at(conveyor.survival_time),
+		ConveyorPrototype.PatternType.SWEEPER_ONLY
+	)
+	var collectibles := conveyor.get_node_or_null("CollectibleDirector") as CollectibleDirector
+	if collectibles != null:
+		collectibles.try_spawn_for_test()
 
 
 func _configure_camera_and_hud() -> void:
