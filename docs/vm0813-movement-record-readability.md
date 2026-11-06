@@ -8,6 +8,12 @@ Starting and parent HEAD: `852f8eab6692606fb440f8845f9c921c94a3bba7`
 
 Parent candidate: VM-0.8.1.2 Terminal Overload
 
+Implementation commit: `746efd86050ee613b166d2f69286fd1dfefba657`
+
+The isolated branch was pushed and its remote hash independently verified.
+The VM-0.8.1.2 remote remains at its original parent hash. No merge or tag was
+created; generated builds remain local and ignored.
+
 ## Scope and status
 
 This is an isolated founder-review candidate. It repairs the presentation of
@@ -29,6 +35,9 @@ Jump is not adopted or recommended by this implementation result.
   mobile scaling made the problem more severe.
 - The frozen shared controller accepted only a grounded/coyote jump. No
   airborne-jump budget existed.
+- Founder described the current movement as restrictive. This is qualitative
+  evidence motivating a comparison, not evidence that Double Jump is the
+  correct permanent design.
 - Terminal Overload's deterministic pressure and tail performance were already
   acceptable. There was no evidence authorizing hazard or balance retuning.
 

@@ -16,6 +16,8 @@ facts after an accepted milestone; do not append duplicate state snapshots.
   `release/vm-0.8.1.3-movement-record-readability`
 - Candidate source parent: VM-0.8.1.2 at
   `852f8eab6692606fb440f8845f9c921c94a3bba7`
+- Candidate implementation commit: `746efd86050ee613b166d2f69286fd1dfefba657`
+  (pushed and independently verified against the configured GitHub remote).
 - Candidate report: `docs/vm0813-movement-record-readability.md`
 - Candidate builds: `builds/VM-0.8.1.3-SINGLE-JUMP.zip` and
   `builds/VM-0.8.1.3-DOUBLE-JUMP-EXPERIMENT.zip`
@@ -110,6 +112,10 @@ Portrait shows `ROTATE DEVICE`.
 - VM-0.8.0 was perceived as “Standard, but endless”; its added UI also appeared
   appended rather than native to the production screen.
 - Players did not understand the horizontal carriage as a grabber.
+- Founder VM-0.8.1.2 review found the persistent Best records visually
+  unreadable over machine artwork, especially on mobile, and described movement
+  as restrictive. This authorizes the isolated correction/experiment, not
+  permanent Double-Jump adoption.
 - These are qualitative product signals, not evidence that Standard should be
   retuned or that VM-0.8.1's proposed difficulty/score weights are validated.
 
