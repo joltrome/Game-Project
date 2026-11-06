@@ -7,6 +7,8 @@ var _review_stage := 0
 var _checkpoint_index := 0
 var _capture_path := ""
 var _saturated := false
+var _double_jump := false
+var _standard_mode := false
 
 const CHECKPOINTS := [0.0, 10.0, 20.0, 30.0, 45.0, 60.0, 75.0, 90.0]
 
@@ -16,12 +18,14 @@ func _ready() -> void:
 	session = SESSION_SCENE.instantiate() as StandardSession
 	session.auto_focus_pause_enabled = false
 	session.debug_intensity_review_enabled = true
+	session.debug_movement_review_enabled = true
+	session.experimental_additional_air_jumps = 1 if _double_jump else 0
 	session.debug_intensity_checkpoint_seconds = CHECKPOINTS[_checkpoint_index]
 	session.debug_intensity_saturated_fixture = _saturated
 	add_child(session)
 	session.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	await get_tree().process_frame
-	session.start_overload_game()
+	_start_selected_mode()
 	if not _capture_path.is_empty():
 		await get_tree().process_frame
 		await get_tree().process_frame
@@ -38,6 +42,15 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
 	match event.keycode:
+		KEY_J:
+			_double_jump = not _double_jump
+			session.experimental_additional_air_jumps = 1 if _double_jump else 0
+			_start_selected_mode()
+			get_viewport().set_input_as_handled()
+		KEY_F8:
+			_standard_mode = not _standard_mode
+			_start_selected_mode()
+			get_viewport().set_input_as_handled()
 		KEY_F9:
 			_review_stage = posmod(_review_stage + 1, OverloadEmergencyVisual.STAGE_NAMES.size())
 			_apply_review_stage()
@@ -66,7 +79,20 @@ func _select_checkpoint(index: int) -> void:
 	_checkpoint_index = clampi(index, 0, CHECKPOINTS.size() - 1)
 	session.debug_intensity_checkpoint_seconds = CHECKPOINTS[_checkpoint_index]
 	session.debug_intensity_saturated_fixture = _saturated
-	session.start_overload_game()
+	_start_selected_mode()
+
+
+func _start_selected_mode() -> void:
+	if _standard_mode:
+		session.start_standard_game()
+	else:
+		session.start_overload_game()
+	print(
+		"VM0813_REVIEW mode=",
+		"STANDARD" if _standard_mode else "OVERLOAD",
+		" movement=",
+		"DOUBLE" if _double_jump else "SINGLE"
+	)
 
 
 func _read_command_line_review_options() -> void:
@@ -79,5 +105,9 @@ func _read_command_line_review_options() -> void:
 					break
 		elif argument == "--saturated":
 			_saturated = true
+		elif argument == "--double-jump":
+			_double_jump = true
+		elif argument == "--standard":
+			_standard_mode = true
 		elif argument.begins_with("--capture-path="):
 			_capture_path = argument.trim_prefix("--capture-path=")

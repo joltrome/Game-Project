@@ -37,6 +37,9 @@ const OVERLOAD_SCORE := preload("res://scripts/presentation/overload_score.gd")
 @export var debug_intensity_review_enabled: bool = false
 @export var debug_intensity_checkpoint_seconds: float = 0.0
 @export var debug_intensity_saturated_fixture: bool = false
+@export var debug_movement_review_enabled: bool = false
+@export_range(0, 1, 1) var experimental_additional_air_jumps: int = 0
+@export_range(0.1, 1.5, 0.05) var experimental_airborne_jump_multiplier: float = 1.0
 
 var state: State = State.MENU
 var game: MotionExperimentShell
@@ -84,6 +87,8 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
+	if OS.has_feature("vm0813_double_jump"):
+		experimental_additional_air_jumps = 1
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	process_priority = 100
 	get_window().title = "GET CANNED!"
@@ -218,7 +223,11 @@ func start_game() -> void:
 	game.overload_mode_enabled = current_mode == RunMode.OVERLOAD
 	game.vm081_presentation_enabled = overload_mode_available
 	if overload_mode_available:
-		game.build_id_override = "VM-0.8.1.2-TERMINAL-OVERLOAD"
+		game.build_id_override = (
+			"VM-0.8.1.3-DOUBLE-JUMP-EXPERIMENT"
+			if experimental_additional_air_jumps > 0
+			else "VM-0.8.1.3-SINGLE-JUMP"
+		)
 	elif responsive_mobile_cabinet_enabled:
 		game.build_id_override = "VM-0.7.4-RESPONSIVE-MOBILE-CABINET"
 	elif coin_pressure_enabled:
@@ -243,6 +252,10 @@ func start_game() -> void:
 	game.refund_chute_enabled = refund_chute_enabled
 	add_child(game)
 	move_child(game, 0)
+	game.conveyor.player.configure_airborne_jump_experiment(
+		experimental_additional_air_jumps,
+		experimental_airborne_jump_multiplier
+	)
 	game.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	game.conveyor.set_process_unhandled_input(false)
 	game.v2_visual_integration.external_death_presentation_enabled=true
@@ -297,12 +310,16 @@ func start_game() -> void:
 			debug_intensity_checkpoint_seconds,
 			debug_intensity_saturated_fixture
 		)
-		_debug_intensity_label = _add_centered_label(
-			_ui,
-			"DEBUG %s %d SEC  RECORDS DISABLED" % [
+	if _debug_records_disabled():
+		var review_context := "STANDARD"
+		if current_mode == RunMode.OVERLOAD:
+			review_context = "%s %d SEC" % [
 				"SATURATED" if debug_intensity_saturated_fixture else "CLEAN",
 				roundi(debug_intensity_checkpoint_seconds),
-			],
+			]
+		_debug_intensity_label = _add_centered_label(
+			_ui,
+			"DEBUG %s  MOVEMENT: %s  RECORDS DISABLED" % [review_context, movement_mode_name()],
 			576.0,
 			610.0,
 			"small",
@@ -359,8 +376,6 @@ func show_mode_select() -> void:
 	_c2.show_menu_static_lettering = false
 	_ui.add_child(_c2)
 	_add_pixel_label(_c2, "SELECT MODE", Vector2(80, 68), "small", 2, CREAM)
-	_add_centered_label(_c2, "60 SECOND SHIFT", 396.0, 562.0, "small", 2, INK)
-	_add_centered_label(_c2, "ENDLESS / ESCALATING", 804.0, 562.0, "small", 2, INK)
 	_add_pixel_label(_c2, "ESC: BACK", Vector2(80, 580), "small", 2, INK)
 	var standard := _c2.add_overload_button(
 		"standard", "standard", Rect2(236,472,320,70), Vector2(224,460), start_standard_game
@@ -379,15 +394,15 @@ func show_mode_select() -> void:
 
 func _create_mode_record_display() -> void:
 	_standard_record_label = _add_centered_label(
-		_c2, "STANDARD BEST", 396.0, 382.0, "small", 2, CREAM
+		_c2, "60 SECOND SHIFT   BEST", 396.0, 560.0, "small", 2, INK
 	)
 	_standard_record_label.name = "StandardRecordLabel"
 	_standard_record_value = _add_centered_label(
-		_c2, str(scores.best_score), 396.0, 414.0, "display", 3, CREAM
+		_c2, str(scores.best_score), 396.0, 576.0, "display", 2, INK
 	)
 	_standard_record_value.name = "StandardRecordValue"
 	_overload_record_label = _add_centered_label(
-		_c2, "OVERLOAD BEST", 804.0, 382.0, "small", 2, CREAM
+		_c2, "ENDLESS / ESCALATING   BEST", 804.0, 560.0, "small", 2, INK
 	)
 	_overload_record_label.name = "OverloadRecordLabel"
 	var overload_value := (
@@ -396,7 +411,7 @@ func _create_mode_record_display() -> void:
 		else "--"
 	)
 	_overload_record_value = _add_centered_label(
-		_c2, overload_value, 804.0, 414.0, "display", 3, CREAM
+		_c2, overload_value, 804.0, 576.0, "display", 2, INK
 	)
 	_overload_record_value.name = "OverloadRecordValue"
 
@@ -494,7 +509,7 @@ func _show_results(score: int, survived: bool) -> void:
 		)
 		last_overload_new_best = (
 			false
-			if debug_intensity_review_enabled
+			if _debug_records_disabled()
 			else overload_records.record_run(
 				last_survival_seconds,
 				score,
@@ -502,7 +517,8 @@ func _show_results(score: int, survived: bool) -> void:
 			)
 		)
 	else:
-		scores.record_score(score)
+		if not _debug_records_disabled():
+			scores.record_score(score)
 	touch.set_game_active(false)
 	game.process_mode = Node.PROCESS_MODE_DISABLED
 	game.hide()
@@ -533,6 +549,8 @@ func _show_results(score: int, survived: bool) -> void:
 			var label := item[0] as C2PixelText
 			label.glyph_scale = scale_value
 			label.position = Vector2(item[1]-floorf(label.ink_width(label.text,scale_value)/2),291)
+		if _debug_records_disabled():
+			_add_centered_label(_c2, "EXPERIMENT - RECORDS DISABLED", 576.0, 218.0, "small", 1, GOLD)
 	var retry := _c2.add_button("retry", "RETRY", Rect2(336,472,280,70), start_game, true)
 	_c2.add_button("menu", "MENU", Rect2(644,478,144,64), _confirmed(show_menu))
 	_add_volume_sliders(_c2, Vector2(790.0, 538.0))
@@ -556,11 +574,23 @@ func _score_text(value: int, grouped: bool = false) -> C2PixelText:
 	return label
 
 
+func movement_mode_name() -> String:
+	return "DOUBLE" if experimental_additional_air_jumps > 0 else "SINGLE"
+
+
+func _debug_records_disabled() -> bool:
+	return (
+		debug_intensity_review_enabled
+		or debug_movement_review_enabled
+		or experimental_additional_air_jumps > 0
+	)
+
+
 func _add_overload_result_details() -> void:
 	_add_pixel_label(_c2, "OVERLOAD", Vector2(80,68), "small", 2, GOLD)
 	_add_pixel_label(_c2, "R: RETRY", Vector2(76,577), "small", 2, INK)
 	_add_pixel_label(_c2, "ESC: MENU", Vector2(240,577), "small", 2, INK)
-	if debug_intensity_review_enabled:
+	if _debug_records_disabled():
 		_add_centered_label(_c2, "DEBUG RUN - RECORDS DISABLED", 576.0, 218.0, "small", 1, GOLD)
 	_add_centered_label(_c2, "SCORE", 576.0, 244.0, "small", 2, CREAM)
 	var score_scale := 5
@@ -609,6 +639,9 @@ func _capture_overload_telemetry(frame_summary: Dictionary) -> void:
 		"frame_pacing": frame_summary.duplicate(true),
 		"visual_stage": game.overload_visual_stage_name() if game.has_method("overload_visual_stage_name") else "UNAVAILABLE",
 		"maximum_visual_stage": game.maximum_overload_visual_stage_name() if game.has_method("maximum_overload_visual_stage_name") else "UNAVAILABLE",
+		"movement_mode": movement_mode_name(),
+		"accepted_jumps": conveyor.player.accepted_jump_count,
+		"accepted_airborne_jumps": conveyor.player.accepted_airborne_jump_count,
 	}
 	print("VM081_OVERLOAD_RUN ", JSON.stringify(last_overload_telemetry))
 

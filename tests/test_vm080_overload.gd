@@ -167,7 +167,7 @@ func _test_menu_modes_retry_and_results() -> void:
 		and overload_coins.refund_system_enabled
 		and overload_coins.ballistic_integrity_enabled
 		and not overload_coins.static_teaching_coin_enabled
-		and session.game.build_id_override == "VM-0.8.1.2-TERMINAL-OVERLOAD"
+		and session.game.build_id_override == "VM-0.8.1.3-SINGLE-JUMP"
 		and session.game.vm081_presentation_enabled
 		and session.game.overload_emergency_visual != null,
 		"Overload enters the accepted VM-0.7.3 coin stream after teaching and identifies its build"

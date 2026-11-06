@@ -57,8 +57,8 @@ func _test_mode_select_interactions() -> void:
 		"Mouse hover gives visual precedence to only the hovered mode"
 	)
 	check(
-		(screen.get_node("StandardRecordLabel") as C2PixelText).text == "STANDARD BEST"
-		and (screen.get_node("OverloadRecordLabel") as C2PixelText).text == "OVERLOAD BEST",
+		(screen.get_node("StandardRecordLabel") as C2PixelText).text == "60 SECOND SHIFT   BEST"
+		and (screen.get_node("OverloadRecordLabel") as C2PixelText).text == "ENDLESS / ESCALATING   BEST",
 		"Both mode records remain persistent while Overload is hovered"
 	)
 	overload.mouse_exited.emit()

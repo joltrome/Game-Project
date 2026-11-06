@@ -2025,6 +2025,30 @@
     text: 'VM-0.8.1.2 uses 0/10/20/30/45/60 phases, an Overload-only 85% conveyor cap, dynamic late caps up to three Sweepers and three falling products, an Overload response-corridor solver, projected D3/ordinary footprint coexistence, explicit rejection logs and CLEAN/SATURATED review. At 45 versus 60/MAX, accepted patterns rose 76→116/min, sweeps 76→116/min, ordinary drops 8→16/min, time with at least two threats 92.5→100%, and maximum meaningful threats four→five. Both records are always visible and persisted end to end; button anchors remain stable. Three 120 s stress seeds had 10.142–13.886 ms worst steps and zero >16.67/33.33/50 ms. All 53 tests passed; release/review Web builds and actual desktop/mobile pixels loaded with clean browser consoles. Human MAX survival, perceived fairness and physical-phone acceptance remain unverified. See docs/vm0812-terminal-overload.md.'
   };
 
+  const vm0813MovementRecordEvidence = {
+    id: 'evidence-vm-0.8.1.3-movement-record-readability',
+    type: 'Evidence', date: '2026-11-06', source: 'Startup Lab review of VM-0.8.1.2 Mode Select and movement scope',
+    text: 'Standard and Overload record data and persistence were correct, but both values rendered over the busy machine artwork and became visually unreadable after desktop/mobile scaling. The shared controller had no airborne-jump allowance. Terminal Overload deterministic pressure and tail performance did not justify hazard, cadence, collision or balance changes.'
+  };
+
+  const vm0813MovementRecordDecision = {
+    id: 'decision-vm-0.8.1.3-movement-record-readability',
+    type: 'Decision', date: '2026-11-06', source: 'Startup Lab VM-0.8.1.3 brief',
+    text: 'Keep record persistence unchanged and attach each Best directly beneath its authored mode control on the cream production panel. Keep Single Jump as the default. Test exactly one optional airborne jump in a separate founder build and record-disabled review helper. Preserve Standard and Terminal Overload mechanics, and do not adopt Double Jump before controlled founder review.'
+  };
+
+  const vm0813MovementRecordHypothesis = {
+    id: 'hypothesis-vm-0.8.1.3-movement-record-readability',
+    type: 'Hypothesis', date: '2026-11-06', source: 'Startup Lab VM-0.8.1.3 brief',
+    text: 'Exactly one additional airborne jump may improve recovery and agency in late Overload without making electrical pressure, landed-can terrain, Refund choices or MAX trivial. A smoother or easier feel is not sufficient adoption evidence; human A/B play and physical-phone input remain required.'
+  };
+
+  const vm0813MovementRecordResult = {
+    id: 'result-vm-0.8.1.3-movement-record-readability',
+    type: 'Result', date: '2026-11-06', source: 'VM-0.8.1.3 implementation, deterministic profiling and exported-Web QA',
+    text: 'Mode Select now renders Standard and Overload Best values beneath their own controls with C2 ink on the cream panel; Standard 0 and missing Overload -- remain explicit. Native and browser pixels at 1152×648, 844×390 and 640×360 show fixed anchors, high contrast and no clipping or art intersection. The shared controller defaults to zero extra air jumps; the isolated experiment enables one 100% second impulse, resets on legitimate support, reuses existing input/SFX, and rejects third, coyote-chain and buffered pre-landing extra impulses. Single, Double and record-disabled review Web builds load with zero browser console/page errors. Deterministic MAX pressure remains 116 accepted patterns/minute with 100% ≥2-threat time; three 120-second profiles measured 0.221–0.228 ms p99, 10.953–14.570 ms worst and zero steps over 16.67/33.33/50 ms. Two sequential 54-script runs each passed 53 scripts; the same existing audio playback-position timing assertion failed under batch load and passed unchanged on both immediate isolated reruns. Founder A/B adoption, physical-phone repeated Jump, hosted record readability and human MAX fairness remain unverified. See docs/vm0813-movement-record-readability.md.'
+  };
+
   const migrationFindings = [
     implementationResult,
     movementFeedbackEvidence,
@@ -2226,7 +2250,11 @@
     vm0812TerminalEvidence,
     vm0812TerminalDecision,
     vm0812TerminalHypothesis,
-    vm0812TerminalResult
+    vm0812TerminalResult,
+    vm0813MovementRecordEvidence,
+    vm0813MovementRecordDecision,
+    vm0813MovementRecordHypothesis,
+    vm0813MovementRecordResult
   ];
 
   const defaultFindings = [

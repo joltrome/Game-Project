@@ -11,12 +11,14 @@ facts after an accepted milestone; do not append duplicate state snapshots.
 - Standard/mobile reference: **VM-0.7.4 Responsive Mobile Cabinet** at
   `f12c75758d5224a3b30607d7e51734a30c47a271`
 - Current accepted build: `builds/VM-0.8.0-OVERLOAD.zip`
-- In-progress isolated candidate: **VM-0.8.1.2 — Terminal Overload + Mode
-  Record Repair** on `release/vm-0.8.1.2-terminal-overload`
-- Candidate source parent: VM-0.8.1.1 at
-  `a6f667e587ce353cc9fc94f1d068960cda7a4a23`
-- Candidate report: `docs/vm0812-terminal-overload.md`
-- Candidate build: `builds/VM-0.8.1.2-TERMINAL-OVERLOAD.zip`
+- In-progress isolated candidate: **VM-0.8.1.3 — Mode Record Readability +
+  Double-Jump Experiment** on
+  `release/vm-0.8.1.3-movement-record-readability`
+- Candidate source parent: VM-0.8.1.2 at
+  `852f8eab6692606fb440f8845f9c921c94a3bba7`
+- Candidate report: `docs/vm0813-movement-record-readability.md`
+- Candidate builds: `builds/VM-0.8.1.3-SINGLE-JUMP.zip` and
+  `builds/VM-0.8.1.3-DOUBLE-JUMP-EXPERIMENT.zip`
 - Product direction: the conveyor game is primary. Standard remains an
   approachable 60-second shift; Overload is a separate veteran/mastery mode.
 
@@ -71,6 +73,10 @@ Portrait shows `ROTATE DEVICE`.
   gameplay pixels. A correctly positioned empty rectangle is a failure.
 - Browser screenshots must contain the real game after entering the real scene.
   Final mobile acceptance still requires founder testing on physical devices.
+- Pixel presence is not human readability. Inspect actual contrast, artwork
+  intersections, final-pixel text size, clipping, fixed anchors and focus
+  stability at desktop/mobile sizes; geometry/color diversity alone cannot pass
+  a text-readability correction.
 - Preserve deterministic safety/reachability/reservation validation and run the
   full repository test suite once after targeted work.
 - Performance review emphasizes tail behavior: planning maximum, p95, p99,
@@ -109,6 +115,10 @@ Portrait shows `ROTATE DEVICE`.
 
 ## Current Hypotheses
 
+- Exactly one extra airborne jump may improve recovery and agency in late
+  Overload without trivializing electrical threats, landed-can terrain, Refund
+  choices or MAX pressure. Easier or smoother feel alone is not adoption
+  evidence; this requires controlled founder comparison.
 - Terminal Overload escalation may create genuine mastery pressure while each
   committed combination retains at least one validated response. MAX begins at
   60 seconds and is no longer intended to preserve a comfortable equilibrium.
@@ -124,7 +134,20 @@ Portrait shows `ROTATE DEVICE`.
   preserving real records through explicit debug-run isolation.
 - Success still depends on unprompted voluntary Retry and score competition.
 
-## VM-0.8.1.2 Candidate Result
+## VM-0.8.1.3 Candidate Result
+
+- Mode Select places each persistent Best directly beneath its own authored
+  mode button on the cream control surface. Standard zero is explicit and
+  Overload uses `--` only before a compatible result exists. Actual desktop,
+  844×390 and 640×360 pixels show no art intersection, clipping or focus shift.
+- The shared controller now has a default-zero optional airborne-jump budget.
+  The Single build retains the frozen controller; the Double experiment enables
+  exactly one 100% second impulse, resets only on legitimate support, reuses the
+  existing input/SFX and rejects coyote/buffer triple-jump chains.
+- Separate founder builds preserve clean Single/Double comparison. The review
+  helper adds `J` movement and `F8` Standard/Overload toggles while retaining
+  CLEAN/SATURATED checkpoints and disabling both record stores. The standalone
+  Double Jump experiment also disables both record stores.
 
 - Mode Select now shows fixed `STANDARD BEST` and `OVERLOAD BEST` fields at all
   times. Real isolated storage tests verify initial and improved values. Record
@@ -152,19 +175,23 @@ Portrait shows `ROTATE DEVICE`.
   five simultaneous threats, versus 76/76/8/92.5%/four at 45 seconds.
 - The review helper selects 0/10/20/30/45/60/75/90 states and toggles CLEAN /
   SATURATED with F10; all forced runs remain visibly record-disabled.
-- Three final 120-second stress profiles measured 10.142–13.886 ms worst steps
-  and zero steps above 16.67/33.33/50 ms. All 53 test scripts passed. Release
-  and review Web builds loaded at desktop and representative mobile sizes with
-  clean browser consoles. Human MAX survival/fairness and physical-phone
-  acceptance remain pending.
+- Three current 120-second stress profiles measured 10.953–14.570 ms worst
+  steps, 0.221–0.228 ms p99, and zero steps above 16.67/33.33/50 ms. Browser
+  loads of Single, Double and review builds had zero console/page errors.
+  Two full sequential test runs each passed 53/54; the same unrelated `<0.08 s`
+  audio playback-position timing assertion failed under batch load and passed
+  unchanged on both immediate isolated reruns. No audio code/test was changed.
+  Double-Jump adoption, physical-phone input, hosted record readability and
+  human MAX fairness remain pending founder review.
 
 ## Deferred / Backlog
 
 Electrical SFX; second Refund Chute; new hazards; power-ups/items; coin magnet;
 slowdown; characters/cosmetics; progression/economy; global leaderboards;
 daily challenges; ads/IAP/Steam integration; monetization; Prototype A machine
-jam; additional modes; and broader presentation polish. None is authorized by
-VM-0.8.1.2.
+jam; additional modes; and broader presentation polish. Double Jump is an
+isolated experiment, not an adopted movement feature. None is authorized
+beyond the VM-0.8.1.3 founder comparison.
 
 ## Current Work / Codex Artifacts
 
@@ -175,6 +202,7 @@ VM-0.8.1.2.
 - VM-0.8.0 report: `docs/vm080-overload.md`
 - VM-0.8.1.1 report: `docs/vm0811-overload-qa-tuning.md`
 - VM-0.8.1.2 report: `docs/vm0812-terminal-overload.md`
+- VM-0.8.1.3 report: `docs/vm0813-movement-record-readability.md`
 - VM-0.7.4 mobile report: `docs/vm074-responsive-mobile-cabinet.md`
 - Accepted build references:
   `builds/VM-0.8.0-OVERLOAD.zip` and
@@ -192,9 +220,9 @@ VM-0.8.1.2.
 
 ## Next Recommended Step
 
-Run founder review of the isolated VM-0.8.1.2 Web build and development-only
-review scene. Verify both persistent Best records, stable mode-button positions,
-clean versus saturated 30/45/60 checkpoints, natural MAX survival duration,
-readable death attribution, actual response feasibility, cue-stack readability,
-physical-phone rendering and simultaneous touch input. Do not merge, upload,
-tune, alter Score or add systems until Startup Lab reviews the evidence.
+Run the controlled Single-versus-Double protocol in
+`docs/vm0813-movement-record-readability.md`: Standard briefly, then identical
+SATURATED 30/45/60-MAX review states in each movement condition. Verify agency,
+airtime, electrical/D3/landed-can/Refund relevance, hosted Mode Select record
+readability and physical-phone repeated Jump input. Do not adopt Double Jump,
+merge, upload, retune or add systems until Startup Lab reviews the evidence.

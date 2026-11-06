@@ -8,7 +8,7 @@ const sharp = require("sharp");
 async function main() {
   const [url, outputPath, widthText = "844", heightText = "390", startMode = "standard"] = process.argv.slice(2);
   if (!url || !outputPath) {
-    throw new Error("usage: capture_mobile_web.cjs URL OUTPUT_PNG [WIDTH HEIGHT [standard|overload|menu]]");
+    throw new Error("usage: capture_mobile_web.cjs URL OUTPUT_PNG [WIDTH HEIGHT [standard|overload|menu|mode-select-neutral|mode-select-standard-focus|mode-select-overload-focus]]");
   }
 
   const width = Number(widthText);
@@ -32,7 +32,18 @@ async function main() {
   await page.goto(url, { waitUntil: "networkidle" });
   await page.locator("canvas").waitFor({ state: "visible" });
   await page.locator("canvas").click({ position: { x: width / 2, y: height / 2 } });
-  if (startMode === "overload") {
+  if (startMode.startsWith("mode-select-")) {
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(200);
+    if (startMode === "mode-select-standard-focus") {
+      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("ArrowLeft");
+    } else if (startMode === "mode-select-overload-focus") {
+      await page.keyboard.press("ArrowRight");
+    } else if (startMode !== "mode-select-neutral") {
+      throw new Error(`unsupported start mode: ${startMode}`);
+    }
+  } else if (startMode === "overload") {
     await page.keyboard.press("Enter");
     await page.waitForTimeout(200);
     await page.keyboard.press("ArrowRight");
@@ -73,13 +84,17 @@ async function main() {
     if (r + g + b > 45) nonNearBlack += 1;
   }
   const pixelCount = data.length / info.channels;
+  const staticModeSelect = startMode.startsWith("mode-select-");
   const stats = {
     viewport: { width, height },
     start_mode: startMode,
     crop,
     quantized_color_bins: bins.size,
     non_near_black_ratio: nonNearBlack / pixelCount,
-    actual_gameplay_pixels_present: bins.size >= 24 && nonNearBlack / pixelCount >= 0.20,
+    actual_gameplay_pixels_present: (
+      (staticModeSelect ? bins.size >= 6 : bins.size >= 24)
+      && nonNearBlack / pixelCount >= 0.20
+    ),
     console_errors: consoleErrors,
     page_errors: pageErrors,
     screenshot: outputPath,

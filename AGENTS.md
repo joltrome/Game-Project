@@ -169,6 +169,12 @@ A change is not validated unless the actual gameplay render is verified inside t
 
 A correctly positioned empty rectangle is a failure. For mobile presentation changes, automated/browser validation may qualify the build for physical review, but final mobile acceptance requires founder verification on a physical device.
 
+Rendered pixel presence is not proof of human readability. For text and record
+UI, also inspect contrast against the actual background, intersections with
+artwork, practical final-pixel size, clipping, fixed anchors, focus stability,
+and representative desktop/mobile output. Geometry or color-diversity checks
+alone do not establish that a person can read the information.
+
 ## Initial behavioral gate
 
 For approximately ten useful moderated tests, the provisional continuation gate is:
